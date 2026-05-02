@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "PowerShell(New-Item *)",
-      "PowerShell(npx tsc -b --noEmit 2>&1 | Select-Object -First 50)"
+      "PowerShell(npx tsc -b --noEmit 2>&1 | Select-Object -First 50)",
+      "PowerShell(npx tsc -b --noEmit 2>&1)",
+      "PowerShell(npx vite build 2>&1)"
     ]
   }
 }
