@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item *)",
+      "PowerShell(npx tsc -b --noEmit 2>&1 | Select-Object -First 50)"
+    ]
+  }
+}

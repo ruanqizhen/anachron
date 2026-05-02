@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Board from './pages/Board';
 import ThreadPage from './pages/Thread';
 import Login from './pages/Login';
+import Notifications from './pages/Notifications';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/b/:boardSlug" element={<Board />} />
                 <Route path="/b/:boardSlug/t/:threadId" element={<ThreadPage />} />
+                <Route path="/notifications" element={<Notifications />} />
               </Routes>
             </>
           }

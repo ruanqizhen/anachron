@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ThumbsUp, Send } from 'lucide-react';
+import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Post } from '../../lib/types';
-import { getPostsByThread } from '../../lib/api';
+import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
+import { parseMentions } from '../../lib/mentions';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
+import EditDialog from './EditDialog';
 
 interface CommentSectionProps {
   threadId: string;
@@ -23,9 +26,14 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('zh-CN');
 }
 
-function CommentItem({ post, isNested = false }: { post: Post; isNested?: boolean }) {
+function CommentItem({ post, isNested = false, onPostUpdated }: { post: Post; isNested?: boolean; onPostUpdated: () => void }) {
+  const { user } = useAuth();
   const [liked, setLiked] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const author = post.profiles;
+  const isOwn = user && author && user.id === author.id && !author.is_ai_character;
 
   if (post.deleted_at) {
     return (
@@ -39,72 +47,167 @@ function CommentItem({ post, isNested = false }: { post: Post; isNested?: boolea
   }
 
   return (
-    <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
-      <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
-        <Avatar
-          name={author?.username || '游客'}
-          url={author?.avatar_url}
-          size={32}
-        />
-      </Link>
-      <div className="flex-1 min-w-0">
-        <div
-          className="rounded-xl px-3 py-2"
-          style={{ backgroundColor: 'var(--color-page-bg)' }}
-        >
-          <div className="flex items-center gap-1">
-            <Link
-              to={author ? `/u/${author.username}` : '#'}
-              className="font-semibold text-[13px] no-underline hover:underline"
-              style={{ color: 'var(--color-text-primary)' }}
-            >
-              {author?.username || '游客'}
-            </Link>
-            {author?.is_ai_character && <Badge type="verified" />}
-            {author?.is_ai_character && (
-              <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
-                东汉末年
-              </span>
-            )}
-          </div>
-          <MarkdownRenderer content={post.content} className="text-sm" />
-        </div>
-        <div className="flex items-center gap-3 mt-1 px-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          <button
-            onClick={() => setLiked(!liked)}
-            className="flex items-center gap-1 font-medium cursor-pointer bg-transparent border-none"
-            style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)', fontSize: 12 }}
+    <>
+      <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
+        <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
+          <Avatar
+            name={author?.username || '游客'}
+            url={author?.avatar_url}
+            size={32}
+          />
+        </Link>
+        <div className="flex-1 min-w-0">
+          <div
+            className="rounded-xl px-3 py-2"
+            style={{ backgroundColor: 'var(--color-page-bg)' }}
           >
-            <ThumbsUp size={12} fill={liked ? 'currentColor' : 'none'} />
-            {post.likes > 0 && post.likes}
-          </button>
-          <span>·</span>
-          <button className="font-medium cursor-pointer bg-transparent border-none" style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
-            回复
-          </button>
-          <span>·</span>
-          <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
-          {post.edited_at && <span>(已编辑)</span>}
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1">
+                <Link
+                  to={author ? `/u/${author.username}` : '#'}
+                  className="font-semibold text-[13px] no-underline hover:underline"
+                  style={{ color: 'var(--color-text-primary)' }}
+                >
+                  {author?.username || '游客'}
+                </Link>
+                {author?.is_ai_character && <Badge type="verified" />}
+                {author?.is_ai_character && (
+                  <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
+                    东汉末年
+                  </span>
+                )}
+              </div>
+              {isOwn && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="p-0.5 rounded-full hover:bg-white/50 transition-colors cursor-pointer border-none bg-transparent"
+                  >
+                    <MoreHorizontal size={12} style={{ color: 'var(--color-text-muted)' }} />
+                  </button>
+                  {showMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                      <div
+                        className="absolute right-0 top-full mt-1 w-24 rounded-lg z-20 overflow-hidden"
+                        style={{
+                          backgroundColor: 'var(--color-card-bg)',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        <button
+                          onClick={() => { setShowMenu(false); setShowEdit(true); }}
+                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                          style={{ color: 'var(--color-text-primary)' }}
+                        >
+                          <Pencil size={11} /> 编辑
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setShowMenu(false);
+                            if (isDeleting) return;
+                            setIsDeleting(true);
+                            try {
+                              await softDeletePost(post.id);
+                              onPostUpdated();
+                            } catch { /* ignore */ }
+                            setIsDeleting(false);
+                          }}
+                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                          style={{ color: 'var(--color-danger)' }}
+                        >
+                          <Trash2 size={11} /> {isDeleting ? '...' : '删除'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            <MarkdownRenderer content={post.content} className="text-sm" />
+          </div>
+          <div className="flex items-center gap-3 mt-1 px-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            <button
+              onClick={() => setLiked(!liked)}
+              className="flex items-center gap-1 font-medium cursor-pointer bg-transparent border-none"
+              style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)', fontSize: 12 }}
+            >
+              <ThumbsUp size={12} fill={liked ? 'currentColor' : 'none'} />
+              {post.likes > 0 && post.likes}
+            </button>
+            <span>·</span>
+            <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
+            {post.edited_at && <span>(已编辑)</span>}
+          </div>
         </div>
       </div>
-    </div>
+
+      {showEdit && (
+        <EditDialog
+          content={post.content}
+          onSave={async (_title, content) => {
+            await updatePost(post.id, content);
+            onPostUpdated();
+          }}
+          onClose={() => setShowEdit(false)}
+        />
+      )}
+    </>
   );
 }
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
+  const { user } = useAuth();
   const [replyText, setReplyText] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function loadPosts() {
+    const fetchedPosts = await getPostsByThread(threadId);
+    setPosts(fetchedPosts);
+  }
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      const fetchedPosts = await getPostsByThread(threadId);
-      setPosts(fetchedPosts);
+      await loadPosts();
       setIsLoading(false);
     }
     loadData();
   }, [threadId]);
+
+  async function handleReply() {
+    if (!replyText.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const newPost = await createPost({
+        threadId,
+        content: replyText.trim(),
+        authorId: user?.id,
+        guestId: undefined,
+      });
+      setReplyText('');
+
+      const mentionedUsernames = parseMentions(replyText.trim());
+      for (const mentionedName of mentionedUsernames) {
+        const mentionedProfile = await getProfileByUsername(mentionedName);
+        if (mentionedProfile && mentionedProfile.id !== user?.id) {
+          await createNotification({
+            recipientId: mentionedProfile.id,
+            type: 'mention',
+            actorId: user?.id,
+            threadId,
+            postId: newPost.id,
+          }).catch(() => { /* ignore */ });
+        }
+      }
+
+      await loadPosts();
+    } catch { /* ignore */ }
+    setIsSubmitting(false);
+  }
 
   const topLevelPosts = posts.filter(p => !p.parent_post_id);
   const childPosts = posts.filter(p => p.parent_post_id);
@@ -119,14 +222,13 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
   return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
-      {/* Comments list */}
       {topLevelPosts.map((post) => (
         <div key={post.id}>
-          <CommentItem post={post} />
+          <CommentItem post={post} onPostUpdated={loadPosts} />
           {childPosts
             .filter(cp => cp.parent_post_id === post.id)
             .map(cp => (
-              <CommentItem key={cp.id} post={cp} isNested />
+              <CommentItem key={cp.id} post={cp} isNested onPostUpdated={loadPosts} />
             ))
           }
         </div>
@@ -134,25 +236,26 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
       {posts.length === 0 && (
         <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          暂无评论，来说点什么吧 👋
+          暂无评论，来说点什么吧
         </div>
       )}
 
-      {/* Reply input */}
       <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <Avatar name="你" size={32} />
+        <Avatar name={user ? '你' : '游客'} size={32} />
         <div className="flex-1 flex items-center rounded-full px-3" style={{ backgroundColor: 'var(--color-page-bg)' }}>
           <input
             type="text"
             placeholder="写评论..."
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleReply()}
             className="flex-1 py-2 text-sm bg-transparent border-none outline-none"
             style={{ color: 'var(--color-text-primary)' }}
           />
           <button
+            onClick={handleReply}
+            disabled={!replyText.trim() || isSubmitting}
             className="p-1 cursor-pointer bg-transparent border-none disabled:opacity-30"
-            disabled={!replyText.trim()}
             style={{ color: 'var(--color-primary)' }}
           >
             <Send size={16} />
@@ -162,4 +265,3 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     </div>
   );
 }
-

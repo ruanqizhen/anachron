@@ -103,7 +103,13 @@ export default function Home() {
       </div>
 
       {isCreateModalOpen && (
-        <CreatePostForm onClose={() => setIsCreateModalOpen(false)} />
+        <CreatePostForm
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreated={async () => {
+            const [fetchedThreads] = await Promise.all([getRecentThreads(20)]);
+            setThreads(fetchedThreads);
+          }}
+        />
       )}
     </div>
   );

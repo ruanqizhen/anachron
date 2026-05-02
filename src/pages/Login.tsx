@@ -1,12 +1,45 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { useAuth } from '../lib/auth';
 
 export default function Login() {
+  const { login, register } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+
+    if (!email.trim() || !password.trim()) {
+      setError('请填写邮箱和密码');
+      return;
+    }
+    if (isRegister && !username.trim()) {
+      setError('请填写用户名');
+      return;
+    }
+    if (password.length < 6) {
+      setError('密码至少 6 位');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = isRegister
+      ? await register(email.trim(), password, username.trim())
+      : await login(email.trim(), password);
+    setIsSubmitting(false);
+
+    if (result.error) {
+      setError(result.error);
+    }
+    // On success, auth state listener will redirect via NavBar or page refresh
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-page-bg)' }}>
@@ -17,7 +50,6 @@ export default function Login() {
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
         }}
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="no-underline">
             <span className="text-3xl">⏳</span>
@@ -30,8 +62,7 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {isRegister && (
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
@@ -42,7 +73,7 @@ export default function Login() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-lg text-sm border outline-none transition-colors"
                 style={{
-                  borderColor: 'var(--color-border)',
+                  borderColor: error && !username.trim() ? 'var(--color-danger)' : 'var(--color-border)',
                   color: 'var(--color-text-primary)',
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
@@ -83,22 +114,32 @@ export default function Login() {
             />
           </div>
 
+          {error && (
+            <div
+              className="text-sm px-3 py-2 rounded-lg"
+              style={{ backgroundColor: '#FDEDED', color: 'var(--color-danger)' }}
+            >
+              {error}
+            </div>
+          )}
+
           <button
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-semibold text-white cursor-pointer border-none transition-colors"
+            type="submit"
+            disabled={isSubmitting}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-semibold text-white cursor-pointer border-none transition-colors disabled:opacity-60"
             style={{ backgroundColor: 'var(--color-primary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)'}
+            onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)')}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary)'}
           >
-            {isRegister ? '注册' : '登录'}
-            <ArrowRight size={16} />
+            {isSubmitting ? '处理中...' : isRegister ? '注册' : '登录'}
+            {!isSubmitting && <ArrowRight size={16} />}
           </button>
         </form>
 
-        {/* Toggle */}
         <div className="text-center mt-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           {isRegister ? '已有账号？' : '还没有账号？'}
           <button
-            onClick={() => setIsRegister(!isRegister)}
+            onClick={() => { setIsRegister(!isRegister); setError(''); }}
             className="font-medium cursor-pointer bg-transparent border-none ml-1"
             style={{ color: 'var(--color-primary)' }}
           >
@@ -106,7 +147,6 @@ export default function Login() {
           </button>
         </div>
 
-        {/* Guest notice */}
         <div
           className="mt-6 pt-4 text-center text-xs"
           style={{

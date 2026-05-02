@@ -150,8 +150,17 @@ export default function Board() {
       </div>
 
       {isCreateModalOpen && (
-        <CreatePostForm 
-          onClose={() => setIsCreateModalOpen(false)} 
+        <CreatePostForm
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreated={async () => {
+            if (boardSlug) {
+              const fetchedBoard = await getBoardBySlug(boardSlug);
+              if (fetchedBoard) {
+                const fetchedThreads = await getThreadsByBoard(fetchedBoard.id);
+                setThreads(fetchedThreads);
+              }
+            }
+          }}
           defaultBoardSlug={board.slug}
         />
       )}

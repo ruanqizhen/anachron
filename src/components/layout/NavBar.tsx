@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Menu, X, LogIn } from 'lucide-react';
+import { Search, Bell, Menu, X, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import Avatar from '../ui/Avatar';
+import { useAuth } from '../../lib/auth';
 
 export default function NavBar() {
+  const { user, profile, isLoading, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navigate = useNavigate();
-
-  // TODO: Replace with real auth state
-  const currentUser = null as null | { username: string; avatar_url: string | null };
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setMobileMenuOpen(false);
     }
   }
+
+  const displayName = profile?.username || user?.email?.split('@')[0] || '用户';
 
   return (
     <header
@@ -29,7 +32,6 @@ export default function NavBar() {
       }}
     >
       <div className="max-w-[1200px] mx-auto h-full flex items-center px-4 gap-3">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0 no-underline">
           <span className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>
             ⏳
@@ -39,7 +41,6 @@ export default function NavBar() {
           </span>
         </Link>
 
-        {/* Search */}
         <form onSubmit={handleSearch} className="flex-1 max-w-md mx-auto hidden sm:flex">
           <div className="relative w-full">
             <Search
@@ -64,21 +65,68 @@ export default function NavBar() {
           </div>
         </form>
 
-        {/* Right side */}
         <div className="flex items-center gap-2 shrink-0">
-          {currentUser ? (
+          {isLoading ? null : user ? (
             <>
-              <button
+              <Link
+                to="/notifications"
                 className="relative p-2 rounded-full hover:bg-[var(--color-page-bg)] transition-colors"
                 aria-label="通知"
               >
                 <Bell size={20} style={{ color: 'var(--color-text-secondary)' }} />
-                <span
-                  className="absolute top-1 right-1 w-2 h-2 rounded-full"
-                  style={{ backgroundColor: 'var(--color-danger)' }}
-                />
-              </button>
-              <Avatar name={currentUser.username} url={currentUser.avatar_url} size={32} />
+              </Link>
+
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="p-0 border-none bg-transparent cursor-pointer"
+                >
+                  <Avatar name={displayName} url={profile?.avatar_url} size={32} />
+                </button>
+
+                {userMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setUserMenuOpen(false)}
+                    />
+                    <div
+                      className="absolute right-0 top-full mt-2 w-48 rounded-lg z-20 overflow-hidden"
+                      style={{
+                        backgroundColor: 'var(--color-card-bg)',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                        <div className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                          {displayName}
+                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                          {user.email}
+                        </div>
+                      </div>
+                      <Link
+                        to={profile ? `/u/${profile.username}` : '#'}
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm no-underline hover:bg-[var(--color-page-bg)] transition-colors"
+                        style={{ color: 'var(--color-text-primary)' }}
+                      >
+                        <UserIcon size={14} />
+                        我的主页
+                      </Link>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); logout(); }}
+                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                      >
+                        <LogOut size={14} />
+                        退出登录
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           ) : (
             <Link
@@ -93,7 +141,6 @@ export default function NavBar() {
             </Link>
           )}
 
-          {/* Mobile menu toggle */}
           <button
             className="p-2 rounded-full hover:bg-[var(--color-page-bg)] transition-colors sm:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -108,7 +155,6 @@ export default function NavBar() {
         </div>
       </div>
 
-      {/* Mobile search - slides down */}
       {mobileMenuOpen && (
         <div
           className="sm:hidden px-4 py-3"
@@ -139,4 +185,3 @@ export default function NavBar() {
     </header>
   );
 }
-
