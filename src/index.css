@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  /* PRD §4.4 Color Scheme */
+  --color-page-bg: #F0F2F5;
+  --color-card-bg: #FFFFFF;
+  --color-primary: #1877F2;
+  --color-primary-hover: #1465CC;
+  --color-badge-registered: #65676B;
+  --color-badge-verified: #1877F2;
+  --color-text-primary: #050505;
+  --color-text-secondary: #65676B;
+  --color-text-muted: #8A8D91;
+  --color-border: #E4E6E9;
+  --color-danger: #E4405F;
+  --color-success: #42B72A;
+
+  --font-sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.12);
+
+  --radius-card: 8px;
+}
+
+/* Base Styles */
+html {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-page-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Markdown content styling */
+.markdown-content h1 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.markdown-content h2 { font-size: 1.3rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.markdown-content h3 { font-size: 1.15rem; font-weight: 600; margin: 0.8rem 0 0.4rem; }
+.markdown-content p { margin: 0.5rem 0; }
+.markdown-content ul, .markdown-content ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+.markdown-content blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  color: var(--color-text-secondary);
+}
+.markdown-content code {
+  background: #f0f0f0;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.markdown-content pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.markdown-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+.markdown-content img {
+  max-width: 100%;
+  border-radius: 8px;
+}
