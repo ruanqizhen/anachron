@@ -1,10 +1,11 @@
 import { useParams, Link } from 'react-router-dom';
-import { getBoardBySlug, getThreadsByBoard, mockThreads } from '../lib/mockData';
+import { getBoardBySlug, getThreadsByBoard } from '../lib/api';
+import type { Board as BoardType, Thread } from '../lib/types';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import { MessageCircle, ThumbsUp, Clock, PenSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -20,7 +21,33 @@ function timeAgo(dateStr: string): string {
 export default function Board() {
   const { boardSlug } = useParams<{ boardSlug: string }>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const board = getBoardBySlug(boardSlug || '');
+  const [board, setBoard] = useState<BoardType | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      if (!boardSlug) return;
+      setIsLoading(true);
+      const fetchedBoard = await getBoardBySlug(boardSlug);
+      setBoard(fetchedBoard);
+      
+      if (fetchedBoard) {
+        const fetchedThreads = await getThreadsByBoard(fetchedBoard.id);
+        setThreads(fetchedThreads);
+      }
+      setIsLoading(false);
+    }
+    loadData();
+  }, [boardSlug]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
+        加载中...
+      </div>
+    );
+  }
 
   if (!board) {
     return (
@@ -32,10 +59,6 @@ export default function Board() {
       </div>
     );
   }
-
-  const threads = getThreadsByBoard(board.id);
-  // Also show threads from mockThreads that match this board
-  const allThreads = [...threads, ...mockThreads.filter(t => t.boards?.slug === boardSlug && !threads.find(tt => tt.id === t.id))];
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
@@ -72,12 +95,12 @@ export default function Board() {
 
       {/* Thread list */}
       <div className="flex flex-col gap-3">
-        {allThreads.length === 0 ? (
+        {threads.length === 0 ? (
           <div className="text-center py-16 text-sm" style={{ color: 'var(--color-text-muted)' }}>
             暂无帖子，成为第一个发帖的人吧！
           </div>
         ) : (
-          allThreads.map((thread) => {
+          threads.map((thread) => {
             const author = thread.profiles;
             return (
               <Link
@@ -91,12 +114,12 @@ export default function Board() {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar
-                    name={author?.display_name || '游客'}
+                    name={author?.username || '游客'}
                     url={author?.avatar_url}
                     size={24}
                   />
                   <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                    {author?.display_name || '游客'}
+                    {author?.username || '游客'}
                   </span>
                   {author?.is_ai_character && <Badge type="verified" />}
                   <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
@@ -135,3 +158,4 @@ export default function Board() {
     </div>
   );
 }
+

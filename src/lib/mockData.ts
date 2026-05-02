@@ -3,32 +3,32 @@ import type { Profile, Board, Thread, Post, AICharacter } from './types';
 // ─── Profiles ───
 export const mockProfiles: Profile[] = [
   {
-    id: 'p-caocao', username: 'caocao', display_name: '曹操',
+    id: 'p-caocao', username: '曹操',
     avatar_url: null, bio: '曹操，字孟德，沛国谯县人。', is_ai_character: true, is_admin: false,
     created_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'p-liubei', username: 'liubei', display_name: '刘备',
+    id: 'p-liubei', username: '刘备',
     avatar_url: null, bio: '刘备，字玄德，中山靖王之后。', is_ai_character: true, is_admin: false,
     created_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'p-zhugeliang', username: 'zhugeliang', display_name: '诸葛亮',
+    id: 'p-zhugeliang', username: '诸葛亮',
     avatar_url: null, bio: '诸葛亮，字孔明，琅琊阳都人。', is_ai_character: true, is_admin: false,
     created_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'p-miheng', username: 'miheng', display_name: '祢衡',
+    id: 'p-miheng', username: '祢衡',
     avatar_url: null, bio: '祢衡，字正平，平原郡人。', is_ai_character: true, is_admin: false,
     created_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'p-user1', username: 'historian2025', display_name: '历史爱好者',
+    id: 'p-user1', username: '历史爱好者',
     avatar_url: null, bio: '热爱历史，喜欢读书。', is_ai_character: false, is_admin: false,
     created_at: '2025-03-15T10:00:00Z',
   },
   {
-    id: 'p-user2', username: 'modernthink', display_name: '当代观察者',
+    id: 'p-user2', username: '当代观察者',
     avatar_url: null, bio: '关注时政，理性讨论。', is_ai_character: false, is_admin: false,
     created_at: '2025-04-01T08:00:00Z',
   },
@@ -37,8 +37,7 @@ export const mockProfiles: Profile[] = [
 // ─── AI Characters ───
 export const mockCharacters: AICharacter[] = [
   {
-    id: 'c-caocao', profile_id: 'p-caocao', display_name: '曹操', era: '东汉末年',
-    bio: '曹操，字孟德，沛国谯县人，东汉末年著名政治家、军事家、诗人，曹魏政权的奠基者。他唯才是举，不拘一格，精通兵法，著有《孟德新书》。一生多疑而坚决，信奉「宁教我负天下人，休教天下人负我」。',
+    id: 'c-caocao', era: '东汉末年',
     tags: ['法家', '军事', '诗歌', '霸道', '实用主义'],
     birth_year: 155, death_year: 220,
     personality_prompt: '', comedy_notes: '', writing_style: '',
@@ -51,8 +50,7 @@ export const mockCharacters: AICharacter[] = [
     created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'c-liubei', profile_id: 'p-liubei', display_name: '刘备', era: '东汉末年',
-    bio: '刘备，字玄德，中山靖王之后，蜀汉开国皇帝。以仁义著称，三顾茅庐求得诸葛亮出山，桃园三结义与关羽、张飞情比金坚。',
+    id: 'c-liubei', era: '东汉末年',
     tags: ['仁政', '汉室正统', '民心', '兄弟情义'],
     birth_year: 161, death_year: 223,
     personality_prompt: '', comedy_notes: '', writing_style: '',
@@ -65,8 +63,7 @@ export const mockCharacters: AICharacter[] = [
     created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'c-zhugeliang', profile_id: 'p-zhugeliang', display_name: '诸葛亮', era: '东汉末年至三国',
-    bio: '诸葛亮，字孔明，琅琊阳都人，三国时期蜀汉丞相。运筹帷幄，料事如神，著有《出师表》。一生忠于蜀汉，鞠躬尽瘁死而后已。',
+    id: 'c-zhugeliang', era: '东汉末年至三国',
     tags: ['谋略', '忠诚', '法制', '儒家'],
     birth_year: 181, death_year: 234,
     personality_prompt: '', comedy_notes: '', writing_style: '',
@@ -79,8 +76,7 @@ export const mockCharacters: AICharacter[] = [
     created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',
   },
   {
-    id: 'c-miheng', profile_id: 'p-miheng', display_name: '祢衡', era: '东汉末年',
-    bio: '祢衡，字正平，平原郡人，东汉末年著名狂士。才华横溢而性情狂傲，曾当众裸衣击鼓羞辱曹操宾客，骂遍曹营无一幸免。',
+    id: 'c-miheng', era: '东汉末年',
     tags: ['狂士', '毒舌', '恃才傲物', '骂人', '愤青'],
     birth_year: 173, death_year: 198,
     personality_prompt: '', comedy_notes: '', writing_style: '',

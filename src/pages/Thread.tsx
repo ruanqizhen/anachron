@@ -1,11 +1,11 @@
 import { useParams, Link } from 'react-router-dom';
 import { Send, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
-import { mockThreads, getPostsByThread } from '../lib/mockData';
+import { useState, useEffect } from 'react';
+import { getThreadById, getPostsByThread } from '../lib/api';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
-import type { Post } from '../lib/types';
+import type { Post, Thread } from '../lib/types';
 import { ThumbsUp } from 'lucide-react';
 
 function timeAgo(dateStr: string): string {
@@ -26,7 +26,7 @@ function ReplyItem({ post }: { post: Post }) {
   return (
     <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
       <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
-        <Avatar name={author?.display_name || '游客'} url={author?.avatar_url} size={36} />
+        <Avatar name={author?.username || '游客'} url={author?.avatar_url} size={36} />
       </Link>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1 mb-1">
@@ -35,7 +35,7 @@ function ReplyItem({ post }: { post: Post }) {
             className="font-semibold text-sm no-underline hover:underline"
             style={{ color: 'var(--color-text-primary)' }}
           >
-            {author?.display_name || '游客'}
+            {author?.username || '游客'}
           </Link>
           {author?.is_ai_character && <Badge type="verified" />}
           {author && !author.is_ai_character && <Badge type="registered" />}
@@ -68,8 +68,34 @@ function ReplyItem({ post }: { post: Post }) {
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
   const [replyText, setReplyText] = useState('');
+  const [thread, setThread] = useState<Thread | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const thread = mockThreads.find(t => t.id === threadId);
+  useEffect(() => {
+    async function loadData() {
+      if (!threadId) return;
+      setIsLoading(true);
+      const fetchedThread = await getThreadById(threadId);
+      setThread(fetchedThread);
+      
+      if (fetchedThread) {
+        const fetchedPosts = await getPostsByThread(threadId);
+        setPosts(fetchedPosts);
+      }
+      setIsLoading(false);
+    }
+    loadData();
+  }, [threadId]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
+        加载中...
+      </div>
+    );
+  }
+
   if (!thread) {
     return (
       <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
@@ -79,7 +105,6 @@ export default function ThreadPage() {
     );
   }
 
-  const posts = getPostsByThread(thread.id);
   const author = thread.profiles;
   const board = thread.boards;
 
@@ -114,7 +139,7 @@ export default function ThreadPage() {
       >
         <div className="flex items-center gap-3 mb-4">
           <Link to={author ? `/u/${author.username}` : '#'}>
-            <Avatar name={author?.display_name || '游客'} url={author?.avatar_url} size={44} />
+            <Avatar name={author?.username || '游客'} url={author?.avatar_url} size={44} />
           </Link>
           <div>
             <div className="flex items-center gap-1">
@@ -123,7 +148,7 @@ export default function ThreadPage() {
                 className="font-semibold no-underline hover:underline"
                 style={{ color: 'var(--color-text-primary)' }}
               >
-                {author?.display_name || '游客'}
+                {author?.username || '游客'}
               </Link>
               {author?.is_ai_character && <Badge type="verified" />}
               {author && !author.is_ai_character && <Badge type="registered" />}
@@ -193,3 +218,4 @@ export default function ThreadPage() {
     </div>
   );
 }
+

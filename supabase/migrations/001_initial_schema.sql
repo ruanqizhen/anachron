@@ -10,7 +10,6 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE profiles (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username      TEXT NOT NULL UNIQUE,
-  display_name  TEXT NOT NULL,
   avatar_url    TEXT,
   bio           TEXT DEFAULT '',
   is_ai_character BOOLEAN NOT NULL DEFAULT false,
@@ -21,7 +20,7 @@ CREATE TABLE profiles (
 -- ─── guest_sessions ───
 CREATE TABLE guest_sessions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  display_name  TEXT NOT NULL DEFAULT '游客',
+  username      TEXT NOT NULL DEFAULT '游客',
   session_token TEXT NOT NULL UNIQUE,
   ip_address    INET NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -39,8 +38,7 @@ CREATE TABLE blocked_ips (
 
 -- ─── ai_characters ───
 CREATE TABLE ai_characters (
-  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id           UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
+  id                   UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   era                  TEXT NOT NULL DEFAULT '',
   tags                 TEXT[] NOT NULL DEFAULT '{}',
   birth_year           INT,

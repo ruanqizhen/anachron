@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { mockBoards } from '../../lib/mockData';
+import { getBoards } from '../../lib/api';
+import type { Board } from '../../lib/types';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -11,14 +12,28 @@ interface CreatePostFormProps {
 export default function CreatePostForm({ onClose, defaultBoardSlug }: CreatePostFormProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [boardId, setBoardId] = useState(() => {
-    if (defaultBoardSlug) {
-      const board = mockBoards.find(b => b.slug === defaultBoardSlug);
-      if (board) return board.id;
-    }
-    return mockBoards[0]?.id || '';
-  });
+  const [boardId, setBoardId] = useState('');
   const [token, setToken] = useState<string>('');
+  const [boards, setBoards] = useState<Board[]>([]);
+
+  useEffect(() => {
+    async function fetchBoards() {
+      const fetchedBoards = await getBoards();
+      setBoards(fetchedBoards);
+      
+      if (fetchedBoards.length > 0) {
+        if (defaultBoardSlug) {
+          const defaultBoard = fetchedBoards.find(b => b.slug === defaultBoardSlug);
+          if (defaultBoard) {
+            setBoardId(defaultBoard.id);
+            return;
+          }
+        }
+        setBoardId(fetchedBoards[0].id);
+      }
+    }
+    fetchBoards();
+  }, [defaultBoardSlug]);
 
   // Use test key as fallback if not provided
   const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
@@ -62,7 +77,7 @@ export default function CreatePostForm({ onClose, defaultBoardSlug }: CreatePost
               onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
               onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
             >
-              {mockBoards.map(board => (
+              {boards.map(board => (
                 <option key={board.id} value={board.id}>
                   {board.icon} {board.name} ({board.era_tag})
                 </option>

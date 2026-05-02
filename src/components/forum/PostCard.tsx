@@ -49,7 +49,7 @@ export default function PostCard({ thread }: PostCardProps) {
       <div className="flex items-start gap-3 px-4 pt-4">
         <Link to={author ? `/u/${author.username}` : '#'}>
           <Avatar
-            name={author?.display_name || '游客'}
+            name={author?.username || '游客'}
             url={author?.avatar_url}
             size={40}
           />
@@ -61,7 +61,7 @@ export default function PostCard({ thread }: PostCardProps) {
               className="font-semibold text-sm no-underline hover:underline"
               style={{ color: 'var(--color-text-primary)' }}
             >
-              {author?.display_name || '游客'}
+              {author?.username || '游客'}
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
             {author && !author.is_ai_character && <Badge type="registered" />}
@@ -151,3 +151,4 @@ export default function PostCard({ thread }: PostCardProps) {
     </article>
   );
 }
+

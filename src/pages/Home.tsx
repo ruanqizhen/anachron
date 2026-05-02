@@ -1,13 +1,31 @@
-import { mockThreads, mockBoards } from '../lib/mockData';
 import PostCard from '../components/forum/PostCard';
 import RightPanel from '../components/layout/RightPanel';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import { Link } from 'react-router-dom';
 import { PenSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getRecentThreads, getBoards } from '../lib/api';
+import type { Thread, Board } from '../lib/types';
 
 export default function Home() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const [fetchedThreads, fetchedBoards] = await Promise.all([
+        getRecentThreads(20),
+        getBoards()
+      ]);
+      setThreads(fetchedThreads);
+      setBoards(fetchedBoards);
+      setIsLoading(false);
+    }
+    loadData();
+  }, []);
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
@@ -46,7 +64,7 @@ export default function Home() {
 
           {/* Mobile board tags */}
           <div className="flex gap-2 overflow-x-auto pb-3 mb-4 lg:hidden scrollbar-none">
-            {mockBoards.map((board) => (
+            {boards.map((board) => (
               <Link
                 key={board.slug}
                 to={`/b/${board.slug}`}
@@ -64,9 +82,19 @@ export default function Home() {
 
           {/* Thread feed */}
           <div className="flex flex-col gap-4">
-            {mockThreads.map((thread) => (
-              <PostCard key={thread.id} thread={thread} />
-            ))}
+            {isLoading ? (
+              <div className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
+                加载中...
+              </div>
+            ) : threads.length > 0 ? (
+              threads.map((thread) => (
+                <PostCard key={thread.id} thread={thread} />
+              ))
+            ) : (
+              <div className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
+                暂无帖子
+              </div>
+            )}
           </div>
         </main>
 

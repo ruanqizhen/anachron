@@ -2,7 +2,6 @@
 export interface Profile {
   id: string;
   username: string;
-  display_name: string;
   avatar_url: string | null;
   bio: string;
   is_ai_character: boolean;
@@ -12,7 +11,7 @@ export interface Profile {
 
 export interface GuestSession {
   id: string;
-  display_name: string;
+  username: string;
   session_token: string;
   created_at: string;
 }
@@ -22,9 +21,6 @@ export type ModelProvider = 'openai' | 'anthropic' | 'gemini';
 
 export interface AICharacter {
   id: string;
-  profile_id: string;
-  display_name: string;
-  bio: string;
   era: string;
   tags: string[];
   birth_year: number | null;

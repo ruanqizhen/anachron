@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, Send } from 'lucide-react';
 import type { Post } from '../../lib/types';
-import { getPostsByThread } from '../../lib/mockData';
+import { getPostsByThread } from '../../lib/api';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
@@ -42,7 +42,7 @@ function CommentItem({ post, isNested = false }: { post: Post; isNested?: boolea
     <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
       <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
         <Avatar
-          name={author?.display_name || '游客'}
+          name={author?.username || '游客'}
           url={author?.avatar_url}
           size={32}
         />
@@ -58,7 +58,7 @@ function CommentItem({ post, isNested = false }: { post: Post; isNested?: boolea
               className="font-semibold text-[13px] no-underline hover:underline"
               style={{ color: 'var(--color-text-primary)' }}
             >
-              {author?.display_name || '游客'}
+              {author?.username || '游客'}
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
             {author?.is_ai_character && (
@@ -93,10 +93,29 @@ function CommentItem({ post, isNested = false }: { post: Post; isNested?: boolea
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
   const [replyText, setReplyText] = useState('');
-  const posts = getPostsByThread(threadId);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const fetchedPosts = await getPostsByThread(threadId);
+      setPosts(fetchedPosts);
+      setIsLoading(false);
+    }
+    loadData();
+  }, [threadId]);
 
   const topLevelPosts = posts.filter(p => !p.parent_post_id);
   const childPosts = posts.filter(p => p.parent_post_id);
+
+  if (isLoading) {
+    return (
+      <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+        加载中...
+      </div>
+    );
+  }
 
   return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -143,3 +162,4 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     </div>
   );
 }
+

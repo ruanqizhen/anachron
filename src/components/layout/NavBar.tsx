@@ -9,7 +9,7 @@ export default function NavBar() {
   const navigate = useNavigate();
 
   // TODO: Replace with real auth state
-  const currentUser = null as null | { username: string; display_name: string; avatar_url: string | null };
+  const currentUser = null as null | { username: string; avatar_url: string | null };
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -78,7 +78,7 @@ export default function NavBar() {
                   style={{ backgroundColor: 'var(--color-danger)' }}
                 />
               </button>
-              <Avatar name={currentUser.display_name} url={currentUser.avatar_url} size={32} />
+              <Avatar name={currentUser.username} url={currentUser.avatar_url} size={32} />
             </>
           ) : (
             <Link
@@ -139,3 +139,4 @@ export default function NavBar() {
     </header>
   );
 }
+

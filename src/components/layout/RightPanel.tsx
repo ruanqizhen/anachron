@@ -1,10 +1,28 @@
 import { Link } from 'react-router-dom';
-import { mockBoards, mockCharacters, mockProfiles } from '../../lib/mockData';
+import { useState, useEffect } from 'react';
+import { getBoards, getActiveAICharacters } from '../../lib/api';
+import type { Board, AICharacter } from '../../lib/types';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 
 export default function RightPanel() {
-  const aiProfiles = mockProfiles.filter(p => p.is_ai_character);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [aiCharacters, setAiCharacters] = useState<AICharacter[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const [fetchedBoards, fetchedCharacters] = await Promise.all([
+        getBoards(),
+        getActiveAICharacters()
+      ]);
+      setBoards(fetchedBoards);
+      setAiCharacters(fetchedCharacters);
+      setIsLoading(false);
+    }
+    loadData();
+  }, []);
 
   return (
     <aside className="hidden lg:block w-[280px] shrink-0">
@@ -24,17 +42,21 @@ export default function RightPanel() {
             版块导航
           </div>
           <div className="py-1">
-            {mockBoards.map((board) => (
-              <Link
-                key={board.slug}
-                to={`/b/${board.slug}`}
-                className="flex items-center gap-2.5 px-4 py-2 text-sm no-underline transition-colors hover:bg-[var(--color-page-bg)]"
-                style={{ color: 'var(--color-text-primary)' }}
-              >
-                <span className="text-base">{board.icon}</span>
-                <span>{board.name}</span>
-              </Link>
-            ))}
+            {isLoading ? (
+              <div className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
+            ) : (
+              boards.map((board) => (
+                <Link
+                  key={board.slug}
+                  to={`/b/${board.slug}`}
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm no-underline transition-colors hover:bg-[var(--color-page-bg)]"
+                  style={{ color: 'var(--color-text-primary)' }}
+                >
+                  <span className="text-base">{board.icon}</span>
+                  <span>{board.name}</span>
+                </Link>
+              ))
+            )}
           </div>
         </div>
 
@@ -53,31 +75,36 @@ export default function RightPanel() {
             活跃 AI 角色
           </div>
           <div className="py-2">
-            {mockCharacters.filter(c => c.is_active).map((char) => {
-              const profile = aiProfiles.find(p => p.id === char.profile_id);
-              if (!profile) return null;
-              return (
-                <Link
-                  key={char.id}
-                  to={`/u/${profile.username}`}
-                  className="flex items-center gap-2.5 px-4 py-2 no-underline transition-colors hover:bg-[var(--color-page-bg)]"
-                >
-                  <Avatar name={profile.display_name} url={profile.avatar_url} size={32} />
-                  <div className="min-w-0">
-                    <div className="flex items-center text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                      <span className="truncate">{profile.display_name}</span>
-                      <Badge type="verified" />
+            {isLoading ? (
+              <div className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
+            ) : (
+              aiCharacters.map((char) => {
+                const profile = char.profiles;
+                if (!profile) return null;
+                return (
+                  <Link
+                    key={char.id}
+                    to={`/u/${profile.username}`}
+                    className="flex items-center gap-2.5 px-4 py-2 no-underline transition-colors hover:bg-[var(--color-page-bg)]"
+                  >
+                    <Avatar name={profile.username} url={profile.avatar_url} size={32} />
+                    <div className="min-w-0">
+                      <div className="flex items-center text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                        <span className="truncate">{profile.username}</span>
+                        <Badge type="verified" />
+                      </div>
+                      <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        {char.era}
+                      </div>
                     </div>
-                    <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                      {char.era}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
     </aside>
   );
 }
+
