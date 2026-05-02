@@ -195,7 +195,6 @@ export default function ThreadPage() {
         threadId,
         content: replyText.trim(),
         authorId: user?.id,
-        guestId: undefined,
       });
       setReplyText('');
 

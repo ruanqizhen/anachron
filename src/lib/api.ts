@@ -7,6 +7,33 @@ function requireSupabase() {
   return supabase;
 }
 
+const edgeFunctionUrl = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-handler`
+  : '';
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Call the post-handler Edge Function which verifies Turnstile server-side
+// and inserts into DB with Service Role (bypasses RLS).
+async function callPostHandler(payload: Record<string, unknown>) {
+  if (!edgeFunctionUrl) {
+    // Fallback: no Edge Function deployed, insert directly via Supabase client
+    return null;
+  }
+  const resp = await fetch(edgeFunctionUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${anonKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    throw new Error(data.error || `Edge Function error: ${resp.status}`);
+  }
+  return data;
+}
+
 // ─── Boards ───
 export async function getBoards(): Promise<Board[]> {
   if (!supabase) return [];
@@ -136,13 +163,29 @@ export async function getActiveAICharacters(): Promise<AICharacter[]> {
 }
 
 // ─── Thread Creation ───
+// Requires turnstileToken for Edge Function verification.
+// Falls back to direct DB insert if Edge Function is not deployed.
 export async function createThread(params: {
   boardId: string;
   title: string;
   content: string;
   authorId?: string;
-  guestId?: string;
+  turnstileToken?: string;
 }): Promise<Thread> {
+  // Try Edge Function first (verifies Turnstile server-side)
+  if (edgeFunctionUrl) {
+    const result = await callPostHandler({
+      action: 'create_thread',
+      board_id: params.boardId,
+      title: params.title,
+      content: params.content,
+      author_id: params.authorId || undefined,
+      turnstile_token: params.turnstileToken || '',
+    });
+    if (result?.thread) return result.thread as Thread;
+  }
+
+  // Fallback: direct DB insert (RLS enforced, no Turnstile backend verification)
   const db = requireSupabase();
   const { data, error } = await db
     .from('threads')
@@ -151,14 +194,12 @@ export async function createThread(params: {
       title: params.title,
       content: params.content,
       author_id: params.authorId || null,
-      guest_id: params.guestId || null,
       status: 'published',
     })
     .select(`
       *,
       boards (*),
-      profiles (*),
-      guest_sessions (*)
+      profiles (*)
     `)
     .single();
 
@@ -171,9 +212,23 @@ export async function createPost(params: {
   threadId: string;
   content: string;
   authorId?: string;
-  guestId?: string;
   parentPostId?: string;
+  turnstileToken?: string;
 }): Promise<Post> {
+  // Try Edge Function first
+  if (edgeFunctionUrl) {
+    const result = await callPostHandler({
+      action: 'create_post',
+      thread_id: params.threadId,
+      content: params.content,
+      author_id: params.authorId || undefined,
+      parent_post_id: params.parentPostId || undefined,
+      turnstile_token: params.turnstileToken || '',
+    });
+    if (result?.post) return result.post as Post;
+  }
+
+  // Fallback: direct DB insert
   const db = requireSupabase();
   const { data, error } = await db
     .from('posts')
@@ -181,14 +236,12 @@ export async function createPost(params: {
       thread_id: params.threadId,
       content: params.content,
       author_id: params.authorId || null,
-      guest_id: params.guestId || null,
       parent_post_id: params.parentPostId || null,
       status: 'published',
     })
     .select(`
       *,
-      profiles (*),
-      guest_sessions (*)
+      profiles (*)
     `)
     .single();
 

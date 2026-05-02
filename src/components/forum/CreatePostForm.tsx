@@ -75,7 +75,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         title: title.trim(),
         content: content.trim(),
         authorId: user?.id,
-        guestId: effectiveGuestName ? undefined : undefined,
+        turnstileToken: token,
       });
 
       // Notify @mentioned users

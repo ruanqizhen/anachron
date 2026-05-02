@@ -186,7 +186,6 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
         threadId,
         content: replyText.trim(),
         authorId: user?.id,
-        guestId: undefined,
       });
       setReplyText('');
 
