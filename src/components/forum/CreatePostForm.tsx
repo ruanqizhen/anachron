@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { getBoards, createThread, getProfileByUsername, createNotification } from '../../lib/api';
+import { getBoards, createThread, createGuestSession, getProfileByUsername, createNotification } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
@@ -70,11 +70,18 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
 
     setIsSubmitting(true);
     try {
+      // Create guest session in DB if posting as guest
+      let guestId: string | undefined;
+      if (!user && effectiveGuestName) {
+        guestId = await createGuestSession(effectiveGuestName);
+      }
+
       const newThread = await createThread({
         boardId,
         title: title.trim(),
         content: content.trim(),
         authorId: user?.id,
+        guestId,
         turnstileToken: token,
       });
 

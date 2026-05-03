@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Thread } from '../../lib/types';
+import { getDisplayName } from '../../lib/types';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
@@ -49,7 +50,7 @@ export default function PostCard({ thread }: PostCardProps) {
       <div className="flex items-start gap-3 px-4 pt-4">
         <Link to={author ? `/u/${author.username}` : '#'}>
           <Avatar
-            name={author?.username || '游客'}
+            name={getDisplayName(thread)}
             url={author?.avatar_url}
             size={40}
           />
@@ -61,7 +62,7 @@ export default function PostCard({ thread }: PostCardProps) {
               className="font-semibold text-sm no-underline hover:underline"
               style={{ color: 'var(--color-text-primary)' }}
             >
-              {author?.username || '游客'}
+              {getDisplayName(thread)}
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
             {author && !author.is_ai_character && <Badge type="registered" />}

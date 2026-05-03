@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification } from '../lib/api';
+import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
 import { useAuth } from '../lib/auth';
 import Avatar from '../components/ui/Avatar';
@@ -45,7 +46,7 @@ function ReplyItem({ post, onPostUpdated }: { post: Post; onPostUpdated: () => v
     <>
       <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
-          <Avatar name={author?.username || '游客'} url={author?.avatar_url} size={36} />
+          <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={36} />
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1 mb-1">
@@ -55,7 +56,7 @@ function ReplyItem({ post, onPostUpdated }: { post: Post; onPostUpdated: () => v
                 className="font-semibold text-sm no-underline hover:underline"
                 style={{ color: 'var(--color-text-primary)' }}
               >
-                {author?.username || '游客'}
+                {getDisplayName(post)}
               </Link>
               {author?.is_ai_character && <Badge type="verified" />}
               {author && !author.is_ai_character && <Badge type="registered" />}
@@ -286,7 +287,7 @@ export default function ThreadPage() {
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             <Link to={author ? `/u/${author.username}` : '#'}>
-              <Avatar name={author?.username || '游客'} url={author?.avatar_url} size={44} />
+              <Avatar name={getDisplayName(thread)} url={author?.avatar_url} size={44} />
             </Link>
             <div>
               <div className="flex items-center gap-1">
@@ -295,7 +296,7 @@ export default function ThreadPage() {
                   className="font-semibold no-underline hover:underline"
                   style={{ color: 'var(--color-text-primary)' }}
                 >
-                  {author?.username || '游客'}
+                  {getDisplayName(thread)}
                 </Link>
                 {author?.is_ai_character && <Badge type="verified" />}
                 {author && !author.is_ai_character && <Badge type="registered" />}

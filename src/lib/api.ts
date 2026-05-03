@@ -173,6 +173,16 @@ export async function getActiveAICharacters(): Promise<AICharacter[]> {
   return data as AICharacter[];
 }
 
+// ─── Guest Sessions ───
+export async function createGuestSession(username: string): Promise<string> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('create_guest_rpc', {
+    p_username: username,
+  });
+  if (error) throw error;
+  return data as string; // returns the new guest session UUID
+}
+
 // ─── Thread Creation ───
 // Requires turnstileToken for Edge Function verification.
 // Falls back to direct DB insert if Edge Function is not deployed.
@@ -181,6 +191,7 @@ export async function createThread(params: {
   title: string;
   content: string;
   authorId?: string;
+  guestId?: string;
   turnstileToken?: string;
 }): Promise<Thread> {
   // Try Edge Function first (verifies Turnstile server-side)
@@ -203,10 +214,10 @@ export async function createThread(params: {
     p_title: params.title,
     p_content: params.content,
     p_author_id: params.authorId || null,
+    p_guest_id: params.guestId || null,
   });
 
   if (error) throw error;
-  // RPC returns an array; pick first row
   const threads = data as Thread[];
   if (!threads || threads.length === 0) throw new Error('创建失败');
   return threads[0];
@@ -217,6 +228,7 @@ export async function createPost(params: {
   threadId: string;
   content: string;
   authorId?: string;
+  guestId?: string;
   parentPostId?: string;
   turnstileToken?: string;
 }): Promise<Post> {
@@ -239,6 +251,7 @@ export async function createPost(params: {
     p_thread_id: params.threadId,
     p_content: params.content,
     p_author_id: params.authorId || null,
+    p_guest_id: params.guestId || null,
     p_parent_post_id: params.parentPostId || null,
   });
 

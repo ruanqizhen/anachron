@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Post } from '../../lib/types';
+import { getDisplayName, getAuthorLink } from '../../lib/types';
 import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
@@ -49,9 +50,9 @@ function CommentItem({ post, isNested = false, onPostUpdated }: { post: Post; is
   return (
     <>
       <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
-        <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
+        <Link to={getAuthorLink(post)} className="shrink-0">
           <Avatar
-            name={author?.username || '游客'}
+            name={getDisplayName(post)}
             url={author?.avatar_url}
             size={32}
           />
@@ -64,11 +65,11 @@ function CommentItem({ post, isNested = false, onPostUpdated }: { post: Post; is
             <div className="flex items-center justify-between gap-1">
               <div className="flex items-center gap-1">
                 <Link
-                  to={author ? `/u/${author.username}` : '#'}
+                  to={getAuthorLink(post)}
                   className="font-semibold text-[13px] no-underline hover:underline"
                   style={{ color: 'var(--color-text-primary)' }}
                 >
-                  {author?.username || '游客'}
+                  {getDisplayName(post)}
                 </Link>
                 {author?.is_ai_character && <Badge type="verified" />}
                 {author?.is_ai_character && (

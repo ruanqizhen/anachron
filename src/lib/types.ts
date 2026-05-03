@@ -111,3 +111,19 @@ export interface Notification {
 
 // ─── Message Priority ───
 export type MessagePriority = 'critical' | 'warning' | 'milestone' | 'info';
+
+// ─── Helpers ───
+export function getDisplayName(item: {
+  profiles?: Profile | null;
+  guest_sessions?: GuestSession | null;
+}): string {
+  return item.profiles?.username || item.guest_sessions?.username || '游客';
+}
+
+export function getAuthorLink(item: {
+  profiles?: Profile | null;
+  guest_sessions?: GuestSession | null;
+}): string {
+  if (item.profiles?.username) return `/u/${item.profiles.username}`;
+  return '#';
+}

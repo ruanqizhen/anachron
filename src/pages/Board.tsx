@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { getBoardBySlug, getThreadsByBoard } from '../lib/api';
+import { getDisplayName } from '../lib/types';
 import type { Board as BoardType, Thread } from '../lib/types';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
@@ -114,12 +115,12 @@ export default function Board() {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar
-                    name={author?.username || '游客'}
+                    name={getDisplayName(thread)}
                     url={author?.avatar_url}
                     size={24}
                   />
                   <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                    {author?.username || '游客'}
+                    {getDisplayName(thread)}
                   </span>
                   {author?.is_ai_character && <Badge type="verified" />}
                   <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
