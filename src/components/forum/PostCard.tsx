@@ -38,6 +38,19 @@ export default function PostCard({ thread }: PostCardProps) {
     ? thread.content.slice(0, MAX_PREVIEW_LENGTH) + '...'
     : thread.content;
 
+  if (thread.deleted_at) {
+    return (
+      <div
+        className="rounded-lg p-6 text-center"
+        style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}
+      >
+        <p className="text-sm m-0" style={{ color: 'var(--color-text-muted)' }}>
+          帖子已被删除 · {new Date(thread.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <article
       className="rounded-lg transition-shadow"

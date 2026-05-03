@@ -99,6 +99,53 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Admin update any thread (including board, timestamp)
+CREATE OR REPLACE FUNCTION admin_update_thread(
+  p_thread_id UUID,
+  p_title TEXT,
+  p_content TEXT,
+  p_board_id UUID,
+  p_created_at TIMESTAMPTZ
+) RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE threads SET title = p_title, content = p_content, board_id = p_board_id,
+    created_at = p_created_at, edited_at = now()
+  WHERE id = p_thread_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin update any post
+CREATE OR REPLACE FUNCTION admin_update_post(
+  p_post_id UUID,
+  p_content TEXT,
+  p_created_at TIMESTAMPTZ
+) RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE posts SET content = p_content, created_at = p_created_at, edited_at = now()
+  WHERE id = p_post_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin soft-delete any thread
+CREATE OR REPLACE FUNCTION admin_soft_delete_thread(p_thread_id UUID)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE threads SET deleted_at = now() WHERE id = p_thread_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin soft-delete any post
+CREATE OR REPLACE FUNCTION admin_soft_delete_post(p_post_id UUID)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE posts SET deleted_at = now() WHERE id = p_post_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Get daily stats for charts
 CREATE OR REPLACE FUNCTION admin_get_daily_stats(p_days INT DEFAULT 7)
 RETURNS TABLE(character_name TEXT, date DATE, reply_count INT) AS $$

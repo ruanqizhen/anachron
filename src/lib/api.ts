@@ -83,6 +83,8 @@ export async function getRecentThreads(limit: number = 20, offset: number = 0): 
       profiles (*),
       guest_sessions (*)
     `)
+    .is('deleted_at', null)
+    .eq('status', 'published')
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -104,6 +106,8 @@ export async function getThreadsByBoard(boardId: string, limit: number = 20, off
       guest_sessions (*)
     `)
     .eq('board_id', boardId)
+    .is('deleted_at', null)
+    .eq('status', 'published')
     .order('is_pinned', { ascending: false })
     .order('last_post_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -552,6 +556,38 @@ export async function adminAddResponseTask(characterId: string, threadId: string
 export async function adminCancelTask(taskId: string): Promise<void> {
   const db = requireSupabase();
   const { error } = await db.rpc('admin_cancel_task', { p_task_id: taskId });
+  if (error) throw error;
+}
+
+// ─── Admin: Direct Edit ───
+export async function adminUpdateThread(threadId: string, params: {
+  title: string; content: string; boardId: string; createdAt: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_update_thread', {
+    p_thread_id: threadId, p_title: params.title, p_content: params.content,
+    p_board_id: params.boardId, p_created_at: params.createdAt,
+  });
+  if (error) throw error;
+}
+
+export async function adminSoftDeleteThread(threadId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_soft_delete_thread', { p_thread_id: threadId });
+  if (error) throw error;
+}
+
+export async function adminSoftDeletePost(postId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_soft_delete_post', { p_post_id: postId });
+  if (error) throw error;
+}
+
+export async function adminUpdatePost(postId: string, content: string, createdAt: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_update_post', {
+    p_post_id: postId, p_content: content, p_created_at: createdAt,
+  });
   if (error) throw error;
 }
 

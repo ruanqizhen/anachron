@@ -6,13 +6,16 @@ import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
+import { isAdmin } from '../lib/admin';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import EditDialog from '../components/forum/EditDialog';
+import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
-import type { Post, Thread } from '../lib/types';
+import { adminUpdateThread, adminUpdatePost, adminSoftDeleteThread, adminSoftDeletePost, getBoards } from '../lib/api';
+import type { Post, Thread, Board } from '../lib/types';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -26,19 +29,21 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('zh-CN');
 }
 
-function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void }) {
+function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean }) {
   const { user } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
   useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
   const [showEdit, setShowEdit] = useState(false);
+  const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const author = post.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
+  const canEdit = isOwn || admin;
 
   if (post.deleted_at) {
     return (
@@ -78,7 +83,7 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
               )}
             </div>
 
-            {isOwn && (
+            {canEdit && (
               <div className="relative">
                 <button
                   onClick={() => setShowMenu(!showMenu)}
@@ -98,7 +103,11 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
                       }}
                     >
                       <button
-                        onClick={() => { setShowMenu(false); setShowEdit(true); }}
+                        onClick={() => {
+                          setShowMenu(false);
+                          if (admin && !isOwn) setShowAdminEdit(true);
+                          else setShowEdit(true);
+                        }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
                         style={{ color: 'var(--color-text-primary)' }}
                       >
@@ -110,7 +119,8 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
                           if (isDeleting) return;
                           setIsDeleting(true);
                           try {
-                            await softDeletePost(post.id);
+                            if (admin && !isOwn) await adminSoftDeletePost(post.id);
+                            else await softDeletePost(post.id);
                             onPostUpdated();
                           } catch { /* ignore */ }
                           setIsDeleting(false);
@@ -200,6 +210,18 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
           onClose={() => setShowEdit(false)}
         />
       )}
+
+      {showAdminEdit && (
+        <AdminEditDialog
+          content={post.content}
+          createdAt={post.created_at}
+          onSave={async (data) => {
+            await adminUpdatePost(post.id, data.content, data.createdAt!);
+            onPostUpdated();
+          }}
+          onClose={() => setShowAdminEdit(false)}
+        />
+      )}
     </>
   );
 }
@@ -207,12 +229,15 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
   const { user, profile, guest, impersonating } = useAuth();
+  const admin = isAdmin(user?.id);
   const [replyText, setReplyText] = useState('');
   const [thread, setThread] = useState<Thread | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showThreadEdit, setShowThreadEdit] = useState(false);
+  const [showThreadAdminEdit, setShowThreadAdminEdit] = useState(false);
   const [showThreadMenu, setShowThreadMenu] = useState(false);
+  const [boards, setBoards] = useState<Board[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
@@ -253,9 +278,8 @@ export default function ThreadPage() {
     async function loadData() {
       if (!threadId) return;
       setIsLoading(true);
-      await Promise.all([loadThread(), loadPosts()]);
+      await Promise.all([loadThread(), loadPosts(), getBoards().then(setBoards)]);
       setIsLoading(false);
-      // Increment view count
       if (supabase) {
         (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as any).then(() => {}).catch((e: any) => console.warn('view count:', e));
       }
@@ -358,6 +382,7 @@ export default function ThreadPage() {
   const author = thread.profiles;
   const board = thread.boards;
   const isThreadAuthor = user && author && user.id === author.id && !author.is_ai_character;
+  const canEditThread = isThreadAuthor || admin;
 
   if (thread.deleted_at) {
     return (
@@ -424,7 +449,7 @@ export default function ThreadPage() {
             </div>
           </div>
 
-          {isThreadAuthor && (
+          {canEditThread && (
             <div className="relative">
               <button
                 onClick={() => setShowThreadMenu(!showThreadMenu)}
@@ -444,7 +469,11 @@ export default function ThreadPage() {
                     }}
                   >
                     <button
-                      onClick={() => { setShowThreadMenu(false); setShowThreadEdit(true); }}
+                      onClick={() => {
+                        setShowThreadMenu(false);
+                        if (admin && !isThreadAuthor) setShowThreadAdminEdit(true);
+                        else setShowThreadEdit(true);
+                      }}
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
                       style={{ color: 'var(--color-text-primary)' }}
                     >
@@ -453,7 +482,8 @@ export default function ThreadPage() {
                     <button
                       onClick={async () => {
                         setShowThreadMenu(false);
-                        await softDeleteThread(thread.id);
+                        if (admin && !isThreadAuthor) await adminSoftDeleteThread(thread.id);
+                        else await softDeleteThread(thread.id);
                         setThread({ ...thread, deleted_at: new Date().toISOString() });
                       }}
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
@@ -491,7 +521,7 @@ export default function ThreadPage() {
           </div>
         ) : (
           posts.map(post => (
-            <ReplyItem key={post.id} post={post} likedIds={likedIds} onPostUpdated={() => loadPosts(postPage)} />
+            <ReplyItem key={post.id} post={post} likedIds={likedIds} isAdmin={admin} onPostUpdated={() => loadPosts(postPage)} />
           ))
         )}
         {hasMorePosts && (
@@ -552,6 +582,28 @@ export default function ThreadPage() {
             setThread({ ...thread, title: title || thread.title, content, edited_at: new Date().toISOString() });
           }}
           onClose={() => setShowThreadEdit(false)}
+        />
+      )}
+
+      {showThreadAdminEdit && (
+        <AdminEditDialog
+          title={thread.title}
+          content={thread.content}
+          createdAt={thread.created_at}
+          boardId={thread.board_id}
+          boards={boards}
+          isThread
+          onSave={async (data) => {
+            await adminUpdateThread(thread.id, {
+              title: data.title || thread.title,
+              content: data.content,
+              boardId: data.boardId || thread.board_id,
+              createdAt: data.createdAt || thread.created_at,
+            });
+            setThread({ ...thread, title: data.title || thread.title, content: data.content, edited_at: new Date().toISOString() });
+            setShowThreadAdminEdit(false);
+          }}
+          onClose={() => setShowThreadAdminEdit(false)}
         />
       )}
 
