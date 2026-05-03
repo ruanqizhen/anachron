@@ -76,12 +76,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchProfile(userId: string) {
     if (!supabase) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
-    if (data) setProfile(data as Profile);
+      .maybeSingle();
+    if (data) {
+      setProfile(data as Profile);
+    } else if (error && error.code !== 'PGRST116') {
+      console.warn('fetchProfile error:', error);
+    } else {
+      // Profile doesn't exist — create it from auth metadata
+      const { data: authUser } = await supabase.auth.getUser();
+      const email = authUser?.user?.email || 'user';
+      const username = email.split('@')[0];
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .insert({ id: userId, username, bio: '', is_ai_character: false, is_admin: false })
+        .select('*')
+        .single();
+      if (newProfile) setProfile(newProfile as Profile);
+    }
   }
 
   async function login(email: string, password: string) {
