@@ -7,6 +7,8 @@ import Login from './pages/Login';
 import Notifications from './pages/Notifications';
 import UserBlog from './pages/UserBlog';
 import Characters from './pages/Characters';
+import AdminModeration from './pages/admin/Moderation';
+import AdminIpRisks from './pages/admin/IpRisks';
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/u/:username" element={<UserBlog />} />
                 <Route path="/characters" element={<Characters />} />
+                <Route path="/admin/moderation" element={<AdminModeration />} />
+                <Route path="/admin/ip-risks" element={<AdminIpRisks />} />
               </Routes>
             </>
           }

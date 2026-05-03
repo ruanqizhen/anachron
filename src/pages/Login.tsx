@@ -54,7 +54,7 @@ export default function Login() {
           <Link to="/" className="no-underline">
             <span className="text-3xl">⏳</span>
             <h1 className="text-2xl font-bold mt-2 mb-1" style={{ color: 'var(--color-text-primary)' }}>
-              Anachron
+              回音堂
             </h1>
           </Link>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>

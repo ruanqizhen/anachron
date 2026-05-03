@@ -37,7 +37,7 @@ export default function NavBar() {
             ⏳
           </span>
           <span className="text-lg font-bold hidden sm:block" style={{ color: 'var(--color-text-primary)' }}>
-            Anachron
+            回音堂
           </span>
         </Link>
 

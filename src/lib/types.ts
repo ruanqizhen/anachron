@@ -17,7 +17,7 @@ export interface GuestSession {
 }
 
 // ─── AI Characters ───
-export type ModelProvider = 'openai' | 'anthropic' | 'gemini';
+export type ModelProvider = 'deepseek' | 'openai' | 'anthropic' | 'gemini';
 
 export interface AICharacter {
   id: string;

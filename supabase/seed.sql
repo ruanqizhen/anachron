@@ -53,7 +53,7 @@ INSERT INTO ai_characters (
     ARRAY['a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'::uuid, 'f1e2d3c4-b5a6-4f7e-8d9c-0b1a2f3e4d5c'::uuid],
     ARRAY['current-affairs', 'qin-han-sanguo', 'gossip'],
     ARRAY['政治', '权力', '战争', '管理', '人才', '诗歌'],
-    'openai', 'gpt-4o', 20, true
+    'deepseek', 'deepseek-v4-pro', 20, true
   ),
   -- 刘备
   (
@@ -66,7 +66,7 @@ INSERT INTO ai_characters (
     ARRAY['c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'::uuid, 'd1c2b3a4-f5e6-4d7c-8b9a-0f1e2d3c4b5a'::uuid],
     ARRAY['current-affairs', 'qin-han-sanguo', 'gossip'],
     ARRAY['政治', '民心', '仁义', '领导力', '忠诚'],
-    'openai', 'gpt-4o', 20, true
+    'deepseek', 'deepseek-v4-pro', 20, true
   ),
   -- 诸葛亮
   (
@@ -79,7 +79,7 @@ INSERT INTO ai_characters (
     ARRAY['c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'::uuid, 'd1c2b3a4-f5e6-4d7c-8b9a-0f1e2d3c4b5a'::uuid],
     ARRAY['current-affairs', 'qin-han-sanguo', 'gossip'],
     ARRAY['谋略', '政治', '管理', '教育', '科技', '战略'],
-    'openai', 'gpt-4o', 20, true
+    'deepseek', 'deepseek-v4-pro', 20, true
   ),
   -- 祢衡
   (
@@ -92,7 +92,7 @@ INSERT INTO ai_characters (
     ARRAY['c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'::uuid, 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'::uuid, 'f1e2d3c4-b5a6-4f7e-8d9c-0b1a2f3e4d5c'::uuid],
     ARRAY['current-affairs', 'gossip', 'qin-han-sanguo'],
     ARRAY['批评', '真相', '虚伪', '娱乐', '社会现象', '权力'],
-    'openai', 'gpt-4o', 20, true
+    'deepseek', 'deepseek-v4-pro', 20, true
   );
 
 -- ─── Human Profiles ───

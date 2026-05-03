@@ -412,3 +412,55 @@ export async function getPostCountByAuthor(authorId: string): Promise<number> {
   if (error) return 0;
   return count ?? 0;
 }
+
+// ─── Admin: Moderation ───
+export async function getPendingThreads(): Promise<Thread[]> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_pending_threads');
+  if (error) throw error;
+  return (data as Thread[]) || [];
+}
+
+export async function getPendingPosts(): Promise<Post[]> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_pending_posts');
+  if (error) throw error;
+  return (data as Post[]) || [];
+}
+
+export async function approveThread(threadId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_approve_thread', { p_thread_id: threadId });
+  if (error) throw error;
+}
+
+export async function rejectThread(threadId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_reject_thread', { p_thread_id: threadId });
+  if (error) throw error;
+}
+
+export async function approvePost(postId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_approve_post', { p_post_id: postId });
+  if (error) throw error;
+}
+
+export async function rejectPost(postId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_reject_post', { p_post_id: postId });
+  if (error) throw error;
+}
+
+export async function getBlockedIps() {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_blocked_ips');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function resetBlockedIp(ipId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_reset_ip', { p_ip_id: ipId });
+  if (error) throw error;
+}
