@@ -1,0 +1,4 @@
+/*
+  Content-Security-Policy: trusted-types goog#html ymiGc5 default
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
