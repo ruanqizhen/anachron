@@ -14,6 +14,7 @@ import AdminCharacters from './pages/admin/Characters';
 import AdminCharacterEdit from './pages/admin/CharacterEdit';
 import AdminTasks from './pages/admin/Tasks';
 import AdminStats from './pages/admin/Stats';
+import Settings from './pages/Settings';
 import Search from './pages/Search';
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="/admin/tasks" element={<AdminTasks />} />
                 <Route path="/admin/stats" element={<AdminStats />} />
                 <Route path="/search" element={<Search />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </ErrorBoundary>
           }

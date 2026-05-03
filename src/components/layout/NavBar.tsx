@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Menu, X, LogIn, LogOut, User as UserIcon, Shield } from 'lucide-react';
+import { Search, Bell, Menu, X, LogIn, LogOut, User as UserIcon, Settings as SettingsIcon, Shield } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
@@ -116,6 +116,15 @@ export default function NavBar() {
                       >
                         <UserIcon size={14} />
                         我的主页
+                      </Link>
+                      <Link
+                        to="/settings"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm no-underline hover:bg-[var(--color-page-bg)] transition-colors"
+                        style={{ color: 'var(--color-text-primary)' }}
+                      >
+                        <SettingsIcon size={14} />
+                        设置
                       </Link>
                       {isAdmin(user?.id) && (
                         <Link

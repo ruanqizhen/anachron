@@ -89,13 +89,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Profile doesn't exist — create it from auth metadata
       const { data: authUser } = await supabase.auth.getUser();
       const email = authUser?.user?.email || 'user';
-      const username = email.split('@')[0];
-      const { data: newProfile } = await supabase
+      const baseName = email.split('@')[0];
+      // Try base name + uuid suffix first; if conflict, fall back to uuid-only
+      const { data: newProfile, error: insertErr } = await supabase
         .from('profiles')
-        .insert({ id: userId, username, bio: '', is_ai_character: false, is_admin: false })
+        .insert({ id: userId, username: baseName + '_' + userId.slice(0, 6), bio: '', is_ai_character: false, is_admin: false })
         .select('*')
         .single();
-      if (newProfile) setProfile(newProfile as Profile);
+      if (newProfile) {
+        setProfile(newProfile as Profile);
+      } else if (insertErr) {
+        // Conflict — retry with full UUID as username
+        const { data: fallback } = await supabase
+          .from('profiles')
+          .insert({ id: userId, username: '用户_' + userId.slice(0, 8), bio: '', is_ai_character: false, is_admin: false })
+          .select('*')
+          .single();
+        if (fallback) setProfile(fallback as Profile);
+      }
     }
   }
 
@@ -123,8 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { error: error.message };
     }
-    // Supabase returns user=null for already-registered emails (prevents enumeration)
-    if (!data.user) {
+    // Supabase returns user=null for unconfirmed duplicate emails
+    // But for confirmed accounts, user is non-null and session is null
+    if (!data.user || !data.session) {
       return { error: '该邮箱已被注册，请直接登录或使用其他邮箱' };
     }
     return {};
