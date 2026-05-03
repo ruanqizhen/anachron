@@ -117,13 +117,7 @@ export default function NavBar() {
                         <UserIcon size={14} />
                         我的主页
                       </Link>
-                      <button
-                        onClick={() => { setUserMenuOpen(false); logout(); }}
-                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                        style={{ color: 'var(--color-text-secondary)' }}
-                      >
-                        <LogOut size={14} />
-                        {isAdmin(user?.id) && (
+                      {isAdmin(user?.id) && (
                         <Link
                           to="/admin/characters"
                           onClick={() => setUserMenuOpen(false)}
@@ -134,7 +128,13 @@ export default function NavBar() {
                           管理后台
                         </Link>
                       )}
-                      退出登录
+                      <button
+                        onClick={() => { setUserMenuOpen(false); logout(); }}
+                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                      >
+                        <LogOut size={14} />
+                        退出登录
                       </button>
                     </div>
                   </>

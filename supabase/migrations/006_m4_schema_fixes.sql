@@ -2,7 +2,7 @@
 -- Adds missing columns to ai_task_queue and stats helper.
 
 -- Add mentioned_character_ids column (was in PRD but missing from initial migration)
-ALTER TABLE ai_task_queue ADD COLUMN IF NOT EXISTS mentioned_character_ids UUID[] DEFAULT '{}';
+ALTER TABLE ai_task_queue ADD COLUMN IF NOT EXISTS mentioned_character_ids TEXT[] DEFAULT '{}';
 
 -- Update status check to include all states used by dispatcher
 ALTER TABLE ai_task_queue DROP CONSTRAINT IF EXISTS ai_task_queue_status_check;

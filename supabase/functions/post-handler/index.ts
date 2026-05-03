@@ -69,6 +69,18 @@ async function markIpHighRisk(ip: string, reason: string) {
   }, { onConflict: 'ip_address' });
 }
 
+// ─── Rate Limiting ───
+async function checkRateLimit(ip: string, isGuest: boolean): Promise<boolean> {
+  const secondsAgo = isGuest ? 5 * 60 : 60; // guest: 5min, user: 1min
+  const since = new Date(Date.now() - secondsAgo * 1000).toISOString();
+  const { count } = await supabase
+    .from('threads')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', since)
+    .or(`author_id.not.is.null,guest_id.not.is.null`);
+  return (count || 0) === 0;
+}
+
 // ─── Content Moderation ───
 async function moderateContent(text: string): Promise<{ safe: boolean; reason?: string }> {
   const systemPrompt = `你是内容安全审核系统。检查以下用户内容是否包含违规内容。
@@ -156,10 +168,15 @@ Deno.serve(async (req: Request) => {
     const turnstileOk = await verifyTurnstile(payload.turnstile_token, clientIp);
     if (!turnstileOk) return err('人机验证失败', 403);
 
-    // Step 2: IP risk check. High-risk IPs skip moderation → straight to pending_review.
+    // Step 2: Rate limiting (server-side)
+    const isGuest = !payload.author_id;
+    const allowed = await checkRateLimit(clientIp, isGuest);
+    if (!allowed) return err('发言过于频繁，请稍后再试', 429);
+
+    // Step 3: IP risk check. High-risk IPs skip moderation → straight to pending_review.
     const highRisk = await isHighRiskIp(clientIp);
 
-    // Step 3: AI content moderation (only for clean IPs)
+    // Step 4: AI content moderation (only for clean IPs)
     let status = 'published';
     const textToCheck = [payload.title, payload.content].filter(Boolean).join(' ');
     if (!highRisk) {
@@ -172,7 +189,7 @@ Deno.serve(async (req: Request) => {
       status = 'pending_review';
     }
 
-    // Step 4: Insert into DB
+    // Step 5: Insert into DB
     if (payload.action === 'create_thread') {
       const { data, error } = await supabase
         .from('threads')

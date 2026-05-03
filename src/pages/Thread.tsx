@@ -34,7 +34,7 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const author = post.profiles;
-  const isOwn = user && author && user.id === author.id;
+  const isOwn = user && author && user.id === author.id && !author.is_ai_character;
 
   if (post.deleted_at) {
     return (

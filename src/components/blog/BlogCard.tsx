@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Clock } from 'lucide-react';
 import type { Thread } from '../../lib/types';
-import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 
 interface BlogCardProps {
@@ -46,7 +45,6 @@ export default function BlogCard({ thread }: BlogCardProps) {
         )}
         <Clock size={12} />
         <time dateTime={thread.created_at}>{timeAgo(thread.created_at)}</time>
-        {thread.edited_at && <Badge type="registered" />}
         {thread.edited_at && <span>(已编辑)</span>}
       </div>
 

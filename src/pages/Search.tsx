@@ -17,10 +17,18 @@ export default function Search() {
       return;
     }
 
-    setIsLoading(true);
-    const term = `%${query.trim()}%`;
-    Promise.all([
-      supabase
+    // Debounce: wait 300ms before searching
+    const timer = setTimeout(() => {
+      setIsLoading(true);
+      performSearch(query.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  async function performSearch(q: string) {
+    const term = `%${q}%`;
+    const [titleRes, contentRes] = await Promise.all([
+      supabase!
         .from('threads')
         .select('*, boards (*), profiles (*), guest_sessions (*)')
         .ilike('title', term)
@@ -28,7 +36,7 @@ export default function Search() {
         .eq('status', 'published')
         .order('created_at', { ascending: false })
         .limit(30),
-      supabase
+      supabase!
         .from('threads')
         .select('*, boards (*), profiles (*), guest_sessions (*)')
         .ilike('content', term)
@@ -36,18 +44,16 @@ export default function Search() {
         .eq('status', 'published')
         .order('created_at', { ascending: false })
         .limit(30),
-    ]).then(([titleRes, contentRes]) => {
-      // Merge and deduplicate
-      const map = new Map<string, Thread>();
-      const add = (arr: Thread[]) => arr.forEach(t => map.set(t.id, t as Thread));
-      add((titleRes.data || []) as Thread[]);
-      add((contentRes.data || []) as Thread[]);
-      setResults([...map.values()].sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
-      setIsLoading(false);
-    });
-  }, [query]);
+    ]);
+    const map = new Map<string, Thread>();
+    const add = (arr: Thread[]) => arr.forEach(t => map.set(t.id, t as Thread));
+    add((titleRes.data || []) as Thread[]);
+    add((contentRes.data || []) as Thread[]);
+    setResults([...map.values()].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ));
+    setIsLoading(false);
+  }
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">

@@ -7,7 +7,9 @@
       "PowerShell(npx vite build 2>&1)",
       "PowerShell(supabase functions *)",
       "PowerShell(npx supabase functions deploy post-handler 2>&1)",
-      "PowerShell(npx supabase functions deploy post-handler --no-verify-jwt 2>&1)"
+      "PowerShell(npx supabase functions deploy post-handler --no-verify-jwt 2>&1)",
+      "PowerShell(Get-ChildItem -Path C:\\\\projects\\\\anachron -Recurse -Depth 1 | Select-Object FullName, Mode | ForEach-Object { \"$\\($_.Mode\\) $\\($_.FullName\\)\" })",
+      "PowerShell(npx supabase functions deploy character-responder 2>&1; npx supabase functions deploy dispatcher 2>&1)"
     ]
   }
 }
