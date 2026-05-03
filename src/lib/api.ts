@@ -453,3 +453,105 @@ export async function resetBlockedIp(ipId: string): Promise<void> {
   const { error } = await db.rpc('admin_reset_ip', { p_ip_id: ipId });
   if (error) throw error;
 }
+
+// ─── Admin: Characters ───
+export async function adminGetAllCharacters(): Promise<AICharacter[]> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_all_characters');
+  if (error) throw error;
+  return (data || []) as AICharacter[];
+}
+
+export async function adminUpdateCharacter(id: string, params: {
+  personality_prompt: string;
+  comedy_notes: string;
+  writing_style: string;
+  rival_character_ids: string[];
+  preferred_boards: string[];
+  preferred_topics: string[];
+  model_provider: string;
+  model_name: string;
+  daily_reply_limit: number;
+  is_active: boolean;
+  bio: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_update_character', {
+    p_id: id,
+    p_personality_prompt: params.personality_prompt,
+    p_comedy_notes: params.comedy_notes,
+    p_writing_style: params.writing_style,
+    p_rival_character_ids: params.rival_character_ids,
+    p_preferred_boards: params.preferred_boards,
+    p_preferred_topics: params.preferred_topics,
+    p_model_provider: params.model_provider,
+    p_model_name: params.model_name,
+    p_daily_reply_limit: params.daily_reply_limit,
+    p_is_active: params.is_active,
+    p_bio: params.bio,
+  });
+  if (error) throw error;
+}
+
+// ─── Admin: Tasks ───
+export async function adminGetTaskQueue() {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_task_queue');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function adminAddResponseTask(characterId: string, threadId: string, triggerPostId: string) {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_add_response_task', {
+    p_character_id: characterId,
+    p_thread_id: threadId,
+    p_trigger_post_id: triggerPostId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function adminCancelTask(taskId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_cancel_task', { p_task_id: taskId });
+  if (error) throw error;
+}
+
+// ─── Admin: Stats ───
+// ─── Likes ───
+export async function toggleLike(postId: string, userId: string): Promise<boolean> {
+  const db = requireSupabase();
+  // Check if already liked
+  const { data: existing } = await db
+    .from('likes')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    await db.from('likes').delete().eq('id', existing.id);
+    return false; // unliked
+  } else {
+    await db.from('likes').insert({ post_id: postId, user_id: userId });
+    return true; // liked
+  }
+}
+
+export async function getUserLikes(userId: string, postIds: string[]): Promise<Set<string>> {
+  if (!supabase || postIds.length === 0) return new Set();
+  const { data } = await supabase
+    .from('likes')
+    .select('post_id')
+    .eq('user_id', userId)
+    .in('post_id', postIds);
+  return new Set((data || []).map((l: any) => l.post_id));
+}
+
+export async function adminGetDailyStats(days: number = 7) {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_daily_stats', { p_days: days });
+  if (error) throw error;
+  return data || [];
+}

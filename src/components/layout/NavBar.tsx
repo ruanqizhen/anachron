@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Menu, X, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, Bell, Menu, X, LogIn, LogOut, User as UserIcon, Shield } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import { useAuth } from '../../lib/auth';
+import { isAdmin } from '../../lib/admin';
 
 export default function NavBar() {
   const { user, profile, isLoading, logout } = useAuth();
@@ -121,7 +122,18 @@ export default function NavBar() {
                         style={{ color: 'var(--color-text-secondary)' }}
                       >
                         <LogOut size={14} />
-                        退出登录
+                        {isAdmin(user?.id) && (
+                        <Link
+                          to="/admin/characters"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm no-underline hover:bg-[var(--color-page-bg)] transition-colors"
+                          style={{ color: 'var(--color-text-primary)' }}
+                        >
+                          <Shield size={14} />
+                          管理后台
+                        </Link>
+                      )}
+                      退出登录
                       </button>
                     </div>
                   </>

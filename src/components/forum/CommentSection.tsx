@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Post } from '../../lib/types';
 import { getDisplayName, getAuthorLink } from '../../lib/types';
-import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession } from '../../lib/api';
+import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes } from '../../lib/api';
 import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
@@ -28,9 +28,10 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('zh-CN');
 }
 
-function CommentItem({ post, isNested = false, onPostUpdated }: { post: Post; isNested?: boolean; onPostUpdated: () => void }) {
+function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post: Post; isNested?: boolean; likedIds: Set<string>; onPostUpdated: () => void }) {
   const { user } = useAuth();
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(likedIds.has(post.id));
+  const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -131,12 +132,19 @@ function CommentItem({ post, isNested = false, onPostUpdated }: { post: Post; is
           </div>
           <div className="flex items-center gap-3 mt-1 px-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             <button
-              onClick={() => setLiked(!liked)}
+              onClick={async () => {
+                if (!user) return;
+                setLiked(!liked);
+                setLikes(l => l + (liked ? -1 : 1));
+                const result = await toggleLike(post.id, user.id);
+                setLiked(result);
+                setLikes(post.likes + (result ? 1 : 0));
+              }}
               className="flex items-center gap-1 font-medium cursor-pointer bg-transparent border-none"
               style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)', fontSize: 12 }}
             >
               <ThumbsUp size={12} fill={liked ? 'currentColor' : 'none'} />
-              {post.likes > 0 && post.likes}
+              {likes > 0 && likes}
             </button>
             <span>·</span>
             <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
@@ -168,10 +176,14 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   async function loadPosts() {
     const fetchedPosts = await getPostsByThread(threadId);
     setPosts(fetchedPosts);
+    if (user && fetchedPosts.length > 0) {
+      getUserLikes(user.id, fetchedPosts.map(p => p.id)).then(setLikedIds);
+    }
   }
 
   useEffect(() => {
@@ -249,11 +261,11 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
       {topLevelPosts.map((post) => (
         <div key={post.id}>
-          <CommentItem post={post} onPostUpdated={loadPosts} />
+          <CommentItem post={post} likedIds={likedIds} onPostUpdated={loadPosts} />
           {childPosts
             .filter(cp => cp.parent_post_id === post.id)
             .map(cp => (
-              <CommentItem key={cp.id} post={cp} isNested onPostUpdated={loadPosts} />
+              <CommentItem key={cp.id} post={cp} isNested likedIds={likedIds} onPostUpdated={loadPosts} />
             ))
           }
         </div>

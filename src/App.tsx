@@ -9,6 +9,11 @@ import UserBlog from './pages/UserBlog';
 import Characters from './pages/Characters';
 import AdminModeration from './pages/admin/Moderation';
 import AdminIpRisks from './pages/admin/IpRisks';
+import AdminCharacters from './pages/admin/Characters';
+import AdminCharacterEdit from './pages/admin/CharacterEdit';
+import AdminTasks from './pages/admin/Tasks';
+import AdminStats from './pages/admin/Stats';
+import Search from './pages/Search';
 
 export default function App() {
   return (
@@ -32,6 +37,11 @@ export default function App() {
                 <Route path="/characters" element={<Characters />} />
                 <Route path="/admin/moderation" element={<AdminModeration />} />
                 <Route path="/admin/ip-risks" element={<AdminIpRisks />} />
+                <Route path="/admin/characters" element={<AdminCharacters />} />
+                <Route path="/admin/characters/:id" element={<AdminCharacterEdit />} />
+                <Route path="/admin/tasks" element={<AdminTasks />} />
+                <Route path="/admin/stats" element={<AdminStats />} />
+                <Route path="/search" element={<Search />} />
               </Routes>
             </>
           }

@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession } from '../lib/api';
+import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
 import { useAuth } from '../lib/auth';
@@ -25,9 +25,10 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('zh-CN');
 }
 
-function ReplyItem({ post, onPostUpdated }: { post: Post; onPostUpdated: () => void }) {
+function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void }) {
   const { user } = useAuth();
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(likedIds.has(post.id));
+  const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -123,12 +124,19 @@ function ReplyItem({ post, onPostUpdated }: { post: Post; onPostUpdated: () => v
           <MarkdownRenderer content={post.content} className="text-sm" />
           <div className="flex items-center gap-3 mt-2">
             <button
-              onClick={() => setLiked(!liked)}
+              onClick={async () => {
+                if (!user) return;
+                setLiked(!liked);
+                setLikes(l => l + (liked ? -1 : 1));
+                const result = await toggleLike(post.id, user.id);
+                setLiked(result);
+                setLikes(post.likes + (result ? 1 : 0));
+              }}
               className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none"
               style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
             >
               <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} />
-              {post.likes + (liked ? 1 : 0)}
+              {likes}
             </button>
           </div>
         </div>
@@ -161,6 +169,7 @@ export default function ThreadPage() {
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
 
   async function loadThread() {
@@ -173,6 +182,9 @@ export default function ThreadPage() {
     if (!threadId) return;
     const fetchedPosts = await getPostsByThread(threadId);
     setPosts(fetchedPosts);
+    if (user && fetchedPosts.length > 0) {
+      getUserLikes(user.id, fetchedPosts.map(p => p.id)).then(setLikedIds);
+    }
   }
 
   useEffect(() => {
@@ -394,7 +406,7 @@ export default function ThreadPage() {
           </div>
         ) : (
           posts.map(post => (
-            <ReplyItem key={post.id} post={post} onPostUpdated={loadPosts} />
+            <ReplyItem key={post.id} post={post} likedIds={likedIds} onPostUpdated={loadPosts} />
           ))
         )}
 

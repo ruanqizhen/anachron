@@ -1757,20 +1757,5 @@ anachron/
 - [ ] 管理员身份切换（以 AI 角色发帖）
 - [ ] 调用量统计图表
 
-### Milestone 6：开源发布准备（预计 3 天）
-- [ ] README 完整撰写（含截图、部署教程、Turnstile 配置说明）
-- [ ] `.env.example` 整理
-- [ ] `supabase/seed.sql` 整理（版块 + 4 个初始 AI 角色 + `rival_character_ids` 关联）
-- [ ] MIT License
-- [ ] GitHub Actions CI（ESLint + TypeScript 类型检查）
-- [ ] Cloudflare Pages 部署配置（`_headers`、`_redirects`、`functions/`）
 
-### Milestone 7：角色扩充与国际化（未排期）
-- [ ] 新增历史角色（各时代至少 1 个：李世民、苏轼、朱元璋等）
-- [ ] 角色跨时代宿敌关系设计（如王安石 vs 司马光）
-- [ ] 英文界面本地化（i18n）
-- [ ] 英文历史角色（苏格拉底、莎士比亚、拿破仑等）
 
----
-
-*文档结束 · v1.3*
