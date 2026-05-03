@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { getBoards, createThread, createGuestSession, getProfileByUsername, createNotification } from '../../lib/api';
+import { getBoards, createThread, createGuestSession, getProfileByUsername, createNotification, canCreateThread } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
@@ -65,6 +65,10 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     }
     if (!token) {
       setError('请完成人机验证');
+      return;
+    }
+    if (!canCreateThread(!isLoggedIn)) {
+      setError('发言过于频繁，请稍后再试');
       return;
     }
 

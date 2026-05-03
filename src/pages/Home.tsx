@@ -3,29 +3,57 @@ import RightPanel from '../components/layout/RightPanel';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import { Link } from 'react-router-dom';
 import { PenSquare } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getRecentThreads, getBoards } from '../lib/api';
 import type { Thread, Board } from '../lib/types';
+
+const PAGE_SIZE = 20;
 
 export default function Home() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const loaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       const [fetchedThreads, fetchedBoards] = await Promise.all([
-        getRecentThreads(20),
+        getRecentThreads(PAGE_SIZE, 0),
         getBoards()
       ]);
       setThreads(fetchedThreads);
       setBoards(fetchedBoards);
+      setHasMore(fetchedThreads.length >= PAGE_SIZE);
       setIsLoading(false);
     }
     loadData();
   }, []);
+
+  const loadMore = useCallback(async () => {
+    const offset = threads.length;
+    const more = await getRecentThreads(PAGE_SIZE, offset);
+    if (more.length > 0) {
+      setThreads(prev => [...prev, ...more]);
+      setHasMore(more.length >= PAGE_SIZE);
+    } else {
+      setHasMore(false);
+    }
+  }, [threads.length]);
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
@@ -82,14 +110,21 @@ export default function Home() {
 
           {/* Thread feed */}
           <div className="flex flex-col gap-4">
-            {isLoading ? (
+            {isLoading && threads.length === 0 ? (
               <div className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
                 加载中...
               </div>
             ) : threads.length > 0 ? (
-              threads.map((thread) => (
-                <PostCard key={thread.id} thread={thread} />
-              ))
+              <>
+                {threads.map((thread) => (
+                  <PostCard key={thread.id} thread={thread} />
+                ))}
+                {hasMore && (
+                  <div ref={loaderRef} className="text-center py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                    加载更多...
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
                 暂无帖子
@@ -106,8 +141,9 @@ export default function Home() {
         <CreatePostForm
           onClose={() => setIsCreateModalOpen(false)}
           onCreated={async () => {
-            const [fetchedThreads] = await Promise.all([getRecentThreads(20)]);
-            setThreads(fetchedThreads);
+            const fetched = await getRecentThreads(PAGE_SIZE, 0);
+            setThreads(fetched);
+            setHasMore(fetched.length >= PAGE_SIZE);
           }}
         />
       )}

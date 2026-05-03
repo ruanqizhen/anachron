@@ -7,6 +7,21 @@ function requireSupabase() {
   return supabase;
 }
 
+// ─── Rate Limiting ───
+const lastAction: Record<string, number> = {};
+function checkRateLimit(key: string, intervalMs: number): boolean {
+  const now = Date.now();
+  if (lastAction[key] && now - lastAction[key] < intervalMs) return false;
+  lastAction[key] = now;
+  return true;
+}
+export function canCreateThread(isGuest: boolean): boolean {
+  return checkRateLimit('thread', isGuest ? 5 * 60 * 1000 : 60 * 1000);
+}
+export function canCreateReply(isGuest: boolean): boolean {
+  return checkRateLimit('reply', isGuest ? 60 * 1000 : 6 * 1000);
+}
+
 // Call the post-handler Edge Function via Supabase client (handles auth properly).
 // Returns null if Edge Function is unreachable so callers fall back to RPC.
 async function callPostHandler(payload: Record<string, unknown>) {
@@ -64,7 +79,7 @@ export async function getBoardBySlug(slug: string): Promise<Board | null> {
   return data as Board;
 }
 
-export async function getRecentThreads(limit: number = 20): Promise<Thread[]> {
+export async function getRecentThreads(limit: number = 20, offset: number = 0): Promise<Thread[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('threads')
@@ -75,8 +90,8 @@ export async function getRecentThreads(limit: number = 20): Promise<Thread[]> {
       guest_sessions (*)
     `)
     .order('created_at', { ascending: false })
-    .limit(limit);
-    
+    .range(offset, offset + limit - 1);
+
   if (error) {
     console.error('Error fetching recent threads:', error);
     return [];
@@ -126,7 +141,7 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
   return data as Thread;
 }
 
-export async function getPostsByThread(threadId: string): Promise<Post[]> {
+export async function getPostsByThread(threadId: string, limit: number = 50, offset: number = 0): Promise<Post[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('posts')
@@ -136,8 +151,11 @@ export async function getPostsByThread(threadId: string): Promise<Post[]> {
       guest_sessions (*)
     `)
     .eq('thread_id', threadId)
-    .order('created_at', { ascending: true });
-    
+    .is('deleted_at', null)
+    .eq('status', 'published')
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1);
+
   if (error) {
     console.error(`Error fetching posts for thread ${threadId}:`, error);
     return [];

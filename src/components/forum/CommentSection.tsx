@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Post } from '../../lib/types';
 import { getDisplayName, getAuthorLink } from '../../lib/types';
-import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes } from '../../lib/api';
+import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../../lib/api';
 import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
@@ -230,6 +230,10 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
   async function handleReply() {
     if (!replyText.trim() || isSubmitting) return;
+    if (!canCreateReply(!user)) {
+      setError('发言过于频繁，请稍后再试');
+      return;
+    }
 
     // If guest and no guest session yet, prompt
     if (!user && !guest && !guestId) {

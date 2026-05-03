@@ -91,6 +91,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Increment thread view count
+CREATE OR REPLACE FUNCTION increment_view_count(p_thread_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE threads SET view_count = view_count + 1 WHERE id = p_thread_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Get daily stats for charts
 CREATE OR REPLACE FUNCTION admin_get_daily_stats(p_days INT DEFAULT 7)
 RETURNS TABLE(character_name TEXT, date DATE, reply_count INT) AS $$

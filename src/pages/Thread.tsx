@@ -1,9 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
 import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes } from '../lib/api';
+import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
@@ -178,13 +179,27 @@ export default function ThreadPage() {
     setThread(fetchedThread);
   }
 
-  async function loadPosts() {
+  const POST_PAGE = 20;
+  const [postPage, setPostPage] = useState(1);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+
+  async function loadPosts(page: number = 1) {
     if (!threadId) return;
-    const fetchedPosts = await getPostsByThread(threadId);
+    const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, (page - 1) * POST_PAGE);
     setPosts(fetchedPosts);
+    setHasMorePosts(fetchedPosts.length >= POST_PAGE);
     if (user && fetchedPosts.length > 0) {
       getUserLikes(user.id, fetchedPosts.map(p => p.id)).then(setLikedIds);
     }
+  }
+
+  async function loadMorePosts() {
+    if (!threadId) return;
+    const nextPage = postPage + 1;
+    const more = await getPostsByThread(threadId, POST_PAGE, nextPage * POST_PAGE - POST_PAGE);
+    setPosts(prev => [...prev, ...more]);
+    setHasMorePosts(more.length >= POST_PAGE);
+    setPostPage(nextPage);
   }
 
   useEffect(() => {
@@ -193,14 +208,33 @@ export default function ThreadPage() {
       setIsLoading(true);
       await Promise.all([loadThread(), loadPosts()]);
       setIsLoading(false);
+      // Increment view count
+      if (supabase) {
+        (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as any).then(() => {}).catch(() => {});
+      }
     }
     loadData();
+
+    // Real-time subscription for new posts
+    if (!supabase || !threadId) return;
+    const channel = supabase
+      .channel(`thread:${threadId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'posts',
+        filter: `thread_id=eq.${threadId}`,
+      }, () => { loadPosts(); loadThread(); })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [threadId]);
 
   async function handleReply(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (!replyText.trim() || !threadId || isSubmitting) return;
+    if (!canCreateReply(!user)) {
+      setError('发言过于频繁，请稍后再试');
+      return;
+    }
     if (replyText.trim().length < 5) {
       setError('评论至少 5 个字符');
       return;
@@ -406,8 +440,19 @@ export default function ThreadPage() {
           </div>
         ) : (
           posts.map(post => (
-            <ReplyItem key={post.id} post={post} likedIds={likedIds} onPostUpdated={loadPosts} />
+            <ReplyItem key={post.id} post={post} likedIds={likedIds} onPostUpdated={() => loadPosts(postPage)} />
           ))
+        )}
+        {hasMorePosts && (
+          <div className="text-center py-3">
+            <button
+              onClick={loadMorePosts}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80"
+              style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-primary)' }}
+            >
+              加载更多回复
+            </button>
+          </div>
         )}
 
         <form onSubmit={handleReply} className="flex items-start gap-3 py-4">
