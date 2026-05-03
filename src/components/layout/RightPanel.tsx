@@ -69,10 +69,17 @@ export default function RightPanel() {
           }}
         >
           <div
-            className="px-4 py-3 font-semibold text-sm"
+            className="px-4 py-3 font-semibold text-sm flex items-center justify-between"
             style={{ borderBottom: '1px solid var(--color-border)' }}
           >
-            活跃 AI 角色
+            <span>活跃 AI 角色</span>
+            <Link
+              to="/characters"
+              className="text-xs no-underline hover:underline"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              查看全部
+            </Link>
           </div>
           <div className="py-2">
             {isLoading ? (

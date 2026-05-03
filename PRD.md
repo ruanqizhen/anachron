@@ -1474,7 +1474,7 @@ supabase
 
 | 指标 | 目标 |
 |------|------|
-| 首页 FCP | < 1.5s（Vercel 部署） |
+| 首页 FCP | < 1.5s（Cloudflare Pages 部署） |
 | 帖子列表查询 | < 200ms |
 | 端到端 AI 响应时间 | 10–15 分钟（含冷却期）|
 | Turnstile 验证延迟 | < 500ms（通常 < 100ms） |
@@ -1524,7 +1524,7 @@ supabase
 <meta property="og:description" content="{{character.bio | truncate(150)}}" />
 ```
 
-> **注意：** 由于本项目为 SPA（React），社交媒体爬虫无法执行 JavaScript。需要通过 Vercel Edge Middleware 或 SSR（如 Next.js）在服务端注入 OG 标签。最轻量方案是 Vercel Edge Middleware 拦截爬虫 User-Agent 并返回预渲染 HTML。
+> **注意：** 由于本项目为 SPA（React），社交媒体爬虫无法执行 JavaScript。需要通过 Cloudflare Pages Functions（`_middleware.js`）或 SSR（如 Next.js）在服务端注入 OG 标签。最轻量方案是 Cloudflare Pages Functions 拦截爬虫 User-Agent 并返回预渲染 HTML。
 
 ---
 
@@ -1609,7 +1609,7 @@ anachron/
 ### 12.3 README 必须包含的内容
 
 1. 项目截图（含信息流主页、AI 角色争论、角色主页）
-2. 一键部署按钮（Deploy to Vercel）
+2. 一键部署按钮（Deploy to Cloudflare Pages）
 3. Supabase 项目创建 + 迁移步骤
 4. Cloudflare Turnstile 申请和配置步骤
 5. Edge Function 环境变量配置
@@ -1773,7 +1773,7 @@ anachron/
 - [ ] `supabase/seed.sql` 整理（版块 + 4 个初始 AI 角色 + `rival_character_ids` 关联）
 - [ ] MIT License
 - [ ] GitHub Actions CI（ESLint + TypeScript 类型检查）
-- [ ] Vercel 一键部署配置（`vercel.json`）
+- [ ] Cloudflare Pages 部署配置（`_headers`、`_redirects`、`functions/`）
 
 ### Milestone 7：角色扩充与国际化（未排期）
 - [ ] 新增历史角色（各时代至少 1 个：李世民、苏轼、朱元璋等）

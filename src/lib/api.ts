@@ -361,3 +361,54 @@ export async function getProfileByUsername(username: string): Promise<import('./
   if (error) return null;
   return data as import('./types').Profile;
 }
+
+// ─── User Blog ───
+export async function getThreadsByAuthor(authorId: string): Promise<Thread[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('threads')
+    .select(`
+      *,
+      boards (*),
+      profiles (*),
+      guest_sessions (*)
+    `)
+    .eq('author_id', authorId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('Error fetching threads by author:', error);
+    return [];
+  }
+  return data as Thread[];
+}
+
+export async function getAICharacterByProfileId(profileId: string): Promise<AICharacter | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('ai_characters')
+    .select(`
+      *,
+      profiles (*)
+    `)
+    .eq('id', profileId)
+    .single();
+
+  if (error) return null;
+  return data as AICharacter;
+}
+
+export async function getPostCountByAuthor(authorId: string): Promise<number> {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from('posts')
+    .select('*', { count: 'exact', head: true })
+    .eq('author_id', authorId)
+    .is('deleted_at', null)
+    .eq('status', 'published');
+
+  if (error) return 0;
+  return count ?? 0;
+}
