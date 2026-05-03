@@ -38,8 +38,10 @@ function err(message: string, status: number) {
 
 // ─── Turnstile ───
 async function verifyTurnstile(token: string, clientIp: string): Promise<boolean> {
+  const secret = Deno.env.get('TURNSTILE_SECRET_KEY');
+  if (!secret) { console.warn('TURNSTILE_SECRET_KEY not set, skip'); return true; }
   const formData = new FormData();
-  formData.append('secret', Deno.env.get('TURNSTILE_SECRET_KEY')!);
+  formData.append('secret', secret);
   formData.append('response', token);
   formData.append('remoteip', clientIp);
   const resp = await fetch(
@@ -70,14 +72,16 @@ async function markIpHighRisk(ip: string, reason: string) {
 }
 
 // ─── Rate Limiting ───
-async function checkRateLimit(ip: string, isGuest: boolean): Promise<boolean> {
-  const secondsAgo = isGuest ? 5 * 60 : 60; // guest: 5min, user: 1min
+async function checkRateLimit(ip: string, isGuest: boolean, isThread: boolean): Promise<boolean> {
+  const secondsAgo = isThread
+    ? (isGuest ? 5 * 60 : 60)  // thread: guest 5min, user 1min
+    : (isGuest ? 60 : 10);      // reply: guest 1min, user 10s
   const since = new Date(Date.now() - secondsAgo * 1000).toISOString();
+  const table = isThread ? 'threads' : 'posts';
   const { count } = await supabase
-    .from('threads')
+    .from(table)
     .select('*', { count: 'exact', head: true })
-    .gte('created_at', since)
-    .or(`author_id.not.is.null,guest_id.not.is.null`);
+    .gte('created_at', since);
   return (count || 0) === 0;
 }
 
@@ -163,14 +167,17 @@ Deno.serve(async (req: Request) => {
       turnstile_token: string;
     } = await req.json();
 
-    // Step 1: Turnstile
-    if (!payload.turnstile_token) return err('缺少人机验证 token', 400);
-    const turnstileOk = await verifyTurnstile(payload.turnstile_token, clientIp);
-    if (!turnstileOk) return err('人机验证失败', 403);
+    // Step 1: Turnstile (required for new threads only; replies skip)
+    const isThread = payload.action === 'create_thread';
+    if (isThread && !payload.turnstile_token) return err('缺少人机验证 token', 400);
+    if (payload.turnstile_token) {
+      const turnstileOk = await verifyTurnstile(payload.turnstile_token, clientIp);
+      if (!turnstileOk) return err('人机验证失败', 403);
+    }
 
     // Step 2: Rate limiting (server-side)
     const isGuest = !payload.author_id;
-    const allowed = await checkRateLimit(clientIp, isGuest);
+    const allowed = await checkRateLimit(clientIp, isGuest, isThread);
     if (!allowed) return err('发言过于频繁，请稍后再试', 429);
 
     // Step 3: IP risk check. High-risk IPs skip moderation → straight to pending_review.
@@ -224,25 +231,27 @@ Deno.serve(async (req: Request) => {
         const hasMentions = mentions.length > 0;
 
         const executeAfter = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        const { data: taskData } = await supabase.from('ai_task_queue').insert({
-          trigger_post_id: data.id,
-          thread_id: payload.thread_id,
-          priority: hasMentions ? 'high' : 'normal',
-          mentioned_character_ids: hasMentions ? mentions : [],
-          execute_after: executeAfter,
-        }).select('id').single().catch(() => ({ data: null }));
+        try {
+          const { data: taskData } = await supabase.from('ai_task_queue').insert({
+            trigger_post_id: data.id,
+            thread_id: payload.thread_id,
+            priority: hasMentions ? 'high' : 'normal',
+            mentioned_character_ids: hasMentions ? mentions : [],
+            execute_after: executeAfter,
+          }).select('id').single();
 
-        // Trigger dispatcher asynchronously (fire and forget)
-        if (taskData) {
-          fetch(`${FUNCTIONS_BASE}/dispatcher`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${SERVICE_KEY}`,
-            },
-            body: JSON.stringify({ task_id: taskData.id }),
-          }).catch(() => {});
-        }
+          // Trigger dispatcher asynchronously (fire and forget)
+          if (taskData) {
+            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({ task_id: taskData.id }),
+            }).catch(() => {});
+          }
+        } catch { /* ai_task_queue insert failed, non-critical */ }
       }
 
       return ok({ ok: true, post: data, status });
@@ -250,6 +259,7 @@ Deno.serve(async (req: Request) => {
 
     return err('unknown action', 400);
   } catch (e) {
+    console.error('post-handler error:', e);
     return err(String(e), 500);
   }
 });

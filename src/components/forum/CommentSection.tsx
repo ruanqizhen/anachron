@@ -226,7 +226,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       }
     }
 
-    await loadPosts();
+    setPosts(prev => [...prev, newPost as Post]);
   }
 
   async function handleReply() {

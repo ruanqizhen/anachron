@@ -223,7 +223,10 @@ export default function ThreadPage() {
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'posts',
         filter: `thread_id=eq.${threadId}`,
-      }, () => { loadPosts(); loadThread(); })
+      }, (payload) => {
+        setPosts(prev => [...prev, payload.new as Post]);
+        loadThread();
+      })
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [threadId]);
@@ -279,7 +282,8 @@ export default function ThreadPage() {
         }
       }
 
-      await loadPosts();
+      // Append new post immediately instead of reloading all
+      setPosts(prev => [...prev, newPost as Post]);
       await loadThread();
     } catch (err: any) {
       setError(err.message || '发送失败');
