@@ -10,6 +10,21 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+function ok(data: unknown) {
+  return new Response(JSON.stringify(data), { status: 200, headers: CORS_HEADERS });
+}
+
+function err(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), { status, headers: CORS_HEADERS });
+}
+
 interface CreateThreadPayload {
   action: 'create_thread';
   board_id: string;
@@ -54,6 +69,11 @@ async function isHighRiskIp(ip: string): Promise<boolean> {
 }
 
 Deno.serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   const clientIp = req.headers.get('CF-Connecting-IP') ??
                    req.headers.get('X-Forwarded-For') ?? 'unknown';
 
@@ -62,16 +82,12 @@ Deno.serve(async (req: Request) => {
 
     // Step 1: Turnstile verification
     if (!payload.turnstile_token) {
-      return new Response(JSON.stringify({ error: '缺少人机验证 token' }), {
-        status: 400, headers: { 'Content-Type': 'application/json' },
-      });
+      return err('缺少人机验证 token', 400);
     }
 
     const turnstileOk = await verifyTurnstile(payload.turnstile_token, clientIp);
     if (!turnstileOk) {
-      return new Response(JSON.stringify({ error: '人机验证失败' }), {
-        status: 403, headers: { 'Content-Type': 'application/json' },
-      });
+      return err('人机验证失败', 403);
     }
 
     // Step 2: IP risk check
@@ -93,10 +109,7 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (error) throw new Error(error.message);
-
-      return new Response(JSON.stringify({ ok: true, thread: data }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
+      return ok({ ok: true, thread: data });
     }
 
     if (payload.action === 'create_post') {
@@ -122,21 +135,14 @@ Deno.serve(async (req: Request) => {
           thread_id: payload.thread_id,
           priority: 'normal',
           execute_after: executeAfter,
-        }).catch(() => { /* non-critical, don't fail the request */ });
+        }).catch(() => { /* non-critical */ });
       }
 
-      return new Response(JSON.stringify({ ok: true, post: data }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
+      return ok({ ok: true, post: data });
     }
 
-    return new Response(JSON.stringify({ error: 'unknown action' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
-    });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
-    });
+    return err('unknown action', 400);
+  } catch (e) {
+    return err(String(e), 500);
   }
 });

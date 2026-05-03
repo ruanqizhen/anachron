@@ -14,24 +14,35 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Call the post-handler Edge Function which verifies Turnstile server-side
 // and inserts into DB with Service Role (bypasses RLS).
+// Returns null if Edge Function is unreachable (not deployed, CORS blocked, etc.)
+// so callers can fall back to direct DB insert.
 async function callPostHandler(payload: Record<string, unknown>) {
-  if (!edgeFunctionUrl) {
-    // Fallback: no Edge Function deployed, insert directly via Supabase client
-    return null;
+  if (!edgeFunctionUrl) return null;
+  try {
+    const resp = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      // Edge Function returned an error — throw so caller can handle
+      const data = await resp.json().catch(() => ({}));
+      throw new Error((data as any).error || `服务器错误 (${resp.status})`);
+    }
+    return await resp.json();
+  } catch (err) {
+    // Network error or CORS block — edge function is not deployed or unreachable.
+    // Only re-throw if the Edge Function explicitly returned an error.
+    if (err instanceof TypeError && err.message.includes('fetch')) {
+      // Network failure (CORS, DNS, etc.) → silent fallback to direct insert
+      console.warn('Edge Function unreachable, falling back to direct insert');
+      return null;
+    }
+    throw err; // Re-throw real errors (validation failures from the Edge Function)
   }
-  const resp = await fetch(edgeFunctionUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${anonKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await resp.json();
-  if (!resp.ok) {
-    throw new Error(data.error || `Edge Function error: ${resp.status}`);
-  }
-  return data;
 }
 
 // ─── Boards ───
@@ -185,26 +196,20 @@ export async function createThread(params: {
     if (result?.thread) return result.thread as Thread;
   }
 
-  // Fallback: direct DB insert (RLS enforced, no Turnstile backend verification)
+  // Fallback: use RPC function (SECURITY DEFINER, bypasses RLS)
   const db = requireSupabase();
-  const { data, error } = await db
-    .from('threads')
-    .insert({
-      board_id: params.boardId,
-      title: params.title,
-      content: params.content,
-      author_id: params.authorId || null,
-      status: 'published',
-    })
-    .select(`
-      *,
-      boards (*),
-      profiles (*)
-    `)
-    .single();
+  const { data, error } = await db.rpc('create_thread_rpc', {
+    p_board_id: params.boardId,
+    p_title: params.title,
+    p_content: params.content,
+    p_author_id: params.authorId || null,
+  });
 
   if (error) throw error;
-  return data as Thread;
+  // RPC returns an array; pick first row
+  const threads = data as Thread[];
+  if (!threads || threads.length === 0) throw new Error('创建失败');
+  return threads[0];
 }
 
 // ─── Post Creation ───
@@ -228,25 +233,19 @@ export async function createPost(params: {
     if (result?.post) return result.post as Post;
   }
 
-  // Fallback: direct DB insert
+  // Fallback: use RPC function (SECURITY DEFINER, bypasses RLS)
   const db = requireSupabase();
-  const { data, error } = await db
-    .from('posts')
-    .insert({
-      thread_id: params.threadId,
-      content: params.content,
-      author_id: params.authorId || null,
-      parent_post_id: params.parentPostId || null,
-      status: 'published',
-    })
-    .select(`
-      *,
-      profiles (*)
-    `)
-    .single();
+  const { data, error } = await db.rpc('create_post_rpc', {
+    p_thread_id: params.threadId,
+    p_content: params.content,
+    p_author_id: params.authorId || null,
+    p_parent_post_id: params.parentPostId || null,
+  });
 
   if (error) throw error;
-  return data as Post;
+  const posts = data as Post[];
+  if (!posts || posts.length === 0) throw new Error('创建失败');
+  return posts[0];
 }
 
 // ─── Thread Update ───
