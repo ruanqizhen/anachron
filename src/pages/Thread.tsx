@@ -34,6 +34,9 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
   useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replying, setReplying] = useState(false);
   const author = post.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
 
@@ -140,9 +143,52 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
               <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} />
               {likes}
             </button>
+            <button
+              onClick={() => setShowReply(!showReply)}
+              className="text-xs font-medium cursor-pointer bg-transparent border-none"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              回复
+            </button>
           </div>
         </div>
       </article>
+
+      {showReply && (
+        <div className="flex items-center gap-2 py-2">
+          <input
+            type="text"
+            placeholder={`回复 ${getDisplayName(post)}...`}
+            value={replyText}
+            onChange={e => setReplyText(e.target.value)}
+            className="flex-1 py-1.5 px-3 rounded-full text-sm bg-transparent border outline-none"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+          />
+          <button
+            onClick={async () => {
+              if (!replyText.trim() || replying) return;
+              setReplying(true);
+              try {
+                await createPost({
+                  threadId: post.thread_id,
+                  content: replyText.trim(),
+                  authorId: user?.id,
+                  parentPostId: post.id,
+                });
+                setReplyText('');
+                setShowReply(false);
+                onPostUpdated();
+              } catch (e: any) { console.warn(e); }
+              setReplying(false);
+            }}
+            disabled={!replyText.trim() || replying}
+            className="px-3 py-1.5 rounded-full text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            {replying ? '...' : '发送'}
+          </button>
+        </div>
+      )}
 
       {showEdit && (
         <EditDialog
