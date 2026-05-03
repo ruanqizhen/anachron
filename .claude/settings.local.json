@@ -4,7 +4,10 @@
       "PowerShell(New-Item *)",
       "PowerShell(npx tsc -b --noEmit 2>&1 | Select-Object -First 50)",
       "PowerShell(npx tsc -b --noEmit 2>&1)",
-      "PowerShell(npx vite build 2>&1)"
+      "PowerShell(npx vite build 2>&1)",
+      "PowerShell(supabase functions *)",
+      "PowerShell(npx supabase functions deploy post-handler 2>&1)",
+      "PowerShell(npx supabase functions deploy post-handler --no-verify-jwt 2>&1)"
     ]
   }
 }

@@ -15,6 +15,7 @@ package-lock.json
 
 # Editor directories and files
 .env
+.claude/*
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -24,3 +25,4 @@ package-lock.json
 *.njsproj
 *.sln
 *.sw?
+supabase/.temp/*

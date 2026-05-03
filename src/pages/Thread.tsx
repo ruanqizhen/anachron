@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification } from '../lib/api';
+import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
 import { useAuth } from '../lib/auth';
@@ -9,6 +9,8 @@ import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import EditDialog from '../components/forum/EditDialog';
+import AIResponseIndicator from '../components/forum/AIResponseIndicator';
+import GuestNameDialog from '../components/forum/GuestNameDialog';
 import type { Post, Thread } from '../lib/types';
 
 function timeAgo(dateStr: string): string {
@@ -157,6 +159,8 @@ export default function ThreadPage() {
   const [showThreadMenu, setShowThreadMenu] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showGuestDialog, setShowGuestDialog] = useState(false);
+  const [guestId, setGuestId] = useState<string | null>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
 
   async function loadThread() {
@@ -190,12 +194,26 @@ export default function ThreadPage() {
       return;
     }
 
+    // If guest and no guest session yet, prompt for name
+    if (!user && !guest && !guestId) {
+      setShowGuestDialog(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Create guest session if needed
+      let gid: string | undefined = guestId || undefined;
+      if (!user && !gid && guest) {
+        gid = await createGuestSession(guest.username);
+        setGuestId(gid);
+      }
+
       const newPost = await createPost({
         threadId,
         content: replyText.trim(),
         authorId: user?.id,
+        guestId: gid,
       });
       setReplyText('');
 
@@ -357,6 +375,8 @@ export default function ThreadPage() {
         <MarkdownRenderer content={thread.content} />
       </article>
 
+      <AIResponseIndicator threadId={thread.id} />
+
       <div
         className="rounded-lg px-6"
         style={{
@@ -424,6 +444,17 @@ export default function ThreadPage() {
             setThread({ ...thread, title: title || thread.title, content, edited_at: new Date().toISOString() });
           }}
           onClose={() => setShowThreadEdit(false)}
+        />
+      )}
+
+      {showGuestDialog && (
+        <GuestNameDialog
+          onConfirm={async (name) => {
+            setShowGuestDialog(false);
+            const gid = await createGuestSession(name);
+            setGuestId(gid);
+          }}
+          onClose={() => setShowGuestDialog(false)}
         />
       )}
     </div>

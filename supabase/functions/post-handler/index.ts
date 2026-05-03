@@ -11,12 +11,21 @@ const supabase = createClient(
 
 const MODERATION_PROVIDER = Deno.env.get('MODERATION_MODEL_PROVIDER') || 'deepseek';
 const MODERATION_MODEL = Deno.env.get('MODERATION_MODEL_NAME') || 'deepseek-v4-flash';
+const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Parse @mentions from content
+function parseMentions(text: string): string[] {
+  const matches = text.match(/@([一-鿿\w]+)/g);
+  if (!matches) return [];
+  return [...new Set(matches.map(m => m.slice(1)))];
+}
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
 };
 
 function ok(data: unknown) {
@@ -193,13 +202,30 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(error.message);
 
       if (!highRisk && status === 'published') {
+        // Parse @mentions for priority and mentioned characters
+        const mentions = parseMentions(payload.content);
+        const hasMentions = mentions.length > 0;
+
         const executeAfter = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        await supabase.from('ai_task_queue').insert({
+        const { data: taskData } = await supabase.from('ai_task_queue').insert({
           trigger_post_id: data.id,
           thread_id: payload.thread_id,
-          priority: 'normal',
+          priority: hasMentions ? 'high' : 'normal',
+          mentioned_character_ids: hasMentions ? mentions : [],
           execute_after: executeAfter,
-        }).catch(() => {});
+        }).select('id').single().catch(() => ({ data: null }));
+
+        // Trigger dispatcher asynchronously (fire and forget)
+        if (taskData) {
+          fetch(`${FUNCTIONS_BASE}/dispatcher`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+            },
+            body: JSON.stringify({ task_id: taskData.id }),
+          }).catch(() => {});
+        }
       }
 
       return ok({ ok: true, post: data, status });

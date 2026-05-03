@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Post } from '../../lib/types';
 import { getDisplayName, getAuthorLink } from '../../lib/types';
-import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification } from '../../lib/api';
+import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession } from '../../lib/api';
+import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
 import Avatar from '../ui/Avatar';
@@ -159,11 +160,14 @@ function CommentItem({ post, isNested = false, onPostUpdated }: { post: Post; is
 }
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
-  const { user } = useAuth();
+  const { user, guest } = useAuth();
   const [replyText, setReplyText] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [showGuestDialog, setShowGuestDialog] = useState(false);
+  const [guestId, setGuestId] = useState<string | null>(null);
 
   async function loadPosts() {
     const fetchedPosts = await getPostsByThread(threadId);
@@ -179,33 +183,54 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     loadData();
   }, [threadId]);
 
+  async function doSubmitReply() {
+    setError('');
+    let gid: string | undefined = guestId || undefined;
+    if (!user && !gid && guest) {
+      gid = await createGuestSession(guest.username);
+      setGuestId(gid);
+    }
+
+    const newPost = await createPost({
+      threadId,
+      content: replyText.trim(),
+      authorId: user?.id,
+      guestId: gid,
+    });
+    setReplyText('');
+
+    const mentionedUsernames = parseMentions(replyText.trim());
+    for (const mentionedName of mentionedUsernames) {
+      const mentionedProfile = await getProfileByUsername(mentionedName);
+      if (mentionedProfile && mentionedProfile.id !== user?.id) {
+        await createNotification({
+          recipientId: mentionedProfile.id,
+          type: 'mention',
+          actorId: user?.id,
+          threadId,
+          postId: newPost.id,
+        }).catch(() => {});
+      }
+    }
+
+    await loadPosts();
+  }
+
   async function handleReply() {
     if (!replyText.trim() || isSubmitting) return;
+
+    // If guest and no guest session yet, prompt
+    if (!user && !guest && !guestId) {
+      setShowGuestDialog(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const newPost = await createPost({
-        threadId,
-        content: replyText.trim(),
-        authorId: user?.id,
-      });
-      setReplyText('');
-
-      const mentionedUsernames = parseMentions(replyText.trim());
-      for (const mentionedName of mentionedUsernames) {
-        const mentionedProfile = await getProfileByUsername(mentionedName);
-        if (mentionedProfile && mentionedProfile.id !== user?.id) {
-          await createNotification({
-            recipientId: mentionedProfile.id,
-            type: 'mention',
-            actorId: user?.id,
-            threadId,
-            postId: newPost.id,
-          }).catch(() => { /* ignore */ });
-        }
-      }
-
-      await loadPosts();
-    } catch { /* ignore */ }
+      await doSubmitReply();
+    } catch (err: any) {
+      setError(err.message || '发送失败');
+    }
     setIsSubmitting(false);
   }
 
@@ -242,8 +267,12 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
       <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
         <Avatar name={user ? '你' : '游客'} size={32} />
-        <div className="flex-1 flex items-center rounded-full px-3" style={{ backgroundColor: 'var(--color-page-bg)' }}>
-          <input
+        <div className="flex-1">
+          {error && (
+            <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
+          )}
+          <div className="flex items-center rounded-full px-3" style={{ backgroundColor: 'var(--color-page-bg)' }}>
+            <input
             type="text"
             placeholder="写评论..."
             value={replyText}
@@ -262,6 +291,22 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
           </button>
         </div>
       </div>
+      </div>
+
+      {showGuestDialog && (
+        <GuestNameDialog
+          onConfirm={async (name) => {
+            setShowGuestDialog(false);
+            const gid = await createGuestSession(name);
+            setGuestId(gid);
+            // Auto-submit after guest session created
+            setIsSubmitting(true);
+            try { await doSubmitReply(); } catch (err: any) { setError(err.message || '发送失败'); }
+            setIsSubmitting(false);
+          }}
+          onClose={() => setShowGuestDialog(false)}
+        />
+      )}
     </div>
   );
 }

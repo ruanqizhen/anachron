@@ -7,41 +7,30 @@ function requireSupabase() {
   return supabase;
 }
 
-const edgeFunctionUrl = import.meta.env.VITE_SUPABASE_URL
-  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-handler`
-  : '';
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-// Call the post-handler Edge Function which verifies Turnstile server-side
-// and inserts into DB with Service Role (bypasses RLS).
-// Returns null if Edge Function is unreachable (not deployed, CORS blocked, etc.)
-// so callers can fall back to direct DB insert.
+// Call the post-handler Edge Function via Supabase client (handles auth properly).
+// Returns null if Edge Function is unreachable so callers fall back to RPC.
 async function callPostHandler(payload: Record<string, unknown>) {
-  if (!edgeFunctionUrl) return null;
+  if (!supabase) return null;
   try {
-    const resp = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify(payload),
+    const { data, error } = await supabase.functions.invoke('post-handler', {
+      body: payload,
     });
-    if (!resp.ok) {
-      // Edge Function returned an error — throw so caller can handle
-      const data = await resp.json().catch(() => ({}));
-      throw new Error((data as any).error || `服务器错误 (${resp.status})`);
+    if (error) {
+      // Edge Function returned an error
+      throw new Error((error as any).message || `服务器错误`);
     }
-    return await resp.json();
-  } catch (err) {
-    // Network error or CORS block — edge function is not deployed or unreachable.
-    // Only re-throw if the Edge Function explicitly returned an error.
-    if (err instanceof TypeError && err.message.includes('fetch')) {
-      // Network failure (CORS, DNS, etc.) → silent fallback to direct insert
-      console.warn('Edge Function unreachable, falling back to direct insert');
+    return data;
+  } catch (err: any) {
+    // Network error or function not deployed → silent fallback to RPC
+    if (
+      err instanceof TypeError ||
+      err.message?.includes('Failed to fetch') ||
+      err.message?.includes('NetworkError')
+    ) {
+      console.warn('Edge Function unreachable, falling back to RPC');
       return null;
     }
-    throw err; // Re-throw real errors (validation failures from the Edge Function)
+    throw err;
   }
 }
 
@@ -195,7 +184,7 @@ export async function createThread(params: {
   turnstileToken?: string;
 }): Promise<Thread> {
   // Try Edge Function first (verifies Turnstile server-side)
-  if (edgeFunctionUrl) {
+  if (supabase) {
     const result = await callPostHandler({
       action: 'create_thread',
       board_id: params.boardId,
@@ -233,7 +222,7 @@ export async function createPost(params: {
   turnstileToken?: string;
 }): Promise<Post> {
   // Try Edge Function first
-  if (edgeFunctionUrl) {
+  if (supabase) {
     const result = await callPostHandler({
       action: 'create_post',
       thread_id: params.threadId,
