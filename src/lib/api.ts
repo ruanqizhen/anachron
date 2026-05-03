@@ -9,21 +9,25 @@ function requireSupabase() {
 
 // ─── Rate Limiting ───
 const lastAction: Record<string, number> = {};
-function checkRateLimit(key: string, intervalMs: number): boolean {
+function checkRateLimit(key: string, intervalMs: number): number {
   const now = Date.now();
-  if (lastAction[key] && now - lastAction[key] < intervalMs) return false;
+  const elapsed = now - (lastAction[key] || 0);
+  if (elapsed < intervalMs) return Math.ceil((intervalMs - elapsed) / 1000);
   lastAction[key] = now;
-  return true;
+  return 0;
 }
-export function canCreateThread(isGuest: boolean): boolean {
-  return checkRateLimit('thread', isGuest ? 5 * 60 * 1000 : 60 * 1000);
+export function canCreateThread(isGuest: boolean): { ok: boolean; wait?: number } {
+  const wait = checkRateLimit('thread', isGuest ? 5 * 60 * 1000 : 60 * 1000);
+  return { ok: wait === 0, wait: wait || undefined };
 }
-export function canCreateReply(isGuest: boolean): boolean {
-  return checkRateLimit('reply', isGuest ? 60 * 1000 : 6 * 1000);
+export function canCreateReply(isGuest: boolean): { ok: boolean; wait?: number } {
+  const wait = checkRateLimit('reply', isGuest ? 60 * 1000 : 6 * 1000);
+  return { ok: wait === 0, wait: wait || undefined };
 }
 
 // Call the post-handler Edge Function via Supabase client (handles auth properly).
 // Returns null if Edge Function is unreachable so callers fall back to RPC.
+// Throws rate-limit errors to show to the user.
 async function callPostHandler(payload: Record<string, unknown>) {
   if (!supabase) return null;
   try {
@@ -31,13 +35,15 @@ async function callPostHandler(payload: Record<string, unknown>) {
       body: payload,
     });
     if (error) {
-      // Edge Function returned an error
-      throw new Error((error as any).message || `服务器错误`);
+      const msg = (error as any).message || '';
+      if (msg.includes('频繁')) throw new Error(msg); // Rate limit → show to user
+      throw new Error(msg || '服务器错误');
     }
     return data;
   } catch (err: any) {
-    // Any Edge Function error → silent fallback to RPC (direct insert)
-    // This handles: network errors, CORS, 401, 403, 500, Turnstile failures, etc.
+    // Rate limit errors → propagate to UI
+    if (err.message?.includes('频繁')) throw err;
+    // All other errors → silent fallback to RPC
     console.warn('Edge Function failed, falling back to RPC:', err.message);
     return null;
   }
@@ -207,6 +213,7 @@ export async function createThread(params: {
       title: params.title,
       content: params.content,
       author_id: params.authorId || undefined,
+      guest_id: params.guestId || undefined,
       turnstile_token: params.turnstileToken || '',
     });
     if (result?.thread) return result.thread as Thread;
@@ -244,6 +251,7 @@ export async function createPost(params: {
       thread_id: params.threadId,
       content: params.content,
       author_id: params.authorId || undefined,
+      guest_id: params.guestId || undefined,
       parent_post_id: params.parentPostId || undefined,
       turnstile_token: params.turnstileToken || '',
     });

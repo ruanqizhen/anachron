@@ -72,16 +72,25 @@ async function markIpHighRisk(ip: string, reason: string) {
 }
 
 // ─── Rate Limiting ───
-async function checkRateLimit(ip: string, isGuest: boolean, isThread: boolean): Promise<boolean> {
+async function checkRateLimit(
+  ip: string, isGuest: boolean, isThread: boolean, authorId?: string, guestId?: string
+): Promise<boolean> {
   const secondsAgo = isThread
     ? (isGuest ? 5 * 60 : 60)  // thread: guest 5min, user 1min
     : (isGuest ? 60 : 10);      // reply: guest 1min, user 10s
   const since = new Date(Date.now() - secondsAgo * 1000).toISOString();
   const table = isThread ? 'threads' : 'posts';
-  const { count } = await supabase
-    .from(table)
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', since);
+
+  let query = supabase.from(table).select('*', { count: 'exact', head: true }).gte('created_at', since);
+
+  // Filter by user or guest to avoid cross-user interference
+  if (!isGuest && authorId) {
+    query = query.eq('author_id', authorId);
+  } else if (guestId) {
+    query = query.eq('guest_id', guestId);
+  }
+
+  const { count } = await query;
   return (count || 0) === 0;
 }
 
@@ -163,6 +172,7 @@ Deno.serve(async (req: Request) => {
       thread_id?: string;
       content: string;
       author_id?: string;
+      guest_id?: string;
       parent_post_id?: string;
       turnstile_token: string;
     } = await req.json();
@@ -175,9 +185,9 @@ Deno.serve(async (req: Request) => {
       if (!turnstileOk) return err('人机验证失败', 403);
     }
 
-    // Step 2: Rate limiting (server-side)
+    // Step 2: Rate limiting (per user/IP, no cross-interference)
     const isGuest = !payload.author_id;
-    const allowed = await checkRateLimit(clientIp, isGuest, isThread);
+    const allowed = await checkRateLimit(clientIp, isGuest, isThread, payload.author_id, payload.guest_id);
     if (!allowed) return err('发言过于频繁，请稍后再试', 429);
 
     // Step 3: IP risk check. High-risk IPs skip moderation → straight to pending_review.

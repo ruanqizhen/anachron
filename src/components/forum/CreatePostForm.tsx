@@ -67,8 +67,9 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
       setError('请完成人机验证');
       return;
     }
-    if (!canCreateThread(!isLoggedIn)) {
-      setError('发言过于频繁，请稍后再试');
+    const rateCheck = canCreateThread(!isLoggedIn);
+    if (!rateCheck.ok) {
+      setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
       return;
     }
 

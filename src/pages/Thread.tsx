@@ -305,8 +305,9 @@ export default function ThreadPage() {
     e.preventDefault();
     setError('');
     if (!replyText.trim() || !threadId || isSubmitting) return;
-    if (!canCreateReply(!user)) {
-      setError('发言过于频繁，请稍后再试');
+    const rateCheck = canCreateReply(!user);
+    if (!rateCheck.ok) {
+      setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
       return;
     }
     if (replyText.trim().length < 5) {
