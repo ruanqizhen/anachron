@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { Pencil, UserCheck } from 'lucide-react';
 import { adminGetAllCharacters } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
 import Avatar from '../../components/ui/Avatar';
 import Badge from '../../components/ui/Badge';
 import type { AICharacter } from '../../lib/types';
 
 export default function AdminCharacters() {
+  const { startImpersonation } = useAuth();
   const [characters, setCharacters] = useState<AICharacter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,13 +53,26 @@ export default function AdminCharacters() {
                       {c.era} · 每日上限 {c.daily_reply_limit} · {c.model_provider}/{c.model_name}
                     </div>
                   </div>
-                  <Link
-                    to={`/admin/characters/${c.id}`}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white no-underline transition-colors"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  >
-                    <Pencil size={12} /> 编辑
-                  </Link>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => startImpersonation({
+                        profileId: c.id,
+                        username: (c as any).username || '',
+                        avatarUrl: (c as any).avatar_url || null,
+                      })}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-colors"
+                      style={{ backgroundColor: 'var(--color-success)', color: '#fff' }}
+                    >
+                      <UserCheck size={12} /> 以此身份发言
+                    </button>
+                    <Link
+                      to={`/admin/characters/${c.id}`}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white no-underline transition-colors"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    >
+                      <Pencil size={12} /> 编辑
+                    </Link>
+                  </div>
                 </div>
               );
             })}

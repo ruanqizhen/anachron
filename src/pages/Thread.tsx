@@ -159,7 +159,7 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
 
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
-  const { user, profile, guest } = useAuth();
+  const { user, profile, guest, impersonating } = useAuth();
   const [replyText, setReplyText] = useState('');
   const [thread, setThread] = useState<Thread | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -258,7 +258,7 @@ export default function ThreadPage() {
       const newPost = await createPost({
         threadId,
         content: replyText.trim(),
-        authorId: user?.id,
+        authorId: impersonating?.profileId || user?.id,
         guestId: gid,
       });
       setReplyText('');

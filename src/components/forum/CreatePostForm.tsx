@@ -14,7 +14,7 @@ interface CreatePostFormProps {
 }
 
 export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }: CreatePostFormProps) {
-  const { user, guest, startGuestSession } = useAuth();
+  const { user, guest, startGuestSession, impersonating } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [boardId, setBoardId] = useState('');
@@ -84,7 +84,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         boardId,
         title: title.trim(),
         content: content.trim(),
-        authorId: user?.id,
+        authorId: impersonating?.profileId || user?.id,
         guestId,
         turnstileToken: token,
       });

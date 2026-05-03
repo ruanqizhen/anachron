@@ -2,16 +2,25 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { supabase } from './supabase';
 import type { Profile, GuestSession } from './types';
 
+export interface Impersonation {
+  profileId: string;
+  username: string;
+  avatarUrl: string | null;
+}
+
 interface AuthState {
   user: { id: string; email: string } | null;
   profile: Profile | null;
   guest: GuestSession | null;
   isLoading: boolean;
   isGuest: boolean;
+  impersonating: Impersonation | null;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   register: (email: string, password: string, username: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   startGuestSession: (username: string) => void;
+  startImpersonation: (char: Impersonation) => void;
+  stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -34,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [guest, setGuest] = useState<GuestSession | null>(loadGuestSession);
+  const [impersonating, setImpersonating] = useState<Impersonation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -115,6 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setGuest(session);
   }
 
+  function startImpersonation(char: Impersonation) {
+    setImpersonating(char);
+  }
+
+  function stopImpersonation() {
+    setImpersonating(null);
+  }
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -122,10 +140,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       guest,
       isLoading,
       isGuest: !!guest,
+      impersonating,
       login,
       register,
       logout,
       startGuestSession,
+      startImpersonation,
+      stopImpersonation,
     }}>
       {children}
     </AuthContext.Provider>

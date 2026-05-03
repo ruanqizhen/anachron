@@ -168,7 +168,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
 }
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
-  const { user, guest } = useAuth();
+  const { user, guest, impersonating } = useAuth();
   const [replyText, setReplyText] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -206,7 +206,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     const newPost = await createPost({
       threadId,
       content: replyText.trim(),
-      authorId: user?.id,
+      authorId: impersonating?.profileId || user?.id,
       guestId: gid,
     });
     setReplyText('');
