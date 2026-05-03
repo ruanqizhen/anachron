@@ -45,10 +45,6 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
   return json.choices[0].message.content;
 }
 
-function getCooldownUntil(): string {
-  return new Date(Date.now() - 10 * 60 * 1000).toISOString();
-}
-
 type Decision = { character_id: string | null; reason: string };
 
 Deno.serve(async (req: Request) => {

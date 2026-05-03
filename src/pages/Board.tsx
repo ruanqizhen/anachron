@@ -25,6 +25,7 @@ export default function Board() {
   const [board, setBoard] = useState<BoardType | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -34,8 +35,9 @@ export default function Board() {
       setBoard(fetchedBoard);
       
       if (fetchedBoard) {
-        const fetchedThreads = await getThreadsByBoard(fetchedBoard.id);
+        const fetchedThreads = await getThreadsByBoard(fetchedBoard.id, 20, 0);
         setThreads(fetchedThreads);
+        setHasMore(fetchedThreads.length >= 20);
       }
       setIsLoading(false);
     }
@@ -147,6 +149,22 @@ export default function Board() {
               </Link>
             );
           })
+        )}
+        {hasMore && (
+          <div className="text-center py-3">
+            <button
+              onClick={async () => {
+                if (!board) return;
+                const more = await getThreadsByBoard(board.id, 20, threads.length);
+                setThreads(prev => [...prev, ...more]);
+                setHasMore(more.length >= 20);
+              }}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80"
+              style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-primary)' }}
+            >
+              加载更多
+            </button>
+          </div>
         )}
       </div>
 

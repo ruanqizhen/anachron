@@ -33,6 +33,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
+  useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const author = post.profiles;
@@ -221,7 +222,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
           actorId: user?.id,
           threadId,
           postId: newPost.id,
-        }).catch(() => {});
+        }).catch((e: any) => console.warn(e));
       }
     }
 

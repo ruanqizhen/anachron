@@ -25,6 +25,7 @@ export default function Moderation() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'threads' | 'posts'>('threads');
+  const [acting, setActing] = useState<string | null>(null);
 
   async function load() {
     setIsLoading(true);
@@ -95,18 +96,20 @@ export default function Moderation() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={async () => { await approveThread(t.id); load(); }}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none"
+                        onClick={async () => { setActing(t.id); await approveThread(t.id); setActing(null); load(); }}
+                        disabled={acting === t.id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
                         style={{ backgroundColor: 'var(--color-success)' }}
                       >
-                        <Check size={12} /> 通过
+                        <Check size={12} /> {acting === t.id ? '处理中' : '通过'}
                       </button>
                       <button
-                        onClick={async () => { await rejectThread(t.id); load(); }}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none"
+                        onClick={async () => { setActing(t.id); await rejectThread(t.id); setActing(null); load(); }}
+                        disabled={acting === t.id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
                         style={{ backgroundColor: 'var(--color-danger)' }}
                       >
-                        <X size={12} /> 拒绝
+                        <X size={12} /> {acting === t.id ? '处理中' : '拒绝'}
                       </button>
                     </div>
                   </div>
@@ -136,18 +139,20 @@ export default function Moderation() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={async () => { await approvePost(p.id); load(); }}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none"
+                        onClick={async () => { setActing(p.id); await approvePost(p.id); setActing(null); load(); }}
+                        disabled={acting === p.id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
                         style={{ backgroundColor: 'var(--color-success)' }}
                       >
-                        <Check size={12} /> 通过
+                        <Check size={12} /> {acting === p.id ? '处理中' : '通过'}
                       </button>
                       <button
-                        onClick={async () => { await rejectPost(p.id); load(); }}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none"
+                        onClick={async () => { setActing(p.id); await rejectPost(p.id); setActing(null); load(); }}
+                        disabled={acting === p.id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
                         style={{ backgroundColor: 'var(--color-danger)' }}
                       >
-                        <X size={12} /> 拒绝
+                        <X size={12} /> {acting === p.id ? '处理中' : '拒绝'}
                       </button>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NavBar from './components/layout/NavBar';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 import Home from './pages/Home';
 import Board from './pages/Board';
 import ThreadPage from './pages/Thread';
@@ -26,7 +27,7 @@ export default function App() {
         <Route
           path="*"
           element={
-            <>
+            <ErrorBoundary>
               <NavBar />
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -43,7 +44,7 @@ export default function App() {
                 <Route path="/admin/stats" element={<AdminStats />} />
                 <Route path="/search" element={<Search />} />
               </Routes>
-            </>
+            </ErrorBoundary>
           }
         />
       </Routes>

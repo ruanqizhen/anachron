@@ -99,7 +99,7 @@ export async function getRecentThreads(limit: number = 20, offset: number = 0): 
   return data as Thread[];
 }
 
-export async function getThreadsByBoard(boardId: string, limit: number = 50): Promise<Thread[]> {
+export async function getThreadsByBoard(boardId: string, limit: number = 20, offset: number = 0): Promise<Thread[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('threads')
@@ -112,7 +112,7 @@ export async function getThreadsByBoard(boardId: string, limit: number = 50): Pr
     .eq('board_id', boardId)
     .order('is_pinned', { ascending: false })
     .order('last_post_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
     
   if (error) {
     console.error(`Error fetching threads for board ${boardId}:`, error);

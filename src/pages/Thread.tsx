@@ -31,6 +31,7 @@ function ReplyItem({ post, likedIds, onPostUpdated }: { post: Post; likedIds: Se
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
+  useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const author = post.profiles;
@@ -210,7 +211,7 @@ export default function ThreadPage() {
       setIsLoading(false);
       // Increment view count
       if (supabase) {
-        (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as any).then(() => {}).catch(() => {});
+        (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as any).then(() => {}).catch((e: any) => console.warn('view count:', e));
       }
     }
     loadData();
@@ -274,7 +275,7 @@ export default function ThreadPage() {
             actorId: user?.id,
             threadId,
             postId: newPost.id,
-          }).catch(() => { /* ignore */ });
+          }).catch((e: any) => console.warn('notification:', e));
         }
       }
 
