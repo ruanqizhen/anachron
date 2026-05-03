@@ -16,7 +16,7 @@ interface AuthState {
   isGuest: boolean;
   impersonating: Impersonation | null;
   login: (email: string, password: string) => Promise<{ error?: string }>;
-  register: (email: string, password: string, username: string) => Promise<{ error?: string }>;
+  register: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   startGuestSession: (username: string) => void;
   startImpersonation: (char: Impersonation) => void;
@@ -102,22 +102,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     if (!supabase) return { error: 'Supabase 未配置' };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.message?.includes('Invalid login credentials')) {
+        return { error: '邮箱或密码错误，请检查后重试' };
+      }
+      if (error.message?.includes('Email not confirmed')) {
+        return { error: '邮箱尚未验证，请先点击确认邮件中的链接' };
+      }
+      return { error: error.message };
+    }
     return {};
   }
 
-  async function register(email: string, password: string, username: string) {
+  async function register(email: string, password: string) {
     if (!supabase) return { error: 'Supabase 未配置' };
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        username,
-        bio: '',
-        is_ai_character: false,
-        is_admin: false,
-      });
+    if (error) {
+      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
+        return { error: '该邮箱已被注册，请直接登录或使用其他邮箱' };
+      }
+      return { error: error.message };
+    }
+    // Supabase returns user=null for already-registered emails (prevents enumeration)
+    if (!data.user) {
+      return { error: '该邮箱已被注册，请直接登录或使用其他邮箱' };
     }
     return {};
   }

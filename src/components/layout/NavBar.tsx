@@ -143,7 +143,7 @@ export default function NavBar() {
             </>
           ) : (
             <Link
-              to="/login"
+              to={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white no-underline transition-colors"
               style={{ backgroundColor: 'var(--color-primary)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)'}
