@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Trash2, Plus } from 'lucide-react';
 import { adminGetTaskQueue, adminCancelTask, adminAddResponseTask, adminGetAllCharacters } from '../../lib/api';
 import AdminGuard from '../../components/layout/AdminGuard';
@@ -103,9 +104,9 @@ export default function AdminTasks() {
                     }}>
                     {t.status}
                   </span>
-                  <span className="ml-2" style={{ color: 'var(--color-text-muted)' }}>
-                    Thread: {t.thread_id?.slice(0, 8)}…
-                  </span>
+                  <Link to={`/b/_/t/${t.thread_id}`} className="ml-2 no-underline hover:underline text-xs" style={{ color: 'var(--color-primary)' }}>
+                    {t.thread_title || t.thread_id?.slice(0, 8) + '…'}
+                  </Link>
                 </div>
                 <div className="flex items-center gap-3">
                   <span style={{ color: 'var(--color-text-muted)' }}>

@@ -45,13 +45,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get task queue entries
+-- Get task queue entries with thread title
+DROP FUNCTION IF EXISTS admin_get_task_queue();
 CREATE OR REPLACE FUNCTION admin_get_task_queue()
-RETURNS SETOF ai_task_queue AS $$
+RETURNS TABLE(
+  id UUID, trigger_post_id UUID, thread_id UUID, task_type TEXT,
+  priority TEXT, status TEXT, mentioned_character_ids TEXT[],
+  execute_after TIMESTAMPTZ, dispatched_at TIMESTAMPTZ, created_at TIMESTAMPTZ,
+  thread_title TEXT
+) AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
-  RETURN QUERY SELECT * FROM ai_task_queue
-    ORDER BY priority DESC, created_at DESC LIMIT 100;
+  RETURN QUERY
+  SELECT tq.id, tq.trigger_post_id, tq.thread_id, tq.task_type,
+    tq.priority, tq.status, tq.mentioned_character_ids,
+    tq.execute_after, tq.dispatched_at, tq.created_at,
+    th.title
+  FROM ai_task_queue tq
+  JOIN threads th ON th.id = tq.thread_id
+  ORDER BY tq.priority DESC, tq.created_at DESC
+  LIMIT 100;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
