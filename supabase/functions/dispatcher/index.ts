@@ -15,23 +15,27 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 
-async function callLLM(systemPrompt: string, userPrompt: string, maxTokens = 200, temp = 0.7): Promise<string> {
-  const resp = await fetch('https://api.deepseek.com', {
+async function callLLM(systemPrompt: string, userPrompt: string, _maxTokens = 800, _temp = 0.7): Promise<string> {
+  const adjSystem = systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。';
+  const body = JSON.stringify({
+    model: 'deepseek-v4-flash',
+    messages: [
+      { role: 'system', content: adjSystem },
+      { role: 'user', content: userPrompt },
+    ],
+    max_tokens: 2000,
+    temperature: 0,
+  });
+  console.log('[DISPATCHER] calling DeepSeek, body length:', body.length);
+  const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
-    body: JSON.stringify({
-      model: 'deepseek-v4-flash',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: maxTokens,
-      temperature: temp,
-    }),
+    body,
   });
   const text = await resp.text();
+  console.log('[DISPATCHER] DeepSeek response status:', resp.status);
+  console.log('[DISPATCHER] body:', text);
   if (!resp.ok) {
-    console.error('[DISPATCHER] DeepSeek API error:', resp.status, text.slice(0, 200));
     throw new Error(`API ${resp.status}: ${text.slice(0, 100)}`);
   }
   try {

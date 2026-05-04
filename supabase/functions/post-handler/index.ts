@@ -116,22 +116,27 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
       const apiKey = Deno.env.get(provider === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'OPENAI_API_KEY');
       if (!apiKey) return { safe: true };
       const baseUrl = provider === 'deepseek'
-        ? 'https://api.deepseek.com'
+        ? 'https://api.deepseek.com/v1/chat/completions'
         : 'https://api.openai.com/v1/chat/completions';
+      const modBody = JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text.slice(0, 2000) },
+        ],
+        max_tokens: 200,
+        temperature: 0,
+      });
+      console.log('[MODERATION] calling DeepSeek, body length:', modBody.length, 'model:', model);
       const resp = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: text.slice(0, 2000) },
-          ],
-          max_tokens: 100,
-          temperature: 0,
-        }),
+        body: modBody,
       });
-      const json = await resp.json();
+      const modText = await resp.text();
+      console.log('[MODERATION] DeepSeek response status:', resp.status);
+      console.log('[MODERATION] body:', modText);
+      const json = JSON.parse(modText);
       const result = JSON.parse(json.choices[0].message.content);
       return result;
     }
@@ -144,7 +149,7 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
         headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model,
-          max_tokens: 100,
+          max_tokens: 200,
           system: systemPrompt,
           messages: [{ role: 'user', content: text.slice(0, 2000) }],
         }),

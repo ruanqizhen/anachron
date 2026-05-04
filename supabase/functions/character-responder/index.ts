@@ -24,7 +24,7 @@ async function callLLM(
 ): Promise<string> {
   const isDeepSeek = provider === 'deepseek';
   const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com'
+    ? 'https://api.deepseek.com/v1/chat/completions'
     : 'https://api.openai.com/v1/chat/completions';
   const apiKey = isDeepSeek ? DEEPSEEK_KEY : OPENAI_KEY;
 
@@ -37,7 +37,7 @@ async function callLLM(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 800,
+      max_tokens: 4000,
       temperature: 0.9,
     }),
   });
