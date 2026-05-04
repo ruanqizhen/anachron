@@ -28,13 +28,6 @@ export interface AICharacter {
   personality_prompt: string;
   comedy_notes: string;
   writing_style: string;
-  rival_character_ids: string[];
-  preferred_boards: string[];
-  preferred_topics: string[];
-  preferred_user_ids: string[];
-  model_provider: ModelProvider;
-  model_name: string;
-  daily_reply_limit: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;

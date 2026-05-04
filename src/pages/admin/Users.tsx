@@ -1,0 +1,134 @@
+import { useState, useEffect } from 'react';
+import { Pencil, Trash2, UserCheck, PlusCircle } from 'lucide-react';
+import { adminGetUsers, adminUpdateUser, adminDeleteUser, adminCreateVirtualUser } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
+import AdminGuard from '../../components/layout/AdminGuard';
+import Avatar from '../../components/ui/Avatar';
+
+export default function AdminUsers() {
+  const { startImpersonation } = useAuth();
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [msg, setMsg] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newBio, setNewBio] = useState('');
+
+  async function load() {
+    setIsLoading(true);
+    const data = await adminGetUsers();
+    setUsers(data);
+    setIsLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleSave(id: string) {
+    setMsg('');
+    try {
+      await adminUpdateUser(id, editName.trim(), editBio.trim());
+      setEditing(null);
+      load();
+    } catch (err: any) { setMsg(err.message); }
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`确定删除用户「${name}」？`)) return;
+    await adminDeleteUser(id);
+    load();
+  }
+
+  const FIELD_STYLE: React.CSSProperties = {
+    padding: '4px 8px', borderRadius: 6, border: '1px solid var(--color-border)',
+    outline: 'none', fontSize: 13, color: 'var(--color-text-primary)', backgroundColor: 'var(--color-card-bg)',
+  };
+
+  return (
+    <AdminGuard>
+      <div className="max-w-[900px] mx-auto px-4 pt-[72px] pb-8">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-xl font-bold">注册用户管理</h1>
+          <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none" style={{ backgroundColor: 'var(--color-primary)' }}>
+            <PlusCircle size={14} /> 新建虚拟用户
+          </button>
+        </div>
+        <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>{users.length} 个用户</p>
+
+        {showCreate && (
+          <div className="rounded-lg p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
+            <span className="text-sm font-medium shrink-0" style={{ color: 'var(--color-text-primary)' }}>新建虚拟用户</span>
+            <input placeholder="用户名" value={newName} onChange={e => setNewName(e.target.value)} className="px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            <input placeholder="简介（可选）" value={newBio} onChange={e => setNewBio(e.target.value)} className="flex-1 px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            <button onClick={async () => {
+              setMsg('');
+              if (!newName.trim()) { setMsg('请输入用户名'); return; }
+              try { await adminCreateVirtualUser(newName.trim(), newBio.trim()); setNewName(''); setNewBio(''); setShowCreate(false); load(); }
+              catch (err: any) { setMsg(err.message); }
+            }} className="px-4 py-1.5 rounded text-sm font-medium text-white bg-[var(--color-success)] border-none cursor-pointer shrink-0">创建</button>
+            {msg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{msg}</span>}
+          </div>
+        )}
+
+        {msg && <p className="text-xs mb-3" style={{ color: 'var(--color-danger)' }}>{msg}</p>}
+
+        {isLoading ? (
+          <div className="text-center py-12" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {users.map(u => (
+              <div key={u.id} className="rounded-lg p-3 flex items-center gap-3" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
+                <Avatar name={u.username} url={u.avatar_url} size={36} />
+                <div className="flex-1 min-w-0">
+                  {editing === u.id ? (
+                    <div className="flex items-center gap-2">
+                      <input value={editName} onChange={e => setEditName(e.target.value)} style={FIELD_STYLE} />
+                      <input value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="简介" style={FIELD_STYLE} />
+                      <button onClick={() => handleSave(u.id)} className="px-3 py-1 rounded text-xs font-medium text-white bg-[var(--color-success)] border-none cursor-pointer">保存</button>
+                      <button onClick={() => setEditing(null)} className="px-3 py-1 rounded text-xs font-medium border-none cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>取消</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{u.username}</span>
+                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                          {new Date(u.created_at).toLocaleDateString('zh-CN')}
+                        </span>
+                      </div>
+                      {u.bio && <p className="text-xs m-0" style={{ color: 'var(--color-text-secondary)' }}>{u.bio.slice(0, 60)}</p>}
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => startImpersonation({ profileId: u.id, username: u.username, avatarUrl: u.avatar_url })}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border-none cursor-pointer"
+                    style={{ color: '#fff', backgroundColor: 'var(--color-success)' }}
+                  >
+                    <UserCheck size={11} /> 以此身份发言
+                  </button>
+                  <button
+                    onClick={() => { setEditing(u.id); setEditName(u.username); setEditBio(u.bio || ''); }}
+                    className="p-1.5 rounded cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]"
+                    style={{ color: 'var(--color-text-secondary)' }}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(u.id, u.username)}
+                    className="p-1.5 rounded cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]"
+                    style={{ color: 'var(--color-danger)' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </AdminGuard>
+  );
+}

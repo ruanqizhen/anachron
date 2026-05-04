@@ -2,19 +2,21 @@
 -- All SECURITY DEFINER — require auth.uid() IS NOT NULL.
 
 -- Get all AI characters (including inactive, for admin)
+DROP FUNCTION IF EXISTS admin_get_all_characters();
 CREATE OR REPLACE FUNCTION admin_get_all_characters()
 RETURNS TABLE(
   id UUID, era TEXT, tags TEXT[], birth_year INT, death_year INT,
   personality_prompt TEXT, comedy_notes TEXT, writing_style TEXT,
-  rival_character_ids UUID[], preferred_boards TEXT[], preferred_topics TEXT[],
-  preferred_user_ids UUID[], model_provider TEXT, model_name TEXT,
-  daily_reply_limit INT, is_active BOOLEAN, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ,
+  is_active BOOLEAN, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ,
   username TEXT, bio TEXT, avatar_url TEXT
 ) AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
   RETURN QUERY
-  SELECT ac.*, p.username, p.bio, p.avatar_url
+  SELECT ac.id, ac.era, ac.tags, ac.birth_year, ac.death_year,
+    ac.personality_prompt, ac.comedy_notes, ac.writing_style,
+    ac.is_active, ac.created_at, ac.updated_at,
+    p.username, p.bio, p.avatar_url
   FROM ai_characters ac
   JOIN profiles p ON p.id = ac.id
   ORDER BY ac.created_at ASC;
@@ -27,12 +29,6 @@ CREATE OR REPLACE FUNCTION admin_update_character(
   p_personality_prompt TEXT,
   p_comedy_notes TEXT,
   p_writing_style TEXT,
-  p_rival_character_ids UUID[],
-  p_preferred_boards TEXT[],
-  p_preferred_topics TEXT[],
-  p_model_provider TEXT,
-  p_model_name TEXT,
-  p_daily_reply_limit INT,
   p_is_active BOOLEAN,
   p_bio TEXT
 ) RETURNS void AS $$
@@ -42,12 +38,6 @@ BEGIN
     personality_prompt = p_personality_prompt,
     comedy_notes = p_comedy_notes,
     writing_style = p_writing_style,
-    rival_character_ids = p_rival_character_ids,
-    preferred_boards = p_preferred_boards,
-    preferred_topics = p_preferred_topics,
-    model_provider = p_model_provider,
-    model_name = p_model_name,
-    daily_reply_limit = p_daily_reply_limit,
     is_active = p_is_active,
     updated_at = now()
   WHERE id = p_id;
@@ -125,6 +115,80 @@ BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
   UPDATE posts SET content = p_content, created_at = p_created_at, edited_at = now()
   WHERE id = p_post_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create an AI character (profile + ai_characters)
+CREATE OR REPLACE FUNCTION admin_create_character(
+  p_username TEXT, p_era TEXT, p_birth_year INT, p_death_year INT,
+  p_tags TEXT[], p_personality TEXT, p_comedy TEXT, p_style TEXT
+) RETURNS UUID AS $$
+DECLARE
+  v_id UUID := gen_random_uuid();
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  INSERT INTO profiles (id, username, bio, is_ai_character, is_admin)
+  VALUES (v_id, p_username, '', true, false);
+  INSERT INTO ai_characters (id, era, tags, birth_year, death_year,
+    personality_prompt, comedy_notes, writing_style, is_active)
+  VALUES (v_id, p_era, p_tags, p_birth_year, p_death_year,
+    p_personality, p_comedy, p_style, true);
+  RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Delete an AI character
+CREATE OR REPLACE FUNCTION admin_delete_character(p_id UUID)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  DELETE FROM ai_characters WHERE id = p_id;
+  DELETE FROM profiles WHERE id = p_id AND is_ai_character = true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get all registered (non-AI) users
+CREATE OR REPLACE FUNCTION admin_get_users()
+RETURNS TABLE(id UUID, username TEXT, bio TEXT, avatar_url TEXT, created_at TIMESTAMPTZ) AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  RETURN QUERY
+  SELECT p.id, p.username, p.bio, p.avatar_url, p.created_at
+  FROM profiles p WHERE p.is_ai_character = false AND p.is_admin = false
+  ORDER BY p.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin update any user profile
+CREATE OR REPLACE FUNCTION admin_update_user(
+  p_id UUID, p_username TEXT, p_bio TEXT
+) RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE profiles SET username = p_username, bio = p_bio WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a virtual user (profile only, no auth account)
+CREATE OR REPLACE FUNCTION admin_create_virtual_user(
+  p_username TEXT, p_bio TEXT DEFAULT ''
+) RETURNS UUID AS $$
+DECLARE
+  v_id UUID := gen_random_uuid();
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  INSERT INTO profiles (id, username, bio, is_ai_character, is_admin)
+  VALUES (v_id, p_username, p_bio, false, false);
+  RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin delete a user
+CREATE OR REPLACE FUNCTION admin_delete_user(p_id UUID)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  DELETE FROM profiles WHERE id = p_id AND is_ai_character = false AND is_admin = false;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

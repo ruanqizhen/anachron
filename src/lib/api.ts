@@ -515,12 +515,6 @@ export async function adminUpdateCharacter(id: string, params: {
   personality_prompt: string;
   comedy_notes: string;
   writing_style: string;
-  rival_character_ids: string[];
-  preferred_boards: string[];
-  preferred_topics: string[];
-  model_provider: string;
-  model_name: string;
-  daily_reply_limit: number;
   is_active: boolean;
   bio: string;
 }): Promise<void> {
@@ -530,12 +524,6 @@ export async function adminUpdateCharacter(id: string, params: {
     p_personality_prompt: params.personality_prompt,
     p_comedy_notes: params.comedy_notes,
     p_writing_style: params.writing_style,
-    p_rival_character_ids: params.rival_character_ids,
-    p_preferred_boards: params.preferred_boards,
-    p_preferred_topics: params.preferred_topics,
-    p_model_provider: params.model_provider,
-    p_model_name: params.model_name,
-    p_daily_reply_limit: params.daily_reply_limit,
     p_is_active: params.is_active,
     p_bio: params.bio,
   });
@@ -596,6 +584,57 @@ export async function adminUpdatePost(postId: string, content: string, createdAt
   const { error } = await db.rpc('admin_update_post', {
     p_post_id: postId, p_content: content, p_created_at: createdAt,
   });
+  if (error) throw error;
+}
+
+// ─── Admin: Character CRUD ───
+export async function adminCreateCharacter(params: {
+  username: string; era: string; birth_year: number | null; death_year: number | null;
+  tags: string[]; personality: string; comedy: string; style: string;
+}): Promise<string> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_create_character', {
+    p_username: params.username, p_era: params.era,
+    p_birth_year: params.birth_year, p_death_year: params.death_year,
+    p_tags: params.tags, p_personality: params.personality,
+    p_comedy: params.comedy, p_style: params.style,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function adminDeleteCharacter(id: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_delete_character', { p_id: id });
+  if (error) throw error;
+}
+
+// ─── Admin: User Management ───
+export async function adminGetUsers() {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_users');
+  if (error) throw error;
+  return (data || []) as { id: string; username: string; bio: string; avatar_url: string; created_at: string }[];
+}
+
+export async function adminUpdateUser(id: string, username: string, bio: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_update_user', { p_id: id, p_username: username, p_bio: bio });
+  if (error) throw error;
+}
+
+export async function adminCreateVirtualUser(username: string, bio: string): Promise<string> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_create_virtual_user', {
+    p_username: username, p_bio: bio,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function adminDeleteUser(id: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_delete_user', { p_id: id });
   if (error) throw error;
 }
 

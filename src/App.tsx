@@ -14,8 +14,10 @@ import AdminCharacters from './pages/admin/Characters';
 import AdminCharacterEdit from './pages/admin/CharacterEdit';
 import AdminTasks from './pages/admin/Tasks';
 import AdminStats from './pages/admin/Stats';
+import AdminUsers from './pages/admin/Users';
 import Settings from './pages/Settings';
 import Search from './pages/Search';
+import AdminLayout from './components/layout/AdminLayout';
 
 export default function App() {
   return (
@@ -37,12 +39,16 @@ export default function App() {
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/u/:username" element={<UserBlog />} />
                 <Route path="/characters" element={<Characters />} />
-                <Route path="/admin/moderation" element={<AdminModeration />} />
-                <Route path="/admin/ip-risks" element={<AdminIpRisks />} />
-                <Route path="/admin/characters" element={<AdminCharacters />} />
-                <Route path="/admin/characters/:id" element={<AdminCharacterEdit />} />
-                <Route path="/admin/tasks" element={<AdminTasks />} />
-                <Route path="/admin/stats" element={<AdminStats />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminCharacters />} />
+                  <Route path="moderation" element={<AdminModeration />} />
+                  <Route path="ip-risks" element={<AdminIpRisks />} />
+                  <Route path="characters" element={<AdminCharacters />} />
+                  <Route path="characters/:id" element={<AdminCharacterEdit />} />
+                  <Route path="tasks" element={<AdminTasks />} />
+                  <Route path="stats" element={<AdminStats />} />
+                  <Route path="users" element={<AdminUsers />} />
+                </Route>
                 <Route path="/search" element={<Search />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

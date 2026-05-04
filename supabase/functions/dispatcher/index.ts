@@ -147,8 +147,6 @@ Deno.serve(async (req: Request) => {
         name: c.profiles?.username,
         era: c.era,
         tags: c.tags,
-        preferred_topics: c.preferred_topics,
-        rival_character_ids: c.rival_character_ids,
         already_posted: existingAiIds.has(c.id),
       }))
     );
@@ -158,10 +156,9 @@ Deno.serve(async (req: Request) => {
 
 选择标准（按优先级）：
 1. 若帖子通过 @提及指定了某位历史人物，优先选择该人物。
-2. 【最高优先级：寻找宿敌】若帖子观点与某位历史人物的立场水火不容，优先选择该人物。目的是制造激烈辩论。
-3. 【现代话题优先派古人】若帖子涉及现代概念（民主、互联网、股票、进化论、女权、AI等），优先选择对这些概念绝对无法理解的古代人物，利用认知错位制造喜剧效果。
-4. 若某角色的宿敌已在本Thread中发过言，可优先选择该角色，制造角色间的直接冲突。
-5. 若帖子是纯粹闲聊或无意内容，可返回 null。
+2. 若帖子观点与某位历史人物的立场水火不容（如曹操 vs 刘备），优先选择该人物以制造辩论。
+3. 若帖子涉及现代概念（民主、互联网、股票、进化论、女权、AI等），优先选择对这些概念绝对无法理解的古代人物。
+4. 若帖子是纯粹闲聊或无意义内容，可返回 null。
 
 可用历史人物：
 ${charactersJson}
@@ -205,15 +202,14 @@ ${charactersJson}
       });
     }
 
-    // 8. Check daily limit
+    // 8. Check daily limit (hardcoded: 20 per day)
     const { count } = await supabase
       .from('character_daily_stats')
       .select('*', { count: 'exact', head: true })
       .eq('character_id', decision.character_id)
       .eq('date', new Date().toISOString().slice(0, 10));
 
-    const charConfig = characters.find((c: any) => c.id === decision.character_id);
-    if (charConfig && count && count >= (charConfig.daily_reply_limit || 20)) {
+    if (count && count >= 20) {
       await supabase.from('ai_task_queue')
         .update({ status: 'skipped', processed_at: new Date().toISOString() })
         .eq('id', task.id);

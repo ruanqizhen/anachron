@@ -1,0 +1,68 @@
+import { NavLink, Outlet, Link } from 'react-router-dom';
+import AdminGuard from './AdminGuard';
+import { Shield, Users, MessageSquare, Globe, ListTodo, BarChart3, Bot, ArrowLeft } from 'lucide-react';
+
+const links = [
+  { to: '/admin/characters', icon: Bot, label: 'AI 角色' },
+  { to: '/admin/users', icon: Users, label: '注册用户' },
+  { to: '/admin/moderation', icon: MessageSquare, label: '内容审核' },
+  { to: '/admin/ip-risks', icon: Globe, label: 'IP 管理' },
+  { to: '/admin/tasks', icon: ListTodo, label: '任务队列' },
+  { to: '/admin/stats', icon: BarChart3, label: '调用统计' },
+];
+
+const linkStyle = (isActive: boolean): React.CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: 8,
+  padding: '8px 12px', borderRadius: 8, fontSize: 14, fontWeight: 500,
+  textDecoration: 'none',
+  backgroundColor: isActive ? 'var(--color-primary)' : 'transparent',
+  color: isActive ? '#fff' : 'var(--color-text-secondary)',
+  transition: 'background-color 0.15s',
+});
+
+export default function AdminLayout() {
+  return (
+    <AdminGuard>
+      <div style={{ display: 'flex', minHeight: '100vh', paddingTop: 56 }}>
+        {/* Sidebar */}
+        <nav style={{
+          width: 180, flexShrink: 0,
+          padding: '16px 12px',
+          backgroundColor: 'var(--color-card-bg)',
+          borderRight: '1px solid var(--color-border)',
+          position: 'fixed', top: 56, bottom: 0, left: 0,
+          overflowY: 'auto',
+        }}>
+          <div className="flex items-center gap-2 px-3 mb-4">
+            <Shield size={16} style={{ color: 'var(--color-primary)' }} />
+            <span className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>管理后台</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {links.map(l => (
+              <NavLink key={l.to} to={l.to} style={({ isActive }) => linkStyle(isActive)}>
+                <l.icon size={16} />
+                {l.label}
+              </NavLink>
+            ))}
+          </div>
+          <Link
+            to="/"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px', borderRadius: 8, fontSize: 14,
+              textDecoration: 'none', color: 'var(--color-text-muted)', marginTop: 16,
+            }}
+          >
+            <ArrowLeft size={16} />
+            返回主页
+          </Link>
+        </nav>
+
+        {/* Content */}
+        <main style={{ marginLeft: 180, flex: 1, minWidth: 0 }}>
+          <Outlet />
+        </main>
+      </div>
+    </AdminGuard>
+  );
+}

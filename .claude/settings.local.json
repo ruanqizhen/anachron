@@ -10,7 +10,9 @@
       "PowerShell(npx supabase functions deploy post-handler --no-verify-jwt 2>&1)",
       "PowerShell(Get-ChildItem -Path C:\\\\projects\\\\anachron -Recurse -Depth 1 | Select-Object FullName, Mode | ForEach-Object { \"$\\($_.Mode\\) $\\($_.FullName\\)\" })",
       "PowerShell(npx supabase functions deploy character-responder 2>&1; npx supabase functions deploy dispatcher 2>&1)",
-      "PowerShell(npx supabase secrets set TURNSTILE_SECRET_KEY=sb_publishable_5ZSg6qB0_ar4r1ILZ8AKIg_c6hISPbN 2>&1)"
+      "PowerShell(npx supabase secrets set TURNSTILE_SECRET_KEY=sb_publishable_5ZSg6qB0_ar4r1ILZ8AKIg_c6hISPbN 2>&1)",
+      "PowerShell(npx supabase functions deploy character-responder 2>&1)",
+      "PowerShell(npx vite build 2>&1; npx supabase functions deploy character-responder 2>&1; npx supabase functions deploy dispatcher 2>&1)"
     ]
   }
 }

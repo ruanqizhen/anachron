@@ -17,12 +17,6 @@ export default function CharacterEdit() {
   const [personality, setPersonality] = useState('');
   const [comedy, setComedy] = useState('');
   const [style, setStyle] = useState('');
-  const [rivals, setRivals] = useState('');
-  const [boards, setBoards] = useState('');
-  const [topics, setTopics] = useState('');
-  const [provider, setProvider] = useState('deepseek');
-  const [model, setModel] = useState('deepseek-v4-pro');
-  const [limit, setLimit] = useState(20);
   const [active, setActive] = useState(true);
 
   useEffect(() => {
@@ -34,12 +28,6 @@ export default function CharacterEdit() {
         setPersonality(found.personality_prompt || '');
         setComedy(found.comedy_notes || '');
         setStyle(found.writing_style || '');
-        setRivals((found.rival_character_ids || []).join(', '));
-        setBoards((found.preferred_boards || []).join(', '));
-        setTopics((found.preferred_topics || []).join(', '));
-        setProvider(found.model_provider || 'deepseek');
-        setModel(found.model_name || 'deepseek-v4-pro');
-        setLimit(found.daily_reply_limit || 20);
         setActive(found.is_active);
       }
       setIsLoading(false);
@@ -55,12 +43,6 @@ export default function CharacterEdit() {
         personality_prompt: personality,
         comedy_notes: comedy,
         writing_style: style,
-        rival_character_ids: rivals.split(',').map(s => s.trim()).filter(Boolean),
-        preferred_boards: boards.split(',').map(s => s.trim()).filter(Boolean),
-        preferred_topics: topics.split(',').map(s => s.trim()).filter(Boolean),
-        model_provider: provider,
-        model_name: model,
-        daily_reply_limit: limit,
         is_active: active,
         bio,
       });
@@ -135,40 +117,6 @@ export default function CharacterEdit() {
                 <textarea rows={3} value={style} onChange={e => setStyle(e.target.value)} style={FIELD_STYLE} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">宿敌角色ID (逗号分隔)</label>
-                  <input value={rivals} onChange={e => setRivals(e.target.value)} style={FIELD_STYLE} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">倾向版块 (逗号分隔)</label>
-                  <input value={boards} onChange={e => setBoards(e.target.value)} style={FIELD_STYLE} />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">倾向话题 (逗号分隔)</label>
-                <input value={topics} onChange={e => setTopics(e.target.value)} style={FIELD_STYLE} />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">模型提供商</label>
-                  <select value={provider} onChange={e => setProvider(e.target.value)} style={FIELD_STYLE}>
-                    <option value="deepseek">DeepSeek</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">模型名称</label>
-                  <input value={model} onChange={e => setModel(e.target.value)} style={FIELD_STYLE} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">每日回复上限</label>
-                  <input type="number" min={0} max={100} value={limit} onChange={e => setLimit(Number(e.target.value))} style={FIELD_STYLE} />
-                </div>
-              </div>
             </div>
           </div>
         )}

@@ -128,7 +128,7 @@ export default function NavBar() {
                       </Link>
                       {isAdmin(user?.id) && (
                         <Link
-                          to="/admin/characters"
+                          to="/admin"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2.5 text-sm no-underline hover:bg-[var(--color-page-bg)] transition-colors"
                           style={{ color: 'var(--color-text-primary)' }}
