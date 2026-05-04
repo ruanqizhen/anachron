@@ -24,7 +24,7 @@ async function callLLM(
 ): Promise<string> {
   const isDeepSeek = provider === 'deepseek';
   const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com/v1/chat/completions'
+    ? 'https://api.deepseek.com'
     : 'https://api.openai.com/v1/chat/completions';
   const apiKey = isDeepSeek ? DEEPSEEK_KEY : OPENAI_KEY;
 
@@ -41,7 +41,12 @@ async function callLLM(
       temperature: 0.9,
     }),
   });
-  const json = await resp.json();
+  const text = await resp.text();
+  if (!resp.ok) {
+    console.error('[RESPONDER] DeepSeek API error:', resp.status, text.slice(0, 200));
+    throw new Error(`API ${resp.status}`);
+  }
+  const json = JSON.parse(text);
   return json.choices[0].message.content;
 }
 
@@ -139,13 +144,17 @@ ${rivalNames.length > 0 ? '若对话中出现了你的宿敌，可在回复末�
 
     // 6. Call LLM
     let reply: string;
+    console.log('[RESPONDER] systemPrompt:', systemPrompt.slice(0, 1000));
+    console.log('[RESPONDER] userPrompt:', userPrompt.slice(0, 2000));
     try {
       reply = await callLLM(
         'deepseek', 'deepseek-v4-pro', systemPrompt, userPrompt,
       );
+      console.log('[RESPONDER] LLM reply:', reply);
       reply = reply.trim();
       if (!reply) throw new Error('Empty response');
     } catch (llmErr) {
+      console.error('[RESPONDER] LLM error:', llmErr);
       // Retry logic
       const newRetry = (task.retry_count || 0) + 1;
       if (newRetry < 2) {

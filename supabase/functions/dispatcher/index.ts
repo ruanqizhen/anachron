@@ -1,7 +1,7 @@
 // Edge Function: dispatcher
-// Triggered by post-handler after a new post is inserted.
-// Decides which AI character should respond for maximum dramatic effect.
-// PRD §7.2 (Phase 2), §7.3
+// Triggered by post-handler after a new post.
+// Asks LLM: "which Chinese historical figure should reply for maximum drama?"
+// Auto-creates the character if they don't exist yet.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -13,44 +13,42 @@ const supabase = createClient(
 const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-const DISPATCHER_PROVIDER = Deno.env.get('DISPATCHER_MODEL_PROVIDER') || 'deepseek';
-const DISPATCHER_MODEL = Deno.env.get('DISPATCHER_MODEL_NAME') || 'deepseek-v4-flash';
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
-const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 
-async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
-  const provider = DISPATCHER_PROVIDER;
-  const model = DISPATCHER_MODEL;
-  const isDeepSeek = provider === 'deepseek';
-
-  const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions';
-  const apiKey = isDeepSeek ? DEEPSEEK_KEY : OPENAI_KEY;
-
-  const resp = await fetch(baseUrl, {
+async function callLLM(systemPrompt: string, userPrompt: string, maxTokens = 200, temp = 0.7): Promise<string> {
+  const resp = await fetch('https://api.deepseek.com', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
     body: JSON.stringify({
-      model,
+      model: 'deepseek-v4-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 200,
-      temperature: 0.7,
+      max_tokens: maxTokens,
+      temperature: temp,
     }),
   });
-  const json = await resp.json();
-  return json.choices[0].message.content;
+  const text = await resp.text();
+  if (!resp.ok) {
+    console.error('[DISPATCHER] DeepSeek API error:', resp.status, text.slice(0, 200));
+    throw new Error(`API ${resp.status}: ${text.slice(0, 100)}`);
+  }
+  try {
+    const json = JSON.parse(text);
+    return json.choices[0].message.content;
+  } catch {
+    console.error('[DISPATCHER] DeepSeek non-JSON response:', text.slice(0, 200));
+    throw new Error('DeepSeek returned non-JSON: ' + text.slice(0, 100));
+  }
 }
 
-type Decision = { character_id: string | null; reason: string };
-
 Deno.serve(async (req: Request) => {
+  console.log('[DISPATCHER] invoked');
   try {
     // 1. Fetch next eligible task
     const now = new Date().toISOString();
+    console.log('[DISPATCHER] fetching tasks, now:', now);
     const { data: tasks, error: taskErr } = await supabase
       .from('ai_task_queue')
       .select('*')
@@ -60,205 +58,208 @@ Deno.serve(async (req: Request) => {
       .order('created_at', { ascending: true })
       .limit(1);
 
-    if (taskErr || !tasks || tasks.length === 0) {
+    if (taskErr) {
+      console.error('[DISPATCHER] task query error:', taskErr);
+      return new Response(JSON.stringify({ ok: false, error: taskErr.message }), {
+        status: 500, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (!tasks || tasks.length === 0) {
+      console.log('[DISPATCHER] no eligible tasks');
       return new Response(JSON.stringify({ ok: true, reason: 'no eligible tasks' }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
+    console.log('[DISPATCHER] found task:', tasks[0].id);
 
     const task = tasks[0];
+    await supabase.from('ai_task_queue').update({ status: 'processing' }).eq('id', task.id);
 
-    // Mark as processing
-    await supabase.from('ai_task_queue')
-      .update({ status: 'processing' })
-      .eq('id', task.id);
-
-    // 2. Cooldown check: has an AI posted in this thread in the last 10 minutes?
-    const { data: lastAiPost } = await supabase
-      .from('posts')
-      .select('created_at')
-      .eq('thread_id', task.thread_id)
-      .eq('is_ai_post', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (lastAiPost) {
-      const secondsSince = (Date.now() - new Date(lastAiPost.created_at).getTime()) / 1000;
-      if (secondsSince < 600) {
-        // Re-queue with updated execute_after
-        const newExecuteAfter = new Date(new Date(lastAiPost.created_at).getTime() + 600 * 1000).toISOString();
-        await supabase.from('ai_task_queue')
-          .update({ status: 'pending', execute_after: newExecuteAfter })
-          .eq('id', task.id);
-        return new Response(JSON.stringify({ ok: true, reason: 'cooldown active, requeued' }), {
-          status: 200, headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // 3. Get context
-    const [{ data: triggerPost }, { data: thread }, { data: recentPosts }] = await Promise.all([
-      supabase.from('posts').select('*, profiles(*)').eq('id', task.trigger_post_id).single(),
-      supabase.from('threads').select('*, boards(*)').eq('id', task.thread_id).single(),
-      supabase.from('posts').select('*, profiles(*)')
-        .eq('thread_id', task.thread_id)
-        .is('deleted_at', null)
-        .eq('status', 'published')
-        .order('created_at', { ascending: true })
-        .limit(10),
-    ]);
+    // 2. Get context: trigger post + parent chain + thread
+    const { data: triggerPost } = await supabase
+      .from('posts').select('*, profiles(username)').eq('id', task.trigger_post_id).single();
+    const { data: thread } = await supabase
+      .from('threads').select('title, content, profiles!threads_author_id_fkey(username)').eq('id', task.thread_id).single();
 
     if (!triggerPost || !thread) {
-      await supabase.from('ai_task_queue')
-        .update({ status: 'failed', processed_at: new Date().toISOString() })
-        .eq('id', task.id);
-      return new Response(JSON.stringify({ error: 'missing post or thread' }), {
+      await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', task.id);
+      return new Response(JSON.stringify({ error: 'missing context' }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 4. Get active AI characters
-    const { data: characters } = await supabase
-      .from('ai_characters')
-      .select('*, profiles(*)')
-      .eq('is_active', true);
-
-    if (!characters || characters.length === 0) {
-      await supabase.from('ai_task_queue')
-        .update({ status: 'dispatched_null', processed_at: new Date().toISOString() })
-        .eq('id', task.id);
-      return new Response(JSON.stringify({ ok: true, reason: 'no active characters' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
+    // Build parent chain if this is a reply to another post
+    let chainText = '';
+    if (triggerPost.parent_post_id) {
+      const chain: string[] = [];
+      let parentId: string | null = triggerPost.parent_post_id;
+      while (parentId && chain.length < 5) {
+        const { data: parent } = await supabase
+          .from('posts').select('*, profiles(username)').eq('id', parentId).single();
+        if (!parent) break;
+        chain.unshift(`[${parent.profiles?.username || '游客'}]：${parent.content}`);
+        parentId = parent.parent_post_id;
+      }
+      if (chain.length > 0) {
+        chainText = '回复链（从早到晚）：\n' + chain.join('\n\n') + '\n\n';
+      }
     }
 
-    // Existing AI characters in this thread
-    const existingAiIds = new Set(
-      (recentPosts || [])
-        .filter((p: any) => p.is_ai_post)
-        .map((p: any) => p.author_id)
-    );
+    // 4. Ask LLM: which figure should reply?
+    const dispatchSystem = `你是一个历史论坛「回音堂」的 AI 调度系统。
+用户刚刚发了一条帖子，你需要选择一位中国历史上的名人来回复，以产生最强的戏剧性和娱乐效果。
+可以自由选择中国任何朝代的历史人物，不限于任何范围。
 
-    // 5. Build dispatcher prompt
-    const charactersJson = JSON.stringify(
-      characters.map((c: any) => ({
-        id: c.id,
-        name: c.profiles?.username,
-        era: c.era,
-        tags: c.tags,
-        already_posted: existingAiIds.has(c.id),
-      }))
-    );
+选择标准：
+1. 寻找与帖子观点水火不容的历史人物，制造激烈辩论
+2. 优先选择对现代概念完全无法理解的古人，利用认知错位制造喜剧效果
+3. 选择性格鲜明、敢说敢骂的人物
+4. 如果是回帖，重点根据最新回复的内容选人，而非主贴
 
-    const systemPrompt = `你是一个历史论坛「回音堂」的 AI 调度系统。
-你的任务是根据用户帖子，从可用历史人物中选择一位参与回应。
+回复 JSON 格式：
+{"name": "推荐的历史人物姓名", "reason": "选择原因（中文，50字内）"}`;
 
-选择标准（按优先级）：
-1. 若帖子通过 @提及指定了某位历史人物，优先选择该人物。
-2. 若帖子观点与某位历史人物的立场水火不容（如曹操 vs 刘备），优先选择该人物以制造辩论。
-3. 若帖子涉及现代概念（民主、互联网、股票、进化论、女权、AI等），优先选择对这些概念绝对无法理解的古代人物。
-4. 若帖子是纯粹闲聊或无意义内容，可返回 null。
+    const mainPoster = (thread as any).profiles?.username || '未知';
+    const isReply = !!chainText;
+    const dispatchUser = isReply
+      ? `以下是论坛中的一段讨论，请根据最新回复选择一位历史人物来回帖。
 
-可用历史人物：
-${charactersJson}
+主贴（背景）：
+标题：${thread.title}
+发帖人：${mainPoster}
+内容：${(thread.content || '').slice(0, 300)}
 
-当前版块：${thread.boards?.name || '未知'}
-已在本Thread发言的AI角色ID：${[...existingAiIds].join(', ') || '无'}
+${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
+发帖人：${triggerPost.profiles?.username || '游客'}
+内容：${triggerPost.content.slice(0, 800)}`
+      : `主贴：
+标题：${thread.title}
+发帖人：${mainPoster}
+内容：${(thread.content || '').slice(0, 600)}
 
-返回JSON：{"character_id": "uuid或null", "reason": "选择原因（中文，50字以内）"}`;
+最新回复（同一人发的首帖）：
+发帖人：${triggerPost.profiles?.username || '游客'}
+内容：${triggerPost.content.slice(0, 800)}`;
 
-    const userPrompt = `最新帖子 [${triggerPost.profiles?.username || '游客'}]：${triggerPost.content.slice(0, 500)}`;
+    console.log('[DISPATCHER] systemPrompt:', dispatchSystem.slice(0, 500));
+    console.log('[DISPATCHER] userPrompt:', dispatchUser);
 
-    // 6. Call dispatcher LLM
-    let decision: Decision;
+    let decision: { name: string; reason: string };
     try {
-      const response = await callLLM(systemPrompt, userPrompt);
-      // Try to extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      decision = jsonMatch ? JSON.parse(jsonMatch[0]) : { character_id: null, reason: 'parse error' };
-    } catch {
-      decision = { character_id: null, reason: 'dispatcher LLM error' };
+      const resp = await callLLM(dispatchSystem, dispatchUser);
+      console.log('[DISPATCHER] LLM response:', resp);
+      const m = resp.match(/\{[\s\S]*\}/);
+      decision = m ? JSON.parse(m[0]) : { name: '', reason: 'parse error' };
+    } catch (e) {
+      console.error('[DISPATCHER] LLM error:', e);
+      decision = { name: '', reason: 'LLM error' };
     }
 
-    // Log the decision
-    await supabase.from('ai_dispatch_log').insert({
-      task_id: task.id,
-      trigger_post_id: task.trigger_post_id,
-      thread_id: task.thread_id,
-      dispatched: !!decision.character_id,
-      character_id: decision.character_id || undefined,
-      reason: decision.reason,
-      cooldown_blocked: false,
-    });
-
-    // 7. No character chosen
-    if (!decision.character_id) {
-      await supabase.from('ai_task_queue')
-        .update({ status: 'dispatched_null', processed_at: new Date().toISOString() })
-        .eq('id', task.id);
-      return new Response(JSON.stringify({ ok: true, reason: 'dispatched null' }), {
+    if (!decision.name) {
+      await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', task.id);
+      return new Response(JSON.stringify({ ok: true, reason: 'no figure chosen' }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 8. Check daily limit (hardcoded: 20 per day)
-    const { count } = await supabase
-      .from('character_daily_stats')
-      .select('*', { count: 'exact', head: true })
-      .eq('character_id', decision.character_id)
-      .eq('date', new Date().toISOString().slice(0, 10));
+    // 5. Find or create the character
+    let characterId: string;
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, is_ai_character')
+      .eq('username', decision.name)
+      .maybeSingle();
 
-    if (count && count >= 20) {
-      await supabase.from('ai_task_queue')
-        .update({ status: 'skipped', processed_at: new Date().toISOString() })
-        .eq('id', task.id);
-      return new Response(JSON.stringify({ ok: true, reason: 'daily limit reached' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
+    if (existingProfile && existingProfile.is_ai_character) {
+      // Character already exists
+      characterId = existingProfile.id;
+      console.log('[DISPATCHER] using existing character:', decision.name);
+    } else {
+      // Need to create this character — ask LLM for their info
+      console.log('[DISPATCHER] creating new character:', decision.name);
+      const charSystem = `请提供关于中国历史名人「${decision.name}」的详细资料，用于创建 AI 角色。
+
+返回 JSON 格式：
+{
+  "era": "所属时代",
+  "tags": ["标签1", "标签2", "标签3"],
+  "birth_year": 生年数字,
+  "death_year": 卒年数字,
+  "personality_prompt": "人格与性格描述（中文，200字内）",
+  "comedy_notes": "喜剧方向描述（中文，200字内）",
+  "writing_style": "语言风格描述（中文，100字内）"
+}`;
+      const charResp = await callLLM(charSystem, '请提供资料', 800, 0.5);
+      console.log('[DISPATCHER] character info:', charResp);
+      let charInfo: any;
+      try {
+        const m = charResp.match(/\{[\s\S]*\}/);
+        charInfo = m ? JSON.parse(m[0]) : {};
+      } catch { charInfo = {}; }
+
+      // Create profile + ai_character
+      const { data: newChar, error: createErr } = await supabase
+        .from('profiles')
+        .insert({
+          username: decision.name,
+          bio: (charInfo.personality_prompt || '').slice(0, 300),
+          is_ai_character: true,
+          is_admin: false,
+        })
+        .select('id')
+        .single();
+
+      if (createErr || !newChar) throw new Error('failed to create profile: ' + (createErr?.message || ''));
+
+      await supabase.from('ai_characters').insert({
+        id: newChar.id,
+        era: charInfo.era || '未知',
+        tags: charInfo.tags || [],
+        birth_year: charInfo.birth_year || null,
+        death_year: charInfo.death_year || null,
+        personality_prompt: charInfo.personality_prompt || '',
+        comedy_notes: charInfo.comedy_notes || '',
+        writing_style: charInfo.writing_style || '',
+        is_active: true,
       });
+
+      characterId = newChar.id;
     }
 
-    // 9. Insert into ai_response_queue
+    // 6. Insert into ai_response_queue
     const { data: responseTask, error: insertErr } = await supabase
       .from('ai_response_queue')
       .insert({
-        character_id: decision.character_id,
-        trigger_post_id: task.trigger_post_id,
+        character_id: characterId,
         thread_id: task.thread_id,
+        trigger_post_id: task.trigger_post_id,
         task_id: task.id,
-        dispatch_reason: decision.reason,
         status: 'pending',
         execute_after: new Date().toISOString(),
       })
-      .select()
+      .select('id')
       .single();
 
     if (insertErr || !responseTask) throw new Error(insertErr?.message || 'insert failed');
 
-    // Mark task as dispatched
+    // 7. Mark task dispatched
     await supabase.from('ai_task_queue')
-      .update({ status: 'dispatched', processed_at: new Date().toISOString() })
+      .update({ status: 'dispatched', dispatched_at: new Date().toISOString() })
       .eq('id', task.id);
 
-    // 10. Trigger character-responder asynchronously (fire and forget)
+    // 8. Trigger character-responder
     fetch(`${FUNCTIONS_BASE}/character-responder`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
       body: JSON.stringify({ response_task_id: responseTask.id }),
-    }).catch(() => { /* fire and forget */ });
+    }).catch(() => {});
 
     return new Response(JSON.stringify({
-      ok: true,
-      character_id: decision.character_id,
-      reason: decision.reason,
-    }), {
-      status: 200, headers: { 'Content-Type': 'application/json' },
-    });
+      ok: true, character: decision.name, reason: decision.reason,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
   } catch (e) {
+    console.error('[DISPATCHER] error:', e);
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });

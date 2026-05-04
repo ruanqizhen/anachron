@@ -95,10 +95,17 @@ async function checkRateLimit(
 }
 
 // ─── Content Moderation ───
-async function moderateContent(text: string): Promise<{ safe: boolean; reason?: string }> {
-  const systemPrompt = `你是内容安全审核系统。检查以下用户内容是否包含违规内容。
-违规类型包括：广告/垃圾信息、儿童色情、种族歧视、暴力仇恨、严重人身攻击、色情内容。
-只回复 JSON：{"safe": true} 或 {"safe": false, "reason": "违规原因（中文，20字以内）"}`;
+async function moderateContent(text: string): Promise<{ safe: boolean; score?: number; reason?: string }> {
+  const systemPrompt = `你是内容安全审核系统。评估用户内容的违规风险程度，给出 1-10 的评分。
+
+1-3 分：完全安全，正常的讨论内容
+4-6 分：轻微不当，可能有些激烈但尚可接受
+7-8 分：明显违规，需要人工复核
+9-10 分：严重违规，必须拦截
+
+违规类型参考：广告/垃圾信息、色情内容、暴力威胁、仇恨言论、严重人身攻击。
+
+只回复 JSON：{"score": <1-10的整数>, "reason": "评分原因（中文，20字内）"}`;
 
   try {
     const provider = MODERATION_PROVIDER;
@@ -109,7 +116,7 @@ async function moderateContent(text: string): Promise<{ safe: boolean; reason?: 
       const apiKey = Deno.env.get(provider === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'OPENAI_API_KEY');
       if (!apiKey) return { safe: true };
       const baseUrl = provider === 'deepseek'
-        ? 'https://api.deepseek.com/v1/chat/completions'
+        ? 'https://api.deepseek.com'
         : 'https://api.openai.com/v1/chat/completions';
       const resp = await fetch(baseUrl, {
         method: 'POST',
@@ -148,10 +155,10 @@ async function moderateContent(text: string): Promise<{ safe: boolean; reason?: 
     }
 
     // Unknown provider → skip moderation
-    return { safe: true };
+    return { safe: true, score: 1 };
   } catch {
-    // Moderation API failure → degrade to pending_review (safe default)
-    return { safe: false, reason: '审核服务暂时不可用' };
+    // Moderation API failure → assume safe to avoid blocking users
+    return { safe: true, score: 1 };
   }
 }
 
@@ -198,9 +205,10 @@ Deno.serve(async (req: Request) => {
     const textToCheck = [payload.title, payload.content].filter(Boolean).join(' ');
     if (!highRisk) {
       const result = await moderateContent(textToCheck);
-      if (!result.safe) {
+      const score = result.score || (result.safe ? 1 : 10);
+      if (score >= 8) {
         status = 'pending_review';
-        await markIpHighRisk(clientIp, result.reason || 'content flagged');
+        await markIpHighRisk(clientIp, result.reason || `风险评分 ${score}`);
       }
     } else {
       status = 'pending_review';
@@ -240,7 +248,7 @@ Deno.serve(async (req: Request) => {
         const mentions = parseMentions(payload.content);
         const hasMentions = mentions.length > 0;
 
-        const executeAfter = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const executeAfter = new Date().toISOString();
         try {
           const { data: taskData } = await supabase.from('ai_task_queue').insert({
             trigger_post_id: data.id,
@@ -250,16 +258,19 @@ Deno.serve(async (req: Request) => {
             execute_after: executeAfter,
           }).select('id').single();
 
-          // Trigger dispatcher asynchronously (fire and forget)
+          // Trigger dispatcher asynchronously
           if (taskData) {
-            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
+            const dUrl = `${FUNCTIONS_BASE}/dispatcher`;
+            console.log('[POST-HANDLER] triggering dispatcher:', dUrl);
+            fetch(dUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${SERVICE_KEY}`,
               },
-              body: JSON.stringify({ task_id: taskData.id }),
-            }).catch(() => {});
+              body: JSON.stringify({}),
+            }).then(r => console.log('[POST-HANDLER] dispatcher status:', r.status))
+              .catch(e => console.error('[POST-HANDLER] dispatcher error:', e));
           }
         } catch { /* ai_task_queue insert failed, non-critical */ }
       }

@@ -147,24 +147,26 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
 
 export async function getPostsByThread(threadId: string, limit: number = 50, offset: number = 0): Promise<Post[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase
+  const query = supabase
     .from('posts')
-    .select(`
-      *,
-      profiles (*),
-      guest_sessions (*)
-    `)
+    .select(`*, profiles (*), guest_sessions (*)`)
     .eq('thread_id', threadId)
     .is('deleted_at', null)
-    .eq('status', 'published')
     .order('created_at', { ascending: true })
     .range(offset, offset + limit - 1);
 
-  if (error) {
-    console.error(`Error fetching posts for thread ${threadId}:`, error);
-    return [];
+  // Show published + own pending_review posts
+  const { data: { session } } = await supabase.auth.getSession();
+  const uid = session?.user?.id;
+  if (uid) {
+    const { data, error } = await query.or(`status.eq.published,and(status.eq.pending_review,author_id.eq.${uid})`);
+    if (error) { console.error('Error fetching posts:', error); return []; }
+    return data as Post[];
+  } else {
+    const { data, error } = await query.eq('status', 'published');
+    if (error) { console.error('Error fetching posts:', error); return []; }
+    return data as Post[];
   }
-  return data as Post[];
 }
 
 export async function getActiveAICharacters(): Promise<AICharacter[]> {

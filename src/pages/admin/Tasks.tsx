@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus } from 'lucide-react';
+import { Plus, Play } from 'lucide-react';
 import { adminGetTaskQueue, adminCancelTask, adminAddResponseTask, adminGetAllCharacters } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import AdminGuard from '../../components/layout/AdminGuard';
 
 export default function AdminTasks() {
@@ -45,13 +46,26 @@ export default function AdminTasks() {
       <div className="max-w-[1000px] mx-auto px-4 pt-[72px] pb-8">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">任务队列</h1>
-          <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none transition-colors"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            <Plus size={12} /> 手动添加
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                if (!supabase) return;
+                await supabase.functions.invoke('dispatcher', { body: {} });
+                load();
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none transition-colors"
+              style={{ backgroundColor: 'var(--color-success)' }}
+            >
+              <Play size={12} /> 运行调度器
+            </button>
+            <button
+              onClick={() => setShowAdd(!showAdd)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none transition-colors"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <Plus size={12} /> 手动添加
+            </button>
+          </div>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>{tasks.length} 个任务</p>
 
@@ -112,10 +126,11 @@ export default function AdminTasks() {
                   <span style={{ color: 'var(--color-text-muted)' }}>
                     {t.execute_after ? new Date(t.execute_after).toLocaleString('zh-CN') : '-'}
                   </span>
-                  {t.status === 'pending' && (
+                  {(t.status === 'pending' || t.status === 'processing') && (
                     <button onClick={async () => { await adminCancelTask(t.id); load(); }}
-                      className="p-1 rounded cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
-                      <Trash2 size={14} />
+                      className="px-2 py-0.5 rounded text-xs font-medium cursor-pointer border-none"
+                      style={{ backgroundColor: 'var(--color-danger)', color: '#fff' }}>
+                      删除
                     </button>
                   )}
                 </div>

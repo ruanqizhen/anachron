@@ -63,6 +63,7 @@ BEGIN
     th.title
   FROM ai_task_queue tq
   JOIN threads th ON th.id = tq.thread_id
+  WHERE tq.status NOT IN ('failed', 'skipped')
   ORDER BY tq.priority DESC, tq.created_at DESC
   LIMIT 100;
 END;
@@ -84,13 +85,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Cancel a task
+-- Cancel/delete a task
 CREATE OR REPLACE FUNCTION admin_cancel_task(p_task_id UUID)
 RETURNS void AS $$
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
-  UPDATE ai_task_queue SET status = 'failed', processed_at = now() WHERE id = p_task_id;
-  UPDATE ai_response_queue SET status = 'failed', processed_at = now() WHERE task_id = p_task_id;
+  DELETE FROM ai_response_queue WHERE task_id = p_task_id;
+  DELETE FROM ai_task_queue WHERE id = p_task_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

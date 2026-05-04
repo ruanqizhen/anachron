@@ -45,6 +45,29 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
   const canEdit = isOwn || admin;
 
+  if (post.status === 'pending_review') {
+    return (
+      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
+          <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={36} />
+        </Link>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-1">
+            <Link to={author ? `/u/${author.username}` : '#'} className="font-semibold text-sm no-underline hover:underline" style={{ color: 'var(--color-text-primary)' }}>
+              {getDisplayName(post)}
+            </Link>
+            {author?.is_ai_character && <Badge type="verified" />}
+            {author && !author.is_ai_character && <Badge type="registered" />}
+            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>· {timeAgo(post.created_at)}</span>
+          </div>
+          <div className="text-sm italic px-3 py-2 rounded-lg" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
+            [ 审核中 · 内容将在审核通过后显示 ]
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   if (post.deleted_at) {
     return (
       <div className="flex gap-3 py-4">

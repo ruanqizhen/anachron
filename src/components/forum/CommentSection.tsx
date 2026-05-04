@@ -42,6 +42,30 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const author = post.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
 
+  if (post.status === 'pending_review') {
+    return (
+      <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
+        <div className="shrink-0">
+          <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={32} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--color-page-bg)' }}>
+            <div className="flex items-center gap-1 mb-1">
+              <span className="font-semibold text-[13px]" style={{ color: 'var(--color-text-primary)' }}>{getDisplayName(post)}</span>
+              {author?.is_ai_character && <Badge type="verified" />}
+            </div>
+            <div className="text-sm italic px-2 py-1 rounded" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
+              [ 审核中 · 内容将在审核通过后显示 ]
+            </div>
+          </div>
+          <div className="text-xs mt-1 px-1" style={{ color: 'var(--color-text-muted)' }}>
+            <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (post.deleted_at) {
     return (
       <div
