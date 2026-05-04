@@ -94,6 +94,26 @@ async function checkRateLimit(
   return (count || 0) === 0;
 }
 
+// ─── User Risk ───
+async function isHighRiskUser(userId: string): Promise<boolean> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from('posts')
+    .select('*', { count: 'exact', head: true })
+    .eq('author_id', userId)
+    .eq('status', 'pending_review')
+    .gte('created_at', since);
+  return (count || 0) >= 3;
+}
+
+async function markUserHighRisk(userId: string, reason: string) {
+  await supabase.from('blocked_ips').insert({
+    ip_address: `user:${userId}`,
+    risk_score: 10,
+    reason,
+  }).catch(() => {});
+}
+
 // ─── Content Moderation ───
 async function moderateContent(text: string): Promise<{ safe: boolean; score?: number; reason?: string }> {
   const systemPrompt = `你是内容安全审核系统。评估用户内容的违规风险程度，给出 1-10 的评分。
@@ -118,26 +138,22 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
       const baseUrl = provider === 'deepseek'
         ? 'https://api.deepseek.com/v1/chat/completions'
         : 'https://api.openai.com/v1/chat/completions';
-      const modBody = JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text.slice(0, 2000) },
-        ],
-        max_tokens: 200,
-        temperature: 0,
-      });
-      console.log('[MODERATION] calling DeepSeek, body length:', modBody.length, 'model:', model);
       const resp = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: modBody,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text.slice(0, 2000) },
+          ],
+          max_tokens: 200,
+          temperature: 0,
+        }),
       });
-      const modText = await resp.text();
-      console.log('[MODERATION] DeepSeek response status:', resp.status);
-      console.log('[MODERATION] body:', modText);
-      const json = JSON.parse(modText);
+      const json = await resp.json();
       const result = JSON.parse(json.choices[0].message.content);
+      console.log('[MODERATION] score:', result.score, 'reason:', result.reason);
       return result;
     }
 
@@ -199,21 +215,30 @@ Deno.serve(async (req: Request) => {
 
     // Step 2: Rate limiting (per user/IP, no cross-interference)
     const isGuest = !payload.author_id;
-    const allowed = await checkRateLimit(clientIp, isGuest, isThread, payload.author_id, payload.guest_id);
+    const userId = payload.author_id;
+    const allowed = await checkRateLimit(clientIp, isGuest, isThread, userId, payload.guest_id);
     if (!allowed) return err('发言过于频繁，请稍后再试', 429);
 
-    // Step 3: IP risk check. High-risk IPs skip moderation → straight to pending_review.
-    const highRisk = await isHighRiskIp(clientIp);
+    // Step 3: Risk check — by IP for guests, by user for logged-in
+    const highRiskGuest = isGuest ? await isHighRiskIp(clientIp) : false;
+    const highRiskUser = !isGuest && userId ? await isHighRiskUser(userId) : false;
+    const highRisk = highRiskGuest || highRiskUser;
 
-    // Step 4: AI content moderation (only for clean IPs)
+    // Step 4: AI content moderation (logged-in users get 1-point leniency)
     let status = 'published';
+    const threshold = isGuest ? 8 : 9;
     const textToCheck = [payload.title, payload.content].filter(Boolean).join(' ');
     if (!highRisk) {
       const result = await moderateContent(textToCheck);
       const score = result.score || (result.safe ? 1 : 10);
-      if (score >= 8) {
+      if (score >= threshold) {
         status = 'pending_review';
-        await markIpHighRisk(clientIp, result.reason || `风险评分 ${score}`);
+        const riskReason = result.reason || `风险评分 ${score}`;
+        if (isGuest) {
+          await markIpHighRisk(clientIp, riskReason);
+        } else if (userId) {
+          await markUserHighRisk(userId, riskReason);
+        }
       }
     } else {
       status = 'pending_review';

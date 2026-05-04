@@ -47,9 +47,9 @@ export default function IpRisks() {
   return (
     <AdminGuard>
       <div className="max-w-[900px] mx-auto px-4 pt-[72px] pb-8">
-        <h1 className="text-xl font-bold mb-2">高风险 IP 管理</h1>
+        <h1 className="text-xl font-bold mb-2">高风险 IP 与用户管理</h1>
         <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-          共 {ips.length} 个高风险 IP
+          共 {ips.length} 个高风险条目
         </p>
 
         {isLoading ? (
@@ -68,8 +68,13 @@ export default function IpRisks() {
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
+                    {ip.ip_address?.startsWith('user:') ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#E3F0FD', color: 'var(--color-primary)' }}>用户</span>
+                    ) : (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>IP</span>
+                    )}
                     <code className="text-sm font-mono" style={{ color: 'var(--color-text-primary)' }}>
-                      {ip.ip_address}
+                      {ip.ip_address?.replace('user:', '')}
                     </code>
                     <span
                       className="text-xs px-2 py-0.5 rounded-full font-medium"

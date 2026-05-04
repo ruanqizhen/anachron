@@ -17,42 +17,29 @@ const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 
 async function callLLM(systemPrompt: string, userPrompt: string, _maxTokens = 800, _temp = 0.7): Promise<string> {
   const adjSystem = systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。';
-  const body = JSON.stringify({
-    model: 'deepseek-v4-flash',
-    messages: [
-      { role: 'system', content: adjSystem },
-      { role: 'user', content: userPrompt },
-    ],
-    max_tokens: 2000,
-    temperature: 0,
-  });
-  console.log('[DISPATCHER] calling DeepSeek, body length:', body.length);
   const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
-    body,
+    body: JSON.stringify({
+      model: 'deepseek-v4-flash',
+      messages: [
+        { role: 'system', content: adjSystem },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: 2000,
+      temperature: 0,
+    }),
   });
   const text = await resp.text();
-  console.log('[DISPATCHER] DeepSeek response status:', resp.status);
-  console.log('[DISPATCHER] body:', text);
-  if (!resp.ok) {
-    throw new Error(`API ${resp.status}: ${text.slice(0, 100)}`);
-  }
-  try {
-    const json = JSON.parse(text);
-    return json.choices[0].message.content;
-  } catch {
-    console.error('[DISPATCHER] DeepSeek non-JSON response:', text.slice(0, 200));
-    throw new Error('DeepSeek returned non-JSON: ' + text.slice(0, 100));
-  }
+  if (!resp.ok) throw new Error(`API ${resp.status}: ${text.slice(0, 100)}`);
+  const json = JSON.parse(text);
+  return json.choices[0].message.content;
 }
 
 Deno.serve(async (req: Request) => {
-  console.log('[DISPATCHER] invoked');
   try {
     // 1. Fetch next eligible task
     const now = new Date().toISOString();
-    console.log('[DISPATCHER] fetching tasks, now:', now);
     const { data: tasks, error: taskErr } = await supabase
       .from('ai_task_queue')
       .select('*')
@@ -63,18 +50,18 @@ Deno.serve(async (req: Request) => {
       .limit(1);
 
     if (taskErr) {
-      console.error('[DISPATCHER] task query error:', taskErr);
+      console.error('[DISPATCHER] task error:', taskErr.message);
       return new Response(JSON.stringify({ ok: false, error: taskErr.message }), {
         status: 500, headers: { 'Content-Type': 'application/json' },
       });
     }
     if (!tasks || tasks.length === 0) {
-      console.log('[DISPATCHER] no eligible tasks');
       return new Response(JSON.stringify({ ok: true, reason: 'no eligible tasks' }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
-    console.log('[DISPATCHER] found task:', tasks[0].id);
+    const task = tasks[0];
+    const triggerPostContent = task.trigger_post_content || '';
 
     const task = tasks[0];
     await supabase.from('ai_task_queue').update({ status: 'processing' }).eq('id', task.id);
@@ -145,17 +132,13 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
 发帖人：${triggerPost.profiles?.username || '游客'}
 内容：${triggerPost.content.slice(0, 800)}`;
 
-    console.log('[DISPATCHER] systemPrompt:', dispatchSystem.slice(0, 500));
-    console.log('[DISPATCHER] userPrompt:', dispatchUser);
-
     let decision: { name: string; reason: string };
     try {
       const resp = await callLLM(dispatchSystem, dispatchUser);
-      console.log('[DISPATCHER] LLM response:', resp);
       const m = resp.match(/\{[\s\S]*\}/);
       decision = m ? JSON.parse(m[0]) : { name: '', reason: 'parse error' };
     } catch (e) {
-      console.error('[DISPATCHER] LLM error:', e);
+      console.error('[DISPATCHER] LLM error:', String(e).slice(0, 100));
       decision = { name: '', reason: 'LLM error' };
     }
 
@@ -175,12 +158,10 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
       .maybeSingle();
 
     if (existingProfile && existingProfile.is_ai_character) {
-      // Character already exists
       characterId = existingProfile.id;
-      console.log('[DISPATCHER] using existing character:', decision.name);
+      console.log('[DISPATCHER] character:', decision.name, '(existing)');
     } else {
-      // Need to create this character — ask LLM for their info
-      console.log('[DISPATCHER] creating new character:', decision.name);
+      console.log('[DISPATCHER] character:', decision.name, '(new)');
       const charSystem = `请提供关于中国历史名人「${decision.name}」的详细资料，用于创建 AI 角色。
 
 返回 JSON 格式：
@@ -194,7 +175,6 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
   "writing_style": "语言风格描述（中文，100字内）"
 }`;
       const charResp = await callLLM(charSystem, '请提供资料', 800, 0.5);
-      console.log('[DISPATCHER] character info:', charResp);
       let charInfo: any;
       try {
         const m = charResp.match(/\{[\s\S]*\}/);
