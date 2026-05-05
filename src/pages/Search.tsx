@@ -12,32 +12,16 @@ export default function Search() {
   const [isLoading, setIsLoading] = useState(false);
 
   async function performSearch(q: string) {
-    const term = `%${q}%`;
-    const [titleRes, contentRes] = await Promise.all([
-      supabase!
-        .from('threads')
-        .select('*, boards (*), profiles (*), guest_sessions (*)')
-        .ilike('title', term)
-        .is('deleted_at', null)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(30),
-      supabase!
-        .from('threads')
-        .select('*, boards (*), profiles (*), guest_sessions (*)')
-        .ilike('content', term)
-        .is('deleted_at', null)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(30),
-    ]);
-    const map = new Map<string, Thread>();
-    const add = (arr: Thread[]) => arr.forEach(t => map.set(t.id, t as Thread));
-    add((titleRes.data || []) as Thread[]);
-    add((contentRes.data || []) as Thread[]);
-    setResults([...map.values()].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    ));
+    const { data, error } = await supabase!
+      .rpc('search_forum', { search_term: q })
+      .select('*, boards (*), profiles (*), guest_sessions (*)');
+
+    if (error) {
+      console.error('Search error:', error);
+      setResults([]);
+    } else {
+      setResults((data || []) as unknown as Thread[]);
+    }
     setIsLoading(false);
   }
 
