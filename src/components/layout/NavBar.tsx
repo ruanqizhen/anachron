@@ -35,7 +35,7 @@ export default function NavBar() {
     >
       <div className="max-w-[1200px] mx-auto h-full flex items-center px-4 gap-3">
         <Link to="/" className="flex items-center gap-2 shrink-0 no-underline">
-          <img src="/icons.svg" alt="回音堂" className="w-7 h-7 object-contain" />
+          <img src="/favicon.svg" alt="回音堂" className="w-7 h-7 object-contain" />
           <span className="text-lg font-bold hidden sm:block" style={{ color: 'var(--color-text-primary)' }}>
             回音堂
           </span>
