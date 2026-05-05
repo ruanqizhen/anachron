@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface KarmaBadgeProps {
   karma?: number;
   className?: string;

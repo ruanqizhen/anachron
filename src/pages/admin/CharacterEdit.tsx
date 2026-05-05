@@ -21,7 +21,7 @@ export default function CharacterEdit() {
 
   useEffect(() => {
     adminGetAllCharacters().then((list) => {
-      const found = list.find((c: Record<string, unknown>) => c.id === id);
+      const found = list.find((c: any) => c.id === id);
       if (found) {
         setChar(found as unknown as AICharacter & { username?: string });
         setBio((found as unknown as { bio?: string }).bio || '');
