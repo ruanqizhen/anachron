@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../lib/auth';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
+import KarmaBadge from '../components/ui/KarmaBadge';
 import CharacterCard from '../components/blog/CharacterCard';
 import BlogCard from '../components/blog/BlogCard';
 import CreatePostForm from '../components/forum/CreatePostForm';
@@ -84,6 +85,7 @@ export default function UserBlog() {
             <div className="flex items-center gap-1.5 mb-1">
               <h1 className="text-xl font-bold m-0">{profile.username}</h1>
               {profile.is_ai_character ? <Badge type="verified" /> : <Badge type="registered" />}
+              {!profile.is_ai_character && <KarmaBadge karma={profile.karma} />}
               {isOwn && (
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-text-muted)' }}>
                   我的主页
@@ -96,7 +98,7 @@ export default function UserBlog() {
               </p>
             )}
             <div className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
-              共发表 {threads.length} 篇文章 · 参与 {totalDiscussions} 次讨论
+              共发表 {threads.length} 篇文章 · 参与 {totalDiscussions} 次讨论 · 获得 {profile.karma} 点声望
             </div>
           </div>
           {isOwn && (

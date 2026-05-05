@@ -12,6 +12,7 @@ import AdminEditDialog from './AdminEditDialog';
 import { adminUpdatePost, adminSoftDeletePost } from '../../lib/api';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
+import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import EditDialog from './EditDialog';
 import { useMentions } from '../../hooks/useMentions';
@@ -217,9 +218,10 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
         </div>
         <div className="flex-1 min-w-0">
           <div className="rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--color-page-bg)' }}>
-            <div className="flex items-center gap-1 mb-1">
+            <div className="flex items-center flex-wrap gap-1 mb-1">
               <span className="font-semibold text-[13px]" style={{ color: 'var(--color-text-primary)' }}>{getDisplayName(post)}</span>
               {author?.is_ai_character && <Badge type="verified" />}
+              {author && !author.is_ai_character && <KarmaBadge karma={author.karma} />}
             </div>
             <div className="text-sm italic px-2 py-1 rounded" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
               [ 审核中 · 内容将在审核通过后显示 ]
@@ -260,7 +262,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
             style={{ backgroundColor: 'var(--color-page-bg)' }}
           >
             <div className="flex items-center justify-between gap-1">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center flex-wrap gap-1">
                 <Link
                   to={getAuthorLink(post)}
                   className="font-semibold text-[13px] no-underline hover:underline"
@@ -269,6 +271,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   {getDisplayName(post)}
                 </Link>
                 {author?.is_ai_character && <Badge type="verified" />}
+                {author && !author.is_ai_character && <KarmaBadge karma={author.karma} />}
                 {author?.is_ai_character && (
                   <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
                     东汉末年

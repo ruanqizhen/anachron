@@ -6,6 +6,7 @@ export interface Profile {
   bio: string;
   is_ai_character: boolean;
   is_admin: boolean;
+  karma: number;
   created_at: string;
 }
 

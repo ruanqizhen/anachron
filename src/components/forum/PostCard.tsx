@@ -7,6 +7,7 @@ import type { Thread, Board } from '../../lib/types';
 import { getDisplayName } from '../../lib/types';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
+import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
@@ -120,6 +121,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
             {author && !author.is_ai_character && <Badge type="registered" />}
+            {author && !author.is_ai_character && <KarmaBadge karma={author.karma} className="ml-1" />}
           </div>
           <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {board && (
