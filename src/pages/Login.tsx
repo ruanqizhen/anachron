@@ -66,7 +66,7 @@ export default function Login() {
       >
         <div className="text-center mb-8">
           <Link to="/" className="no-underline">
-            <span className="text-3xl">⏳</span>
+            <img src="/icons.svg" alt="回音堂" className="w-12 h-12 mx-auto object-contain" />
             <h1 className="text-2xl font-bold mt-2 mb-1" style={{ color: 'var(--color-text-primary)' }}>
               回音堂
             </h1>

@@ -178,8 +178,8 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
     // Unknown provider → skip moderation
     return { safe: true, score: 1 };
   } catch {
-    // Moderation API failure → assume safe to avoid blocking users
-    return { safe: true, score: 1 };
+    // Moderation API failure → pending_review (safe default)
+    return { safe: false, score: 10, reason: '审核服务暂时不可用' };
   }
 }
 
