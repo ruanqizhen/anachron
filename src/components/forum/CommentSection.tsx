@@ -6,7 +6,10 @@ import { getDisplayName, getAuthorLink } from '../../lib/types';
 import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../../lib/api';
 import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
+import { isAdmin } from '../../lib/admin';
 import { parseMentions } from '../../lib/mentions';
+import AdminEditDialog from './AdminEditDialog';
+import { adminUpdatePost, adminSoftDeletePost } from '../../lib/api';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
@@ -41,6 +44,9 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [replying, setReplying] = useState(false);
   const author = post.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
+  const admin = isAdmin(user?.id);
+  const canEdit = isOwn || admin;
+  const [showAdminEdit, setShowAdminEdit] = useState(false);
 
   if (post.status === 'pending_review') {
     return (
@@ -108,7 +114,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   </span>
                 )}
               </div>
-              {isOwn && (
+              {canEdit && (
                 <div className="relative">
                   <button
                     onClick={() => setShowMenu(!showMenu)}
@@ -128,7 +134,11 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                         }}
                       >
                         <button
-                          onClick={() => { setShowMenu(false); setShowEdit(true); }}
+                          onClick={() => {
+                            setShowMenu(false);
+                            if (admin && !isOwn) setShowAdminEdit(true);
+                            else setShowEdit(true);
+                          }}
                           className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
                           style={{ color: 'var(--color-text-primary)' }}
                         >
@@ -140,7 +150,8 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                             if (isDeleting) return;
                             setIsDeleting(true);
                             try {
-                              await softDeletePost(post.id);
+                              if (admin && !isOwn) await adminSoftDeletePost(post.id);
+                              else await softDeletePost(post.id);
                               onPostUpdated();
                             } catch { /* ignore */ }
                             setIsDeleting(false);
@@ -233,6 +244,17 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
             onPostUpdated();
           }}
           onClose={() => setShowEdit(false)}
+        />
+      )}
+      {showAdminEdit && (
+        <AdminEditDialog
+          content={post.content}
+          createdAt={post.created_at}
+          onSave={async (data) => {
+            await adminUpdatePost(post.id, data.content, data.createdAt!);
+            onPostUpdated();
+          }}
+          onClose={() => setShowAdminEdit(false)}
         />
       )}
     </>

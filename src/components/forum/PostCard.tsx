@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Thread } from '../../lib/types';
+import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
+import { isAdmin } from '../../lib/admin';
+import type { Thread, Board } from '../../lib/types';
 import { getDisplayName } from '../../lib/types';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import CommentSection from './CommentSection';
+import EditDialog from './EditDialog';
+import AdminEditDialog from './AdminEditDialog';
+import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards } from '../../lib/api';
 
 interface PostCardProps {
   thread: Thread;
@@ -26,13 +31,23 @@ function timeAgo(dateStr: string): string {
 
 const MAX_PREVIEW_LENGTH = 200;
 
-export default function PostCard({ thread }: PostCardProps) {
+export default function PostCard({ thread: initialThread }: PostCardProps) {
+  const { user } = useAuth();
+  const admin = isAdmin(user?.id);
+  const [thread, setThread] = useState(initialThread);
+  useEffect(() => { setThread(initialThread); }, [initialThread]);
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showAdminEdit, setShowAdminEdit] = useState(false);
+  const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
 
   const author = thread.profiles;
   const board = thread.boards;
+  const isOwn = user && author && user.id === author.id && !author.is_ai_character;
+  const canEdit = isOwn || admin;
   const isLong = thread.content.length > MAX_PREVIEW_LENGTH;
   const displayContent = isLong && !expanded
     ? thread.content.slice(0, MAX_PREVIEW_LENGTH) + '...'
@@ -53,12 +68,38 @@ export default function PostCard({ thread }: PostCardProps) {
 
   return (
     <article
-      className="rounded-lg transition-shadow"
+      className="rounded-lg transition-shadow relative"
       style={{
         backgroundColor: 'var(--color-card-bg)',
         boxShadow: 'var(--shadow-card)',
       }}
     >
+      {/* Menu button */}
+      {canEdit && (
+        <div className="absolute top-3 right-3 z-10">
+          <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded-full hover:bg-[var(--color-page-bg)] cursor-pointer border-none bg-transparent">
+            <MoreHorizontal size={18} style={{ color: 'var(--color-text-muted)' }} />
+          </button>
+          {showMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+              <div className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
+                style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--color-border)' }}>
+                <button onClick={() => { setShowMenu(false); if (admin && !isOwn) { getBoards().then(setBoards); setShowAdminEdit(true); } else setShowEdit(true); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-primary)' }}>
+                  <Pencil size={14} /> 编辑
+                </button>
+                <button onClick={async () => { setShowMenu(false);
+                  if (admin && !isOwn) { await adminSoftDeleteThread(thread.id); setThread({...thread, deleted_at: new Date().toISOString()}); }
+                  else { await softDeleteThread(thread.id); setThread({...thread, deleted_at: new Date().toISOString()}); }
+                }} className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
+                  <Trash2 size={14} /> 删除
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start gap-3 px-4 pt-4">
         <Link to={author ? `/u/${author.username}` : '#'}>
@@ -161,6 +202,23 @@ export default function PostCard({ thread }: PostCardProps) {
       {/* Inline comments */}
       {showComments && (
         <CommentSection threadId={thread.id} />
+      )}
+
+      {showEdit && (
+        <EditDialog title={thread.title} content={thread.content} isThread
+          onSave={async (title, content) => {
+            await updateThread(thread.id, { title, content });
+            setThread({...thread, title: title || thread.title, content, edited_at: new Date().toISOString()});
+          }}
+          onClose={() => setShowEdit(false)} />
+      )}
+      {showAdminEdit && (
+        <AdminEditDialog title={thread.title} content={thread.content} createdAt={thread.created_at} boardId={thread.board_id} boards={boards} isThread
+          onSave={async (data) => {
+            await adminUpdateThread(thread.id, { title: data.title || thread.title, content: data.content, boardId: data.boardId || thread.board_id, createdAt: data.createdAt || thread.created_at });
+            setThread({...thread, title: data.title || thread.title, content: data.content, edited_at: new Date().toISOString()});
+          }}
+          onClose={() => setShowAdminEdit(false)} />
       )}
     </article>
   );
