@@ -84,7 +84,7 @@ export default function UserBlog() {
           <div className="flex-1">
             <div className="flex items-center gap-1.5 mb-1">
               <h1 className="text-xl font-bold m-0">{profile.username}</h1>
-              {profile.is_ai_character ? <Badge type="verified" /> : <Badge type="registered" />}
+              {profile.is_ai_character && <Badge type="verified" />}
               {!profile.is_ai_character && <KarmaBadge karma={profile.karma} />}
               {isOwn && (
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-text-muted)' }}>

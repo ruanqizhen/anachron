@@ -8,9 +8,10 @@ export default function Login() {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(searchParams.get('register') === '1');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,6 +35,10 @@ export default function Login() {
     }
     if (password.length < 6) {
       setError('密码至少 6 位');
+      return;
+    }
+    if ((isRegister || showReset) && password !== password2) {
+      setError('两次输入的密码不一致');
       return;
     }
 
@@ -126,6 +131,24 @@ export default function Login() {
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
               />
             </div>
+            {(isRegister || showReset) && (
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                <input
+                  type="password"
+                  placeholder="确认密码"
+                  value={password2}
+                  onChange={(e) => setPassword2(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg text-sm border outline-none transition-colors"
+                  style={{
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                />
+              </div>
+            )}
 
             {error && (
               <div

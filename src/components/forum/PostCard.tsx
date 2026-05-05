@@ -130,8 +130,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
               {getDisplayName(thread)}
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
-            {author && !author.is_ai_character && <Badge type="registered" />}
-            {author && !author.is_ai_character && <KarmaBadge karma={author.karma} className="ml-1" />}
+                        {author && !author.is_ai_character && <KarmaBadge karma={author.karma} className="ml-1" />}
           </div>
           <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {board && (

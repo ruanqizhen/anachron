@@ -57,8 +57,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
               {getDisplayName(post)}
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
-            {author && !author.is_ai_character && <Badge type="registered" />}
-            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>· {timeAgo(post.created_at)}</span>
+                        <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>· {timeAgo(post.created_at)}</span>
           </div>
           <div className="text-sm italic px-3 py-2 rounded-lg" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
             [ 审核中 · 内容将在审核通过后显示 ]
@@ -95,8 +94,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
                 {getDisplayName(post)}
               </Link>
               {author?.is_ai_character && <Badge type="verified" />}
-              {author && !author.is_ai_character && <Badge type="registered" />}
-              <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
+                            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
                 · {timeAgo(post.created_at)}
               </span>
               {post.edited_at && (
@@ -464,8 +462,7 @@ export default function ThreadPage() {
                   {getDisplayName(thread)}
                 </Link>
                 {author?.is_ai_character && <Badge type="verified" />}
-                {author && !author.is_ai_character && <Badge type="registered" />}
-              </div>
+                              </div>
               <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 {board && <>{board.icon} {board.name} · </>}
                 <time dateTime={thread.created_at}>{timeAgo(thread.created_at)}</time>

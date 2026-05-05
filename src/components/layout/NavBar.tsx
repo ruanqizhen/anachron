@@ -149,16 +149,31 @@ export default function NavBar() {
               </div>
             </>
           ) : (
-            <Link
-              to={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white no-underline transition-colors"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary)'}
-            >
-              <LogIn size={16} />
-              <span className="hidden sm:inline">登录</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/login?register=1&redirect=${encodeURIComponent(window.location.pathname)}`}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium no-underline transition-colors"
+                style={{
+                  backgroundColor: 'var(--color-success)',
+                  color: '#fff',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#36A420'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-success)'}
+              >
+                <LogIn size={16} />
+                <span className="hidden sm:inline">注册</span>
+              </Link>
+              <Link
+                to={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white no-underline transition-colors"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary)'}
+              >
+                <LogIn size={16} />
+                <span className="hidden sm:inline">登录</span>
+              </Link>
+            </div>
           )}
 
           <button

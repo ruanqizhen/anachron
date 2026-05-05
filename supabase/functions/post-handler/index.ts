@@ -205,6 +205,32 @@ Deno.serve(async (req: Request) => {
       turnstile_token: string;
     } = await req.json();
 
+    // AI character posts skip all checks — just insert directly
+    if (payload.author_id) {
+      const { data: authorProfile } = await supabase
+        .from('profiles').select('is_ai_character').eq('id', payload.author_id).single();
+      if (authorProfile?.is_ai_character) {
+        if (payload.action === 'create_thread') {
+          const { data, error } = await supabase.from('threads').insert({
+            board_id: payload.board_id, title: payload.title,
+            content: payload.content, author_id: payload.author_id,
+            status: 'published',
+          }).select('*').single();
+          if (error) throw new Error(error.message);
+          return ok({ ok: true, thread: data, status: 'published' });
+        }
+        if (payload.action === 'create_post') {
+          const { data, error } = await supabase.from('posts').insert({
+            thread_id: payload.thread_id, content: payload.content,
+            author_id: payload.author_id, parent_post_id: payload.parent_post_id || null,
+            status: 'published', is_ai_post: true,
+          }).select('*').single();
+          if (error) throw new Error(error.message);
+          return ok({ ok: true, post: data, status: 'published' });
+        }
+      }
+    }
+
     // Step 1: Turnstile (required for new threads only; replies skip)
     const isThread = payload.action === 'create_thread';
     if (isThread && !payload.turnstile_token) return err('缺少人机验证 token', 400);
