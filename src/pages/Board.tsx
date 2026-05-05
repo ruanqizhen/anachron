@@ -4,7 +4,7 @@ import type { Board as BoardType, Thread } from '../lib/types';
 import PostCard from '../components/forum/PostCard';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import { PenSquare } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function Board() {
   const { boardSlug } = useParams<{ boardSlug: string }>();
@@ -13,6 +13,29 @@ export default function Board() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  const loadMore = useCallback(async () => {
+    if (!board || !hasMore) return;
+    const more = await getThreadsByBoard(board.id, 20, threads.length);
+    if (more.length > 0) {
+      setThreads(prev => [...prev, ...more]);
+      setHasMore(more.length >= 20);
+    } else {
+      setHasMore(false);
+    }
+  }, [board, hasMore, threads.length]);
+
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   useEffect(() => {
     async function loadData() {
@@ -95,19 +118,8 @@ export default function Board() {
           ))
         )}
         {hasMore && (
-          <div className="text-center py-3">
-            <button
-              onClick={async () => {
-                if (!board) return;
-                const more = await getThreadsByBoard(board.id, 20, threads.length);
-                setThreads(prev => [...prev, ...more]);
-                setHasMore(more.length >= 20);
-              }}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80"
-              style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-primary)' }}
-            >
-              加载更多
-            </button>
+          <div ref={loaderRef} className="text-center py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            加载更多...
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2, ImagePlus } from 'lucide-react';
 import type { Post } from '../../lib/types';
 import { getDisplayName, getAuthorLink } from '../../lib/types';
 import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../../lib/api';
@@ -14,6 +14,159 @@ import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import EditDialog from './EditDialog';
+import { useMentions } from '../../hooks/useMentions';
+import { supabase } from '../../lib/supabase';
+
+function CommentInput({ 
+  value, onChange, onSubmit, placeholder, disabled, isSubmitting, className = ''
+}: { 
+  value: string; onChange: (val: string) => void; onSubmit: () => void; 
+  placeholder: string; disabled?: boolean; isSubmitting?: boolean; className?: string;
+}) {
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    mentionQuery, setMentionQuery, mentionPosition, mentionOptions, mentionIndex, setMentionIndex,
+    textareaRef, handleMentionChange, insertMention
+  } = useMentions();
+
+  async function uploadImage(file: File) {
+    if (!supabase) return;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${user?.id || 'guest'}/${fileName}`;
+
+    try {
+      onChange(value + '\n![Uploading image...]()\n');
+      const { error: uploadError } = await supabase.storage.from('post-images').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(filePath);
+      onChange((value + '\n![Uploading image...]()\n').replace('![Uploading image...]()', `![image](${publicUrl})`));
+    } catch (err) {
+      console.error('Upload error:', err);
+      onChange((value + '\n![Uploading image...]()\n').replace('\n![Uploading image...]()\n', ''));
+    }
+  }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file);
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          uploadImage(file);
+          break;
+        }
+      }
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionQuery !== null && mentionOptions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % mentionOptions.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + mentionOptions.length) % mentionOptions.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        handleMentionSelect(mentionOptions[mentionIndex]);
+      } else if (e.key === 'Escape') {
+        setMentionQuery(null);
+      }
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!disabled && !isSubmitting && value.trim()) {
+        onSubmit();
+      }
+    }
+  }
+
+  function handleMentionSelect(profile: import('../../lib/types').Profile) {
+    if (!textareaRef.current) return;
+    const pos = textareaRef.current.selectionStart;
+    const result = insertMention(profile, value, pos);
+    if (result) {
+      onChange(result.newText);
+      setMentionQuery(null);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(result.newCursorPos, result.newCursorPos);
+        }
+      }, 0);
+    }
+  }
+
+  return (
+    <div className={`relative flex-1 flex flex-col rounded-xl border focus-within:border-[var(--color-primary)] transition-colors bg-[var(--color-page-bg)] ${className}`} style={{ borderColor: 'var(--color-border)' }}>
+      <textarea
+        ref={textareaRef}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          handleMentionChange(e.target.value, e.target.selectionStart);
+        }}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        className="w-full flex-1 min-h-[60px] p-2.5 outline-none text-sm resize-none bg-transparent"
+        style={{ color: 'var(--color-text-primary)' }}
+        disabled={disabled}
+      />
+      
+      <div className="px-2 py-1.5 flex items-center justify-between border-t" style={{ borderColor: 'var(--color-border)' }}>
+        <div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-1 rounded-full hover:bg-[var(--color-hover)] text-[var(--color-text-secondary)] transition-colors cursor-pointer border-none bg-transparent"
+            title="上传图片"
+            disabled={disabled}
+          >
+            <ImagePlus size={16} />
+          </button>
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+        </div>
+        <button
+          onClick={onSubmit}
+          disabled={disabled || !value.trim() || isSubmitting}
+          className="p-1.5 rounded-full cursor-pointer bg-transparent border-none disabled:opacity-30"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          {isSubmitting ? <span className="text-xs">发送中</span> : <Send size={16} />}
+        </button>
+      </div>
+
+      {mentionQuery !== null && mentionOptions.length > 0 && (
+        <div 
+          className="absolute z-50 bg-[var(--color-card-bg)] border rounded-lg shadow-lg overflow-hidden py-1 max-h-48 overflow-y-auto w-full"
+          style={{ top: mentionPosition.top + 'px', left: mentionPosition.left + 'px', borderColor: 'var(--color-border)' }}
+        >
+          {mentionOptions.map((opt, i) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => handleMentionSelect(opt)}
+              className="w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2 border-none cursor-pointer"
+              style={{ backgroundColor: i === mentionIndex ? 'var(--color-hover)' : 'transparent', color: 'var(--color-text-primary)' }}
+              onMouseEnter={() => setMentionIndex(i)}
+            >
+              <span>{opt.username}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface CommentSectionProps {
   threadId: string;
@@ -44,8 +197,12 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_${post.id}`) || '');
   const [replying, setReplying] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(`draft_reply_${post.id}`, replyText);
+  }, [replyText, post.id]);
   const author = post.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
   const admin = isAdmin(user?.id);
@@ -205,17 +362,13 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
       </div>
 
       {showReply && (
-        <div className="flex items-center gap-2 mt-2 mb-1" style={{ paddingLeft: isNested ? 0 : 0 }}>
-          <input
-            type="text"
-            placeholder={`回复 ${getDisplayName(post)}...`}
+        <div className="flex items-start gap-2 mt-2 mb-1" style={{ paddingLeft: isNested ? 0 : 0 }}>
+          <CommentInput
             value={replyText}
-            onChange={e => setReplyText(e.target.value)}
-            className="flex-1 py-1.5 px-3 rounded-full text-sm bg-transparent border outline-none"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-          />
-          <button
-            onClick={async () => {
+            onChange={setReplyText}
+            placeholder={`回复 ${getDisplayName(post)}...`}
+            isSubmitting={replying}
+            onSubmit={async () => {
               if (!replyText.trim() || replying) return;
               setReplying(true);
               try {
@@ -226,17 +379,13 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   parentPostId: post.id,
                 });
                 setReplyText('');
+                localStorage.removeItem(`draft_reply_${post.id}`);
                 setShowReply(false);
                 onPostUpdated();
               } catch (e: unknown) { console.warn(e); }
               setReplying(false);
             }}
-            disabled={!replyText.trim() || replying}
-            className="px-3 py-1.5 rounded-full text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            {replying ? '...' : '发送'}
-          </button>
+          />
         </div>
       )}
 
@@ -267,7 +416,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
   const { user, guest, impersonating } = useAuth();
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_thread_${threadId}`) || '');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -275,6 +424,10 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    localStorage.setItem(`draft_reply_thread_${threadId}`, replyText);
+  }, [replyText, threadId]);
 
   const loadPosts = useCallback(async () => {
     const fetchedPosts = await getPostsByThread(threadId);
@@ -324,6 +477,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     }
 
     setPosts(prev => [...prev, newPost as Post]);
+    localStorage.removeItem(`draft_reply_thread_${threadId}`);
   }
 
   async function handleReply() {
@@ -380,32 +534,20 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+      <div className="flex items-start gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
         <Avatar name={user ? '你' : '游客'} size={32} />
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col">
           {error && (
             <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
           )}
-          <div className="flex items-center rounded-full px-3" style={{ backgroundColor: 'var(--color-page-bg)' }}>
-            <input
-            type="text"
-            placeholder="写评论..."
+          <CommentInput
             value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleReply()}
-            className="flex-1 py-2 text-sm bg-transparent border-none outline-none"
-            style={{ color: 'var(--color-text-primary)' }}
+            onChange={setReplyText}
+            placeholder="写评论..."
+            onSubmit={handleReply}
+            isSubmitting={isSubmitting}
           />
-          <button
-            onClick={handleReply}
-            disabled={!replyText.trim() || isSubmitting}
-            className="p-1 cursor-pointer bg-transparent border-none disabled:opacity-30"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            <Send size={16} />
-          </button>
         </div>
-      </div>
       </div>
 
       {showGuestDialog && (

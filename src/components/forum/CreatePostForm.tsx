@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, ImagePlus } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { getBoards, createThread, createGuestSession, getProfileByUsername, createNotification, canCreateThread } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
-import type { Board } from '../../lib/types';
+import { useMentions } from '../../hooks/useMentions';
+import type { Board, Profile } from '../../lib/types';
+import { supabase } from '../../lib/supabase';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -15,8 +17,8 @@ interface CreatePostFormProps {
 
 export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }: CreatePostFormProps) {
   const { user, guest, startGuestSession, impersonating } = useAuth();
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState(() => localStorage.getItem('draft_new_post_title') || '');
+  const [content, setContent] = useState(() => localStorage.getItem('draft_new_post_content') || '');
   const [boardId, setBoardId] = useState('');
   const [token, setToken] = useState<string>('');
   const [boards, setBoards] = useState<Board[]>([]);
@@ -24,6 +26,27 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(guest?.username || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    mentionQuery,
+    setMentionQuery,
+    mentionPosition,
+    mentionOptions,
+    mentionIndex,
+    setMentionIndex,
+    textareaRef,
+    handleMentionChange,
+    insertMention
+  } = useMentions();
+
+  useEffect(() => {
+    localStorage.setItem('draft_new_post_title', title);
+  }, [title]);
+
+  useEffect(() => {
+    localStorage.setItem('draft_new_post_content', content);
+  }, [content]);
 
   useEffect(() => {
     async function fetchBoards() {
@@ -104,6 +127,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         }
       }
 
+      localStorage.removeItem('draft_new_post_title');
+      localStorage.removeItem('draft_new_post_content');
       onCreated?.();
       onClose();
     } catch (err: unknown) {
@@ -129,6 +154,83 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     setShowGuestDialog(false);
     startGuestSession(name);
     // Don't auto-submit - user still needs to fill form and verify
+  }
+
+  async function uploadImage(file: File) {
+    if (!supabase) return;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${user?.id || 'guest'}/${fileName}`;
+
+    try {
+      setContent(prev => prev + '\n![Uploading image...]()\n');
+      const { error: uploadError } = await supabase.storage.from('post-images').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(filePath);
+      setContent(prev => prev.replace('![Uploading image...]()', `![image](${publicUrl})`));
+    } catch (err) {
+      console.error('Upload error:', err);
+      setContent(prev => prev.replace('\n![Uploading image...]()\n', ''));
+      setError('图片上传失败');
+    }
+  }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file);
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          uploadImage(file);
+          break;
+        }
+      }
+    }
+  }
+
+  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value;
+    setContent(val);
+    handleMentionChange(val, e.target.selectionStart);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionQuery !== null && mentionOptions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % mentionOptions.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + mentionOptions.length) % mentionOptions.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        handleMentionSelect(mentionOptions[mentionIndex]);
+      } else if (e.key === 'Escape') {
+        setMentionQuery(null);
+      }
+    }
+  }
+
+  function handleMentionSelect(profile: Profile) {
+    if (!textareaRef.current) return;
+    const pos = textareaRef.current.selectionStart;
+    const result = insertMention(profile, content, pos);
+    if (result) {
+      setContent(result.newText);
+      setMentionQuery(null);
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(result.newCursorPos, result.newCursorPos);
+        }
+      }, 0);
+    }
   }
 
   return (
@@ -189,17 +291,69 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
               />
             </div>
 
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col relative">
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>正文 (支持 Markdown)</label>
-              <textarea
-                placeholder="分享你的想法、问题或见解（至少20字）..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full flex-1 min-h-[200px] px-3 py-2 rounded-lg border outline-none text-sm resize-none bg-transparent transition-colors"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              />
+              
+              <div className="relative flex-1 flex flex-col rounded-lg border focus-within:border-[var(--color-primary)] transition-colors" style={{ borderColor: 'var(--color-border)' }}>
+                <textarea
+                  ref={textareaRef}
+                  placeholder="分享你的想法、问题或见解... 试试输入 @ 召唤名流，或直接 Ctrl+V 粘贴图片"
+                  value={content}
+                  onChange={handleContentChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  className="w-full flex-1 min-h-[200px] p-3 outline-none text-sm resize-none bg-transparent"
+                  style={{ color: 'var(--color-text-primary)' }}
+                />
+                
+                {/* Formatting toolbar */}
+                <div className="px-3 py-2 border-t flex items-center gap-2" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-page-bg)' }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-1.5 rounded hover:bg-[var(--color-hover)] text-[var(--color-text-secondary)] transition-colors cursor-pointer border-none bg-transparent"
+                    title="上传图片"
+                  >
+                    <ImagePlus size={18} />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
+                  <span className="text-xs text-[var(--color-text-muted)] ml-auto">支持拖拽或剪贴板粘贴图片</span>
+                </div>
+              </div>
+
+              {/* Mentions Dropdown */}
+              {mentionQuery !== null && mentionOptions.length > 0 && (
+                <div 
+                  className="absolute z-50 bg-[var(--color-card-bg)] border rounded-lg shadow-lg overflow-hidden py-1 max-h-48 overflow-y-auto"
+                  style={{ 
+                    top: mentionPosition.top + 'px', 
+                    left: mentionPosition.left + 'px',
+                    borderColor: 'var(--color-border)'
+                  }}
+                >
+                  {mentionOptions.map((opt, i) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleMentionSelect(opt)}
+                      className="w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2 border-none cursor-pointer"
+                      style={{ 
+                        backgroundColor: i === mentionIndex ? 'var(--color-hover)' : 'transparent',
+                        color: 'var(--color-text-primary)'
+                      }}
+                      onMouseEnter={() => setMentionIndex(i)}
+                    >
+                      <span>{opt.username}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {error && (
