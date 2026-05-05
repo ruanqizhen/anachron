@@ -647,6 +647,36 @@ export async function toggleThreadLock(threadId: string, locked: boolean): Promi
   if (error) throw error;
 }
 
+// ─── Admin: Boards ───
+export async function adminCreateBoard(params: {
+  name: string; slug: string; description: string; era_tag: string; icon: string;
+}): Promise<string> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_create_board', {
+    p_name: params.name, p_slug: params.slug, p_description: params.description,
+    p_era_tag: params.era_tag, p_icon: params.icon,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function adminUpdateBoard(id: string, params: {
+  name: string; slug: string; description: string; era_tag: string; icon: string; display_order: number;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_update_board', {
+    p_id: id, p_name: params.name, p_slug: params.slug, p_description: params.description,
+    p_era_tag: params.era_tag, p_icon: params.icon, p_display_order: params.display_order,
+  });
+  if (error) throw error;
+}
+
+export async function adminDeleteBoard(id: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_delete_board', { p_id: id });
+  if (error) throw error;
+}
+
 // ─── Admin: Stats ───
 // ─── Likes ───
 export async function toggleLike(postId: string, userId: string): Promise<boolean> {

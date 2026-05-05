@@ -206,6 +206,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Board management
+CREATE OR REPLACE FUNCTION admin_create_board(
+  p_name TEXT, p_slug TEXT, p_description TEXT, p_era_tag TEXT, p_icon TEXT
+) RETURNS UUID AS $$
+DECLARE v_id UUID := gen_random_uuid(); v_order INT;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  SELECT COALESCE(MAX(display_order), 0) + 1 INTO v_order FROM boards;
+  INSERT INTO boards (id, name, slug, description, era_tag, icon, display_order)
+  VALUES (v_id, p_name, p_slug, p_description, p_era_tag, p_icon, v_order);
+  RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION admin_update_board(
+  p_id UUID, p_name TEXT, p_slug TEXT, p_description TEXT, p_era_tag TEXT, p_icon TEXT, p_display_order INT
+) RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE boards SET name = p_name, slug = p_slug, description = p_description,
+    era_tag = p_era_tag, icon = p_icon, display_order = p_display_order
+  WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION admin_delete_board(p_id UUID)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  DELETE FROM boards WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Admin delete a user
 CREATE OR REPLACE FUNCTION admin_delete_user(p_id UUID)
 RETURNS void AS $$

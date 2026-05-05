@@ -15,6 +15,7 @@ import AdminCharacterEdit from './pages/admin/CharacterEdit';
 import AdminTasks from './pages/admin/Tasks';
 import AdminStats from './pages/admin/Stats';
 import AdminUsers from './pages/admin/Users';
+import AdminBoards from './pages/admin/Boards';
 import Settings from './pages/Settings';
 import Search from './pages/Search';
 import AdminLayout from './components/layout/AdminLayout';
@@ -48,6 +49,7 @@ export default function App() {
                   <Route path="tasks" element={<AdminTasks />} />
                   <Route path="stats" element={<AdminStats />} />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="boards" element={<AdminBoards />} />
                 </Route>
                 <Route path="/search" element={<Search />} />
                 <Route path="/settings" element={<Settings />} />
