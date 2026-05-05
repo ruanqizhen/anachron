@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 
 export default function Login() {
@@ -13,6 +14,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const redirect = searchParams.get('redirect') || '/';
 
   // Redirect after login
@@ -146,10 +149,70 @@ export default function Login() {
               {isSubmitting ? '处理中...' : isRegister ? '注册' : '登录'}
               {!isSubmitting && <ArrowRight size={16} />}
             </button>
+            {!isRegister && (
+              <button
+                type="button"
+                onClick={() => setShowReset(true)}
+                className="text-xs font-medium cursor-pointer bg-transparent border-none self-end"
+                style={{ color: 'var(--color-text-muted)' }}
+              >
+                忘记密码？
+              </button>
+            )}
           </form>
         )}
 
-        {!msg && (
+        {/* Password Reset Form */}
+        {showReset && (
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            setError(''); setMsg('');
+            if (!email.trim()) { setError('请输入邮箱'); return; }
+            setIsSubmitting(true);
+            const { error: resetErr } = await supabase!.auth.resetPasswordForEmail(email.trim(), {
+              redirectTo: `${window.location.origin}/login`,
+            });
+            setIsSubmitting(false);
+            if (resetErr) { setError(resetErr.message); }
+            else { setResetSent(true); setShowReset(false); setError(''); }
+          }} className="flex flex-col gap-4">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              输入注册邮箱，我们将发送密码重置链接
+            </p>
+            <div className="relative">
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+              <input
+                type="email" placeholder="邮箱地址" value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-lg text-sm border outline-none transition-colors"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+              />
+            </div>
+            <button type="submit" disabled={isSubmitting}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-semibold text-white cursor-pointer border-none disabled:opacity-60"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              {isSubmitting ? '发送中...' : '发送重置链接'}
+            </button>
+            <button type="button" onClick={() => { setShowReset(false); setError(''); }}
+              className="text-xs cursor-pointer bg-transparent border-none" style={{ color: 'var(--color-text-muted)' }}>
+              返回登录
+            </button>
+          </form>
+        )}
+
+        {/* Reset success message */}
+        {resetSent && !showReset && (
+          <div className="text-center">
+            <div className="text-sm px-4 py-3 rounded-lg mb-3" style={{ backgroundColor: '#E8F5E9', color: 'var(--color-success)' }}>
+              重置链接已发送，请检查邮箱
+            </div>
+            <button onClick={() => setResetSent(false)} className="text-xs cursor-pointer bg-transparent border-none" style={{ color: 'var(--color-text-muted)' }}>
+              返回
+            </button>
+          </div>
+        )}
+
+        {!msg && !showReset && !resetSent && (
           <div className="text-center mt-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {isRegister ? '已有账号？' : '还没有账号？'}
             <button

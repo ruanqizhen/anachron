@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../lib/api';
 import { getDisplayName } from '../lib/types';
@@ -14,7 +14,7 @@ import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
-import { adminUpdateThread, adminUpdatePost, adminSoftDeleteThread, adminSoftDeletePost, getBoards } from '../lib/api';
+import { adminUpdateThread, adminUpdatePost, adminSoftDeleteThread, adminSoftDeletePost, getBoards, toggleThreadLock } from '../lib/api';
 import type { Post, Thread, Board } from '../lib/types';
 
 function timeAgo(dateStr: string): string {
@@ -503,6 +503,19 @@ export default function ThreadPage() {
                     >
                       <Pencil size={14} /> 编辑
                     </button>
+                    {admin && (
+                      <button
+                        onClick={async () => {
+                          setShowThreadMenu(false);
+                          await toggleThreadLock(thread.id, !thread.is_locked);
+                          setThread({ ...thread, is_locked: !thread.is_locked });
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                        style={{ color: 'var(--color-text-primary)' }}
+                      >
+                        <Lock size={14} /> {thread.is_locked ? '解锁' : '锁定'}
+                      </button>
+                    )}
                     <button
                       onClick={async () => {
                         setShowThreadMenu(false);
@@ -527,6 +540,12 @@ export default function ThreadPage() {
       </article>
 
       <AIResponseIndicator threadId={thread.id} />
+
+      {thread.is_locked && (
+        <div className="rounded-lg px-4 py-3 mb-3 text-center text-sm" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>
+          🔒 此帖已被锁定，无法回复
+        </div>
+      )}
 
       <div
         className="rounded-lg px-6"
@@ -560,6 +579,7 @@ export default function ThreadPage() {
           </div>
         )}
 
+        {!thread.is_locked && (
         <form onSubmit={handleReply} className="flex items-start gap-3 py-4">
           <Avatar name={profile?.username || guest?.username || '你'} size={36} />
           <div className="flex-1">
@@ -594,6 +614,7 @@ export default function ThreadPage() {
             </div>
           </div>
         </form>
+        )}
       </div>
 
       {showThreadEdit && (

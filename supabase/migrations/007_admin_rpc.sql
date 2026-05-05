@@ -197,6 +197,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Toggle thread lock
+CREATE OR REPLACE FUNCTION admin_toggle_lock(p_thread_id UUID, p_locked BOOLEAN)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE threads SET is_locked = p_locked WHERE id = p_thread_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Admin delete a user
 CREATE OR REPLACE FUNCTION admin_delete_user(p_id UUID)
 RETURNS void AS $$

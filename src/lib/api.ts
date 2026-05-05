@@ -640,6 +640,13 @@ export async function adminDeleteUser(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ─── Thread Lock ───
+export async function toggleThreadLock(threadId: string, locked: boolean): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_toggle_lock', { p_thread_id: threadId, p_locked: locked });
+  if (error) throw error;
+}
+
 // ─── Admin: Stats ───
 // ─── Likes ───
 export async function toggleLike(postId: string, userId: string): Promise<boolean> {

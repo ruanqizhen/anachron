@@ -25,7 +25,7 @@ export default function AdminLayout() {
     <AdminGuard>
       <div style={{ display: 'flex', minHeight: '100vh', paddingTop: 56 }}>
         {/* Sidebar */}
-        <nav style={{
+        <nav className="hidden md:block" style={{
           width: 180, flexShrink: 0,
           padding: '16px 12px',
           backgroundColor: 'var(--color-card-bg)',
@@ -58,8 +58,22 @@ export default function AdminLayout() {
           </Link>
         </nav>
 
+        {/* Mobile nav */}
+        <div className="md:hidden flex gap-1 px-4 pt-4 pb-2 overflow-x-auto" style={{ marginLeft: 0, flexWrap: 'nowrap' }}>
+          {links.map(l => (
+            <NavLink key={l.to} to={l.to} style={({ isActive }) => ({
+              padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 500,
+              textDecoration: 'none', whiteSpace: 'nowrap',
+              backgroundColor: isActive ? 'var(--color-primary)' : 'var(--color-page-bg)',
+              color: isActive ? '#fff' : 'var(--color-text-secondary)',
+            })}>
+              {l.label}
+            </NavLink>
+          ))}
+        </div>
+
         {/* Content */}
-        <main style={{ marginLeft: 180, flex: 1, minWidth: 0 }}>
+        <main style={{ marginLeft: 0, flex: 1, minWidth: 0 }} className="md:ml-[180px]">
           <Outlet />
         </main>
       </div>
