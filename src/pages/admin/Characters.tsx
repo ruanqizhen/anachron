@@ -63,7 +63,7 @@ export default function AdminCharacters() {
                   setShowCreate(false);
                   setNewChar({ username: '', era: '', birth_year: '', death_year: '', tags: '', personality: '', comedy: '', style: '' });
                   const list = await adminGetAllCharacters(); setCharacters(list);
-                } catch (err: any) { setCreateMsg(err.message); }
+                } catch (err: unknown) { setCreateMsg((err as Error).message); }
               }} className="px-4 py-1.5 rounded text-xs font-medium text-white bg-[var(--color-primary)] border-none cursor-pointer">创建</button>
               {createMsg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{createMsg}</span>}
             </div>
@@ -81,11 +81,11 @@ export default function AdminCharacters() {
                   className="rounded-lg p-4 flex items-center gap-4"
                   style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}
                 >
-                  <Avatar name={(c as any).username || ''} url={(c as any).avatar_url} size={44} />
+                  <Avatar name={(c as unknown as { username?: string }).username || ''} url={(c as unknown as { avatar_url?: string }).avatar_url} size={44} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                        {(c as any).username}
+                        {(c as unknown as { username?: string }).username}
                       </span>
                       <Badge type="verified" />
                       {c.is_active ? (
@@ -102,8 +102,8 @@ export default function AdminCharacters() {
                     <button
                       onClick={() => startImpersonation({
                         profileId: c.id,
-                        username: (c as any).username || '',
-                        avatarUrl: (c as any).avatar_url || null,
+                        username: (c as unknown as { username?: string }).username || '',
+                        avatarUrl: (c as unknown as { avatar_url?: string }).avatar_url || null,
                       })}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-colors"
                       style={{ backgroundColor: 'var(--color-success)', color: '#fff' }}
@@ -119,7 +119,7 @@ export default function AdminCharacters() {
                     </Link>
                     <button
                       onClick={async () => {
-                        const name = (c as any).username || '';
+                        const name = (c as unknown as { username?: string }).username || '';
                         if (!confirm(`确定删除角色「${name}」？`)) return;
                         await adminDeleteCharacter(c.id);
                         const list = await adminGetAllCharacters();

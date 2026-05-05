@@ -35,16 +35,16 @@ async function callPostHandler(payload: Record<string, unknown>) {
       body: payload,
     });
     if (error) {
-      const msg = (error as any).message || '';
+      const msg = (error as Error).message || '';
       if (msg.includes('频繁')) throw new Error(msg); // Rate limit → show to user
       throw new Error(msg || '服务器错误');
     }
     return data;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Rate limit errors → propagate to UI
-    if (err.message?.includes('频繁')) throw err;
+    if ((err as Error).message?.includes('频繁')) throw err;
     // All other errors → silent fallback to RPC
-    console.warn('Edge Function failed, falling back to RPC:', err.message);
+    console.warn('Edge Function failed, falling back to RPC:', (err as Error).message);
     return null;
   }
 }
@@ -705,7 +705,7 @@ export async function getUserLikes(userId: string, postIds: string[]): Promise<S
     .select('post_id')
     .eq('user_id', userId)
     .in('post_id', postIds);
-  return new Set((data || []).map((l: any) => l.post_id));
+  return new Set((data || []).map((l: { post_id: string }) => l.post_id));
 }
 
 export async function adminGetDailyStats(days: number = 7) {

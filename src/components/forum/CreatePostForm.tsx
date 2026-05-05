@@ -106,8 +106,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
 
       onCreated?.();
       onClose();
-    } catch (err: any) {
-      setError(err.message || '发帖失败');
+    } catch (err: unknown) {
+      setError((err as Error).message || '发帖失败');
     } finally {
       setIsSubmitting(false);
     }

@@ -128,7 +128,7 @@ ${character.writing_style}
 - 回复末尾无需署名`;
 
     const contextText = (contextPosts || [])
-      .map((p: any) => `[${p.profiles?.username || '游客'}]：${p.content}`)
+      .map((p: Record<string, unknown>) => `[${(p.profiles as { username?: string })?.username || '游客'}]：${p.content}`)
       .join('\n\n');
 
     const userPrompt = `以下是论坛中关于「${thread?.title || '讨论'}」的讨论，发生在「${thread?.boards?.name || '未知'}」版块。

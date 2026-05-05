@@ -16,7 +16,7 @@ const PHRASES = [
 
 export default function AIResponseIndicator({ threadId }: AIResponseIndicatorProps) {
   const [thinkingChar, setThinkingChar] = useState<string | null>(null);
-  const phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+  const [phrase] = useState(() => PHRASES[Math.floor(Math.random() * PHRASES.length)]);
 
   useEffect(() => {
     if (!supabase) return;

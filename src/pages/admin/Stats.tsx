@@ -2,8 +2,14 @@ import { useState, useEffect } from 'react';
 import { adminGetDailyStats } from '../../lib/api';
 import AdminGuard from '../../components/layout/AdminGuard';
 
+interface StatRecord {
+  date: string;
+  character_name?: string;
+  reply_count: number;
+}
+
 export default function AdminStats() {
-  const [stats, setStats] = useState<any[]>([]);
+  const [stats, setStats] = useState<StatRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -11,15 +17,15 @@ export default function AdminStats() {
   }, []);
 
   // Group by character
-  const byChar: Record<string, any[]> = {};
-  stats.forEach((s: any) => {
+  const byChar: Record<string, StatRecord[]> = {};
+  stats.forEach((s: StatRecord) => {
     const name = s.character_name || '未知';
     if (!byChar[name]) byChar[name] = [];
     byChar[name].push(s);
   });
 
   // Get unique dates
-  const dates = [...new Set(stats.map((s: any) => s.date))].sort().reverse() as string[];
+  const dates = [...new Set(stats.map((s: StatRecord) => s.date))].sort().reverse() as string[];
 
   // Colors
   const COLORS = ['#1877F2', '#42B72A', '#F02849', '#FF6900', '#8B5CF6', '#0EA5E9', '#EC4899', '#14B8A6'];
@@ -42,9 +48,9 @@ export default function AdminStats() {
                 {dates.map((date) => (
                   <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                     {Object.entries(byChar).map(([name, items], ci) => {
-                      const item = items.find((s: any) => s.date === date);
+                      const item = items.find((s: StatRecord) => s.date === date);
                       const count = item ? item.reply_count : 0;
-                      const maxVal = Math.max(...stats.map((s: any) => s.reply_count), 1);
+                      const maxVal = Math.max(...stats.map((s: StatRecord) => s.reply_count), 1);
                       const h = maxVal > 0 ? (count / maxVal) * 160 : 0;
                       return (
                         <div
@@ -93,7 +99,7 @@ export default function AdminStats() {
                     <tr key={date} style={{ borderBottom: '1px solid var(--color-border)' }}>
                       <td className="px-4 py-2.5 text-sm">{date}</td>
                       {Object.keys(byChar).map(name => {
-                        const item = byChar[name].find((s: any) => s.date === date);
+                        const item = byChar[name].find((s: StatRecord) => s.date === date);
                         return (
                           <td key={name} className="text-right px-4 py-2.5 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                             {item ? item.reply_count : 0}
@@ -102,7 +108,7 @@ export default function AdminStats() {
                       })}
                       <td className="text-right px-4 py-2.5 text-sm font-semibold">
                         {Object.values(byChar).reduce((sum, items) => {
-                          const item = items.find((s: any) => s.date === date);
+                          const item = items.find((s: StatRecord) => s.date === date);
                           return sum + (item ? item.reply_count : 0);
                         }, 0)}
                       </td>

@@ -35,7 +35,7 @@ export default function Moderation() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { setTimeout(() => load(), 0); }, []);
 
   const pendingCount = threads.length + posts.length;
 

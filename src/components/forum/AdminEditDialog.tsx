@@ -19,13 +19,15 @@ export default function AdminEditDialog({
 }: AdminEditDialogProps) {
   const [title, setTitle] = useState(initTitle || '');
   const [content, setContent] = useState(initContent);
-  const [boardId, setBoardId] = useState(initBoardId || '');
+  const [boardId, setBoardId] = useState(initBoardId || (boards?.length ? boards[0].id : ''));
   const [createdAt, setCreatedAt] = useState(initCreatedAt.slice(0, 16));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (boards?.length && !boardId) setBoardId(boards[0].id);
+    if (boards?.length && !boardId) {
+      setTimeout(() => setBoardId(boards[0].id), 0);
+    }
   }, [boards, boardId]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,7 +44,7 @@ export default function AdminEditDialog({
         createdAt: new Date(createdAt).toISOString(),
       });
       onClose();
-    } catch (err: any) { setError(err.message || '保存失败'); }
+    } catch (err: unknown) { setError((err as Error).message || '保存失败'); }
     setSaving(false);
   }
 

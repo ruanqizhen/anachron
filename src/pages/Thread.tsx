@@ -34,7 +34,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
-  useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
+  useEffect(() => { setTimeout(() => setLiked(likedIds.has(post.id)), 0); }, [likedIds, post.id]);
   const [showEdit, setShowEdit] = useState(false);
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -211,7 +211,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
                 setReplyText('');
                 setShowReply(false);
                 onPostUpdated();
-              } catch (e: any) { console.warn(e); }
+              } catch (e: unknown) { console.warn(e); }
               setReplying(false);
             }}
             disabled={!replyText.trim() || replying}
@@ -304,7 +304,7 @@ export default function ThreadPage() {
       await Promise.all([loadThread(), loadPosts(), getBoards().then(setBoards)]);
       setIsLoading(false);
       if (supabase) {
-        (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as any).then(() => {}).catch((e: any) => console.warn('view count:', e));
+        (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as unknown as Promise<void>).then(() => {}).catch((e: unknown) => console.warn('view count:', e));
       }
     }
     loadData();
@@ -322,6 +322,7 @@ export default function ThreadPage() {
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
   async function handleReply(e: React.FormEvent) {
@@ -372,15 +373,15 @@ export default function ThreadPage() {
             actorId: user?.id,
             threadId,
             postId: newPost.id,
-          }).catch((e: any) => console.warn('notification:', e));
+          }).catch((e: unknown) => console.warn('notification:', e));
         }
       }
 
       // Append new post immediately instead of reloading all
       setPosts(prev => [...prev, newPost as Post]);
       await loadThread();
-    } catch (err: any) {
-      setError(err.message || '发送失败');
+    } catch (err: unknown) {
+      setError((err as Error).message || '发送失败');
     } finally {
       setIsSubmitting(false);
     }

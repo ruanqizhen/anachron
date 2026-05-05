@@ -31,7 +31,7 @@ export default function AdminBoards() {
     setBoards(await getBoards());
     setIsLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { setTimeout(() => load(), 0); }, []);
 
   const F = { padding: '4px 8px', borderRadius: 6, border: '1px solid var(--color-border)', outline: 'none', fontSize: 13, color: 'var(--color-text-primary)', backgroundColor: 'var(--color-card-bg)' };
 

@@ -15,7 +15,7 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 
-async function callLLM(systemPrompt: string, userPrompt: string, _maxTokens = 800, _temp = 0.7): Promise<string> {
+async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
   const adjSystem = systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。';
   const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -36,7 +36,7 @@ async function callLLM(systemPrompt: string, userPrompt: string, _maxTokens = 80
   return json.choices[0].message.content;
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async () => {
   try {
     // 1. Fetch next eligible task
     const now = new Date().toISOString();
@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
 回复 JSON 格式：
 {"name": "推荐的历史人物姓名", "reason": "选择原因（中文，50字内）"}`;
 
-    const mainPoster = (thread as any).profiles?.username || '未知';
+    const mainPoster = (thread as unknown as { profiles?: { username?: string } }).profiles?.username || '未知';
     const isReply = !!chainText;
     const dispatchUser = isReply
       ? `以下是论坛中的一段讨论，请根据最新回复选择一位历史人物来回帖。
@@ -171,8 +171,8 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
   "comedy_notes": "喜剧方向描述（中文，200字内）",
   "writing_style": "语言风格描述（中文，100字内）"
 }`;
-      const charResp = await callLLM(charSystem, '请提供资料', 800, 0.5);
-      let charInfo: any;
+      const charResp = await callLLM(charSystem, '请提供资料');
+      let charInfo: Record<string, string | number | string[]>;
       try {
         const m = charResp.match(/\{[\s\S]*\}/);
         charInfo = m ? JSON.parse(m[0]) : {};

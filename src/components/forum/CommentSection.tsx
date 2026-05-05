@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Post } from '../../lib/types';
@@ -36,7 +36,11 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
-  useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
+  useEffect(() => { 
+    if (likedIds.has(post.id) !== liked) {
+      setTimeout(() => setLiked(likedIds.has(post.id)), 0);
+    }
+  }, [likedIds, post.id, liked]);
   const [showEdit, setShowEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
@@ -224,7 +228,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                 setReplyText('');
                 setShowReply(false);
                 onPostUpdated();
-              } catch (e: any) { console.warn(e); }
+              } catch (e: unknown) { console.warn(e); }
               setReplying(false);
             }}
             disabled={!replyText.trim() || replying}
@@ -272,13 +276,13 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
   const [guestId, setGuestId] = useState<string | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
-  async function loadPosts() {
+  const loadPosts = useCallback(async () => {
     const fetchedPosts = await getPostsByThread(threadId);
     setPosts(fetchedPosts);
     if (user && fetchedPosts.length > 0) {
       getUserLikes(user.id, fetchedPosts.map(p => p.id)).then(setLikedIds);
     }
-  }
+  }, [threadId, user]);
 
   useEffect(() => {
     async function loadData() {
@@ -287,7 +291,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       setIsLoading(false);
     }
     loadData();
-  }, [threadId]);
+  }, [threadId, loadPosts]);
 
   async function doSubmitReply() {
     setError('');
@@ -315,7 +319,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
           actorId: user?.id,
           threadId,
           postId: newPost.id,
-        }).catch((e: any) => console.warn(e));
+        }).catch((e: unknown) => console.warn(e));
       }
     }
 
@@ -339,8 +343,8 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     setIsSubmitting(true);
     try {
       await doSubmitReply();
-    } catch (err: any) {
-      setError(err.message || '发送失败');
+    } catch (err: unknown) {
+      setError((err as Error).message || '发送失败');
     }
     setIsSubmitting(false);
   }
@@ -412,7 +416,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
             setGuestId(gid);
             // Auto-submit after guest session created
             setIsSubmitting(true);
-            try { await doSubmitReply(); } catch (err: any) { setError(err.message || '发送失败'); }
+            try { await doSubmitReply(); } catch (err: unknown) { setError((err as Error).message || '发送失败'); }
             setIsSubmitting(false);
           }}
           onClose={() => setShowGuestDialog(false)}

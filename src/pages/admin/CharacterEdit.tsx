@@ -21,10 +21,10 @@ export default function CharacterEdit() {
 
   useEffect(() => {
     adminGetAllCharacters().then((list) => {
-      const found = list.find((c: any) => c.id === id);
+      const found = list.find((c: Record<string, unknown>) => c.id === id);
       if (found) {
-        setChar(found as any);
-        setBio((found as any).bio || '');
+        setChar(found as unknown as AICharacter & { username?: string });
+        setBio((found as unknown as { bio?: string }).bio || '');
         setPersonality(found.personality_prompt || '');
         setComedy(found.comedy_notes || '');
         setStyle(found.writing_style || '');
@@ -47,8 +47,8 @@ export default function CharacterEdit() {
         bio,
       });
       setMsg('保存成功');
-    } catch (err: any) {
-      setMsg('保存失败: ' + (err.message || '未知错误'));
+    } catch (err: unknown) {
+      setMsg('保存失败: ' + ((err as Error).message || '未知错误'));
     }
     setSaving(false);
   }
@@ -72,7 +72,7 @@ export default function CharacterEdit() {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">编辑：{(char as any).username}</h1>
+              <h1 className="text-xl font-bold">编辑：{(char as unknown as { username?: string }).username}</h1>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1.5 text-sm cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
                   <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />

@@ -88,8 +88,8 @@ export default function Notifications() {
           </div>
         ) : (
           notifications.map((n) => {
-            const actor = (n as any).profiles;
-            const thread = (n as any).threads;
+            const actor = (n as unknown as Record<string, { username: string; avatar_url: string }>).profiles;
+            const thread = (n as unknown as Record<string, { id: string; boards?: { slug: string } }>).threads;
             const Icon = TYPE_ICONS[n.type] || Bell;
             const threadLink = thread
               ? `/b/${thread.boards?.slug || 'current-affairs'}/t/${n.thread_id || thread.id}`

@@ -6,8 +6,8 @@ import { supabase } from '../../lib/supabase';
 import AdminGuard from '../../components/layout/AdminGuard';
 
 export default function AdminTasks() {
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [characters, setCharacters] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Record<string, unknown>[]>([]);
+  const [characters, setCharacters] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addCharId, setAddCharId] = useState('');
@@ -26,7 +26,7 @@ export default function AdminTasks() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { setTimeout(() => load(), 0); }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -36,8 +36,8 @@ export default function AdminTasks() {
       setMsg('任务已添加，character-responder 将自动处理');
       setShowAdd(false);
       load();
-    } catch (err: any) {
-      setMsg('添加失败: ' + (err.message || ''));
+    } catch (err: unknown) {
+      setMsg('添加失败: ' + ((err as Error).message || ''));
     }
   }
 
@@ -76,8 +76,8 @@ export default function AdminTasks() {
               <select value={addCharId} onChange={e => setAddCharId(e.target.value)} required
                 className="px-3 py-2 rounded-lg border outline-none text-sm bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
                 <option value="">选择角色</option>
-                {characters.map((c: any) => (
-                  <option key={c.id} value={c.id}>{c.username}</option>
+                {characters.map((c: Record<string, unknown>) => (
+                  <option key={c.id as string} value={c.id as string}>{c.username as string}</option>
                 ))}
               </select>
               <input placeholder="Thread ID" value={addThreadId} onChange={e => setAddThreadId(e.target.value)} required
@@ -99,11 +99,11 @@ export default function AdminTasks() {
           <div className="text-center py-12 text-sm" style={{ color: 'var(--color-text-muted)' }}>暂无任务</div>
         ) : (
           <div className="flex flex-col gap-2">
-            {tasks.map((t: any) => (
-              <div key={t.id} className="rounded-lg p-3 flex items-center justify-between gap-3 text-xs"
+            {tasks.map((t: Record<string, unknown>) => (
+              <div key={t.id as string} className="rounded-lg p-3 flex items-center justify-between gap-3 text-xs"
                 style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
                 <div>
-                  <span className="font-mono">{t.id.slice(0, 8)}…</span>
+                  <span className="font-mono">{(t.id as string).slice(0, 8)}…</span>
                   <span className="ml-2 px-1.5 py-0.5 rounded-full"
                     style={{
                       backgroundColor: t.priority === 'high' ? '#FFF3E0' : 'var(--color-page-bg)',

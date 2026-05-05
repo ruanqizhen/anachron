@@ -32,8 +32,8 @@ export default function EditDialog({ title: initialTitle, content: initialConten
     try {
       await onSave(isThread ? title.trim() : undefined, content.trim());
       onClose();
-    } catch (err: any) {
-      setError(err.message || '保存失败');
+    } catch (err: unknown) {
+      setError((err as Error).message || '保存失败');
     } finally {
       setIsSaving(false);
     }

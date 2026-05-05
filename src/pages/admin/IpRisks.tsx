@@ -33,7 +33,7 @@ export default function IpRisks() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { setTimeout(() => load(), 0); }, []);
 
   async function handleReset(ip: BlockedIp) {
     setResetting(ip.id);

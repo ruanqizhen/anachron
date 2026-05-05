@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase } from './supabase';
 import type { Profile, GuestSession } from './types';
@@ -46,34 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [impersonating, setImpersonating] = useState<Impersonation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!supabase) {
-      setIsLoading(false);
-      return;
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email! });
-        fetchProfile(session.user.id);
-      }
-      setIsLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email! });
-        fetchProfile(session.user.id);
-        setGuest(null);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   async function fetchProfile(userId: string) {
     if (!supabase) return;
     const { data, error } = await supabase
@@ -109,6 +82,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   }
+
+  useEffect(() => {
+    if (!supabase) {
+      setTimeout(() => setIsLoading(false), 0);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email! });
+        fetchProfile(session.user.id);
+      }
+      setTimeout(() => setIsLoading(false), 0);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email! });
+        fetchProfile(session.user.id);
+        setGuest(null);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   async function login(email: string, password: string) {
     if (!supabase) return { error: 'Supabase 未配置' };

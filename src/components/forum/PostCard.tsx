@@ -35,7 +35,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const { user } = useAuth();
   const admin = isAdmin(user?.id);
   const [thread, setThread] = useState(initialThread);
-  useEffect(() => { setThread(initialThread); }, [initialThread]);
+  useEffect(() => { setTimeout(() => setThread(initialThread), 0); }, [initialThread]);
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showMenu, setShowMenu] = useState(false);

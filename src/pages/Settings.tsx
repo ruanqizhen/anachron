@@ -21,24 +21,15 @@ export default function Settings() {
   const [pwMsg, setPwMsg] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
 
-  if (!user) {
-    return (
-      <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
-        <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
-        <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
-      </div>
-    );
-  }
-
-  const uid = user.id;
-  const userEmail = user.email;
+  const uid = user?.id || '';
+  const userEmail = user?.email || '';
 
   // Debounced username availability check
   useEffect(() => {
     const name = username.trim();
-    if (!name || name === (profile?.username || '')) { setUsernameAvailable(null); return; }
-    if (name.length < 2) { setUsernameAvailable(null); return; }
-    setUsernameChecking(true);
+    if (!name || name === (profile?.username || '')) { setTimeout(() => setUsernameAvailable(null), 0); return; }
+    if (name.length < 2) { setTimeout(() => setUsernameAvailable(null), 0); return; }
+    setTimeout(() => setUsernameChecking(true), 0);
     const timer = setTimeout(async () => {
       const { data } = await supabase!
         .from('profiles')
@@ -50,6 +41,15 @@ export default function Settings() {
     }, 500);
     return () => clearTimeout(timer);
   }, [username, profile?.username]);
+
+  if (!user) {
+    return (
+      <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
+        <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
+        <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
+      </div>
+    );
+  }
 
   async function handleSaveUsername(e: React.FormEvent) {
     e.preventDefault();
@@ -175,8 +175,8 @@ export default function Settings() {
                       setAvatarUrl(publicUrl);
                       setAvatarMsg('头像已更新');
                     }
-                  } catch (err: any) {
-                    setAvatarMsg('图片处理失败: ' + (err.message || ''));
+                  } catch (err: unknown) {
+                    setAvatarMsg('图片处理失败: ' + ((err as Error).message || ''));
                   }
                   setAvatarUploading(false);
                 }}

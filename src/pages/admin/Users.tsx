@@ -5,9 +5,17 @@ import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
 import Avatar from '../../components/ui/Avatar';
 
+interface AdminUser {
+  id: string;
+  username: string;
+  avatar_url: string;
+  bio: string | null;
+  created_at: string;
+}
+
 export default function AdminUsers() {
   const { startImpersonation } = useAuth();
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -24,7 +32,7 @@ export default function AdminUsers() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { setTimeout(() => load(), 0); }, []);
 
   async function handleSave(id: string) {
     setMsg('');
@@ -32,7 +40,7 @@ export default function AdminUsers() {
       await adminUpdateUser(id, editName.trim(), editBio.trim());
       setEditing(null);
       load();
-    } catch (err: any) { setMsg(err.message); }
+    } catch (err: unknown) { setMsg((err as Error).message); }
   }
 
   async function handleDelete(id: string, name: string) {
@@ -66,7 +74,7 @@ export default function AdminUsers() {
               setMsg('');
               if (!newName.trim()) { setMsg('请输入用户名'); return; }
               try { await adminCreateVirtualUser(newName.trim(), newBio.trim()); setNewName(''); setNewBio(''); setShowCreate(false); load(); }
-              catch (err: any) { setMsg(err.message); }
+              catch (err: unknown) { setMsg((err as Error).message); }
             }} className="px-4 py-1.5 rounded text-sm font-medium text-white bg-[var(--color-success)] border-none cursor-pointer shrink-0">创建</button>
             {msg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{msg}</span>}
           </div>

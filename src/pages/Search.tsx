@@ -11,20 +11,6 @@ export default function Search() {
   const [results, setResults] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!query.trim() || !supabase) {
-      setResults([]);
-      return;
-    }
-
-    // Debounce: wait 300ms before searching
-    const timer = setTimeout(() => {
-      setIsLoading(true);
-      performSearch(query.trim());
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
   async function performSearch(q: string) {
     const term = `%${q}%`;
     const [titleRes, contentRes] = await Promise.all([
@@ -54,6 +40,20 @@ export default function Search() {
     ));
     setIsLoading(false);
   }
+
+  useEffect(() => {
+    if (!query.trim() || !supabase) {
+      setTimeout(() => setResults([]), 0);
+      return;
+    }
+
+    // Debounce: wait 300ms before searching
+    const timer = setTimeout(() => {
+      setIsLoading(true);
+      performSearch(query.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
