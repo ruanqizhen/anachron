@@ -104,6 +104,19 @@ export interface Notification {
   threads?: Thread;
 }
 
+export interface Report {
+  id: string;
+  reporter_id: string;
+  target_type: 'thread' | 'post';
+  target_id: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  created_at: string;
+  // Joined via RPC
+  reporter_username?: string;
+  target_content?: string;
+}
+
 // ─── Message Priority ───
 export type MessagePriority = 'critical' | 'warning' | 'milestone' | 'info';
 

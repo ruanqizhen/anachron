@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2, ImagePlus } from 'lucide-react';
+import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2, ImagePlus, AlertTriangle } from 'lucide-react';
 import type { Post } from '../../lib/types';
 import { getDisplayName, getAuthorLink } from '../../lib/types';
 import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../../lib/api';
@@ -15,6 +15,7 @@ import Badge from '../ui/Badge';
 import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import EditDialog from './EditDialog';
+import ReportDialog from '../ui/ReportDialog';
 import { useMentions } from '../../hooks/useMentions';
 import { supabase } from '../../lib/supabase';
 
@@ -196,6 +197,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
     }
   }, [likedIds, post.id, liked]);
   const [showEdit, setShowEdit] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_${post.id}`) || '');
@@ -278,25 +280,25 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   </span>
                 )}
               </div>
-              {canEdit && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowMenu(!showMenu)}
-                    className="p-0.5 rounded-full hover:bg-white/50 transition-colors cursor-pointer border-none bg-transparent"
-                  >
-                    <MoreHorizontal size={12} style={{ color: 'var(--color-text-muted)' }} />
-                  </button>
-                  {showMenu && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                      <div
-                        className="absolute right-0 top-full mt-1 w-24 rounded-lg z-20 overflow-hidden"
-                        style={{
-                          backgroundColor: 'var(--color-card-bg)',
-                          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                          border: '1px solid var(--color-border)',
-                        }}
-                      >
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-0.5 rounded-full hover:bg-white/50 transition-colors cursor-pointer border-none bg-transparent"
+                >
+                  <MoreHorizontal size={12} style={{ color: 'var(--color-text-muted)' }} />
+                </button>
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                    <div
+                      className="absolute right-0 top-full mt-1 w-24 rounded-lg z-20 overflow-hidden"
+                      style={{
+                        backgroundColor: 'var(--color-card-bg)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      {canEdit && (
                         <button
                           onClick={() => {
                             setShowMenu(false);
@@ -308,6 +310,8 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                         >
                           <Pencil size={11} /> 编辑
                         </button>
+                      )}
+                      {canEdit && (
                         <button
                           onClick={async () => {
                             setShowMenu(false);
@@ -325,11 +329,23 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                         >
                           <Trash2 size={11} /> {isDeleting ? '...' : '删除'}
                         </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+                      )}
+                      {!isOwn && (
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowReport(true);
+                          }}
+                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                          style={{ color: 'var(--color-danger)' }}
+                        >
+                          <AlertTriangle size={11} /> 举报
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <MarkdownRenderer content={post.content} className="text-sm" />
           </div>
@@ -400,6 +416,14 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
             onPostUpdated();
           }}
           onClose={() => setShowEdit(false)}
+        />
+      )}
+      {showReport && user && (
+        <ReportDialog
+          targetType="post"
+          targetId={post.id}
+          reporterId={user.id}
+          onClose={() => setShowReport(false)}
         />
       )}
       {showAdminEdit && (

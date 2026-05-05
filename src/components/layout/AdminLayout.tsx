@@ -6,6 +6,7 @@ const links = [
   { to: '/admin/characters', icon: Bot, label: 'AI 角色' },
   { to: '/admin/users', icon: Users, label: '注册用户' },
   { to: '/admin/moderation', icon: MessageSquare, label: '内容审核' },
+  { to: '/admin/reports', icon: Shield, label: '举报处理' },
   { to: '/admin/ip-risks', icon: Globe, label: '风险 IP/用户' },
   { to: '/admin/boards', icon: LayoutGrid, label: '版块管理' },
   { to: '/admin/tasks', icon: ListTodo, label: '任务队列' },

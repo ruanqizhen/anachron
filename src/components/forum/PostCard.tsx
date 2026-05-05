@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
 import type { Thread, Board } from '../../lib/types';
@@ -12,6 +12,7 @@ import MarkdownRenderer from '../ui/MarkdownRenderer';
 import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
+import ReportDialog from '../ui/ReportDialog';
 import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards } from '../../lib/api';
 
 interface PostCardProps {
@@ -42,6 +43,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showAdminEdit, setShowAdminEdit] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
 
@@ -76,31 +78,39 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
       }}
     >
       {/* Menu button */}
-      {canEdit && (
-        <div className="absolute top-3 right-3 z-10">
-          <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded-full hover:bg-[var(--color-page-bg)] cursor-pointer border-none bg-transparent">
-            <MoreHorizontal size={18} style={{ color: 'var(--color-text-muted)' }} />
-          </button>
-          {showMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
-                style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--color-border)' }}>
-                <button onClick={() => { setShowMenu(false); if (admin && !isOwn) { getBoards().then(setBoards); setShowAdminEdit(true); } else setShowEdit(true); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-primary)' }}>
-                  <Pencil size={14} /> 编辑
+      <div className="absolute top-3 right-3 z-10">
+        <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded-full hover:bg-[var(--color-page-bg)] cursor-pointer border-none bg-transparent">
+          <MoreHorizontal size={18} style={{ color: 'var(--color-text-muted)' }} />
+        </button>
+        {showMenu && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
+              style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--color-border)' }}>
+              {canEdit && (
+                <>
+                  <button onClick={() => { setShowMenu(false); if (admin && !isOwn) { getBoards().then(setBoards); setShowAdminEdit(true); } else setShowEdit(true); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-primary)' }}>
+                    <Pencil size={14} /> 编辑
+                  </button>
+                  <button onClick={async () => { setShowMenu(false);
+                    if (admin && !isOwn) { await adminSoftDeleteThread(thread.id); setThread({...thread, deleted_at: new Date().toISOString()}); }
+                    else { await softDeleteThread(thread.id); setThread({...thread, deleted_at: new Date().toISOString()}); }
+                  }} className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
+                    <Trash2 size={14} /> 删除
+                  </button>
+                </>
+              )}
+              {user && !isOwn && (
+                <button onClick={() => { setShowMenu(false); setShowReport(true); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
+                  <AlertTriangle size={14} /> 举报
                 </button>
-                <button onClick={async () => { setShowMenu(false);
-                  if (admin && !isOwn) { await adminSoftDeleteThread(thread.id); setThread({...thread, deleted_at: new Date().toISOString()}); }
-                  else { await softDeleteThread(thread.id); setThread({...thread, deleted_at: new Date().toISOString()}); }
-                }} className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
-                  <Trash2 size={14} /> 删除
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+              )}
+            </div>
+          </>
+        )}
+      </div>
       {/* Header */}
       <div className="flex items-start gap-3 px-4 pt-4">
         <Link to={author ? `/u/${author.username}` : '#'}>
@@ -221,6 +231,14 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
             setThread({...thread, title: data.title || thread.title, content: data.content, edited_at: new Date().toISOString()});
           }}
           onClose={() => setShowAdminEdit(false)} />
+      )}
+      {showReport && user && (
+        <ReportDialog
+          targetType="thread"
+          targetId={thread.id}
+          reporterId={user.id}
+          onClose={() => setShowReport(false)}
+        />
       )}
     </article>
   );

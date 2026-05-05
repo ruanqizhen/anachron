@@ -714,3 +714,33 @@ export async function adminGetDailyStats(days: number = 7) {
   if (error) throw error;
   return data || [];
 }
+
+// ─── Reporting ───
+export async function createReport(params: {
+  targetType: 'thread' | 'post';
+  targetId: string;
+  reason: string;
+  reporterId: string;
+}): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.from('reports').insert({
+    target_type: params.targetType,
+    target_id: params.targetId,
+    reason: params.reason,
+    reporter_id: params.reporterId,
+  });
+  if (error) throw error;
+}
+
+export async function adminGetPendingReports() {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_pending_reports');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function adminResolveReport(reportId: string, status: 'resolved' | 'dismissed'): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_resolve_report', { p_report_id: reportId, p_status: status });
+  if (error) throw error;
+}

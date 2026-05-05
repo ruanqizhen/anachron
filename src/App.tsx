@@ -24,6 +24,7 @@ const AdminTasks = lazy(() => import('./pages/admin/Tasks'));
 const AdminStats = lazy(() => import('./pages/admin/Stats'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 const AdminBoards = lazy(() => import('./pages/admin/Boards'));
+const Reports = lazy(() => import('./pages/admin/Reports'));
 
 const LoadingFallback = () => (
   <div className="flex justify-center items-center h-screen" style={{ color: 'var(--color-text-muted)' }}>
@@ -63,6 +64,7 @@ export default function App() {
                       <Route path="stats" element={<AdminStats />} />
                       <Route path="users" element={<AdminUsers />} />
                       <Route path="boards" element={<AdminBoards />} />
+                      <Route path="reports" element={<Reports />} />
                     </Route>
                     <Route path="/search" element={<Search />} />
                     <Route path="/settings" element={<Settings />} />
