@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getBoardBySlug, getThreadsByBoard } from '../lib/api';
 import type { Board as BoardType, Thread } from '../lib/types';
 import PostCard from '../components/forum/PostCard';

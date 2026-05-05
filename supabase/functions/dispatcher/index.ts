@@ -61,9 +61,6 @@ Deno.serve(async (req: Request) => {
       });
     }
     const task = tasks[0];
-    const triggerPostContent = task.trigger_post_content || '';
-
-    const task = tasks[0];
     await supabase.from('ai_task_queue').update({ status: 'processing' }).eq('id', task.id);
 
     // 2. Get context: trigger post + parent chain + thread
