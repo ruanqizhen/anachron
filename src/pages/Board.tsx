@@ -1,62 +1,32 @@
 import { useParams, Link } from 'react-router-dom';
 import { getBoardBySlug, getThreadsByBoard } from '../lib/api';
-import type { Board as BoardType, Thread } from '../lib/types';
-import PostCard from '../components/forum/PostCard';
+import type { Board as BoardType } from '../lib/types';
+import ThreadFeed from '../components/forum/ThreadFeed';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import { PenSquare } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function Board() {
   const { boardSlug } = useParams<{ boardSlug: string }>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [board, setBoard] = useState<BoardType | null>(null);
-  const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  const loaderRef = useRef<HTMLDivElement>(null);
-
-  const loadMore = useCallback(async () => {
-    if (!board || !hasMore) return;
-    const more = await getThreadsByBoard(board.id, 20, threads.length);
-    if (more.length > 0) {
-      setThreads(prev => [...prev, ...more]);
-      setHasMore(more.length >= 20);
-    } else {
-      setHasMore(false);
-    }
-  }, [board, hasMore, threads.length]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const el = loaderRef.current;
-    if (!el || !hasMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { threshold: 0.1 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, loadMore]);
-
-  useEffect(() => {
-    async function loadData() {
-      if (!boardSlug) return;
-      setIsLoading(true);
-      const fetchedBoard = await getBoardBySlug(boardSlug);
-      setBoard(fetchedBoard);
-      
-      if (fetchedBoard) {
-        const fetchedThreads = await getThreadsByBoard(fetchedBoard.id, 20, 0);
-        setThreads(fetchedThreads);
-        setHasMore(fetchedThreads.length >= 20);
-      }
-      setIsLoading(false);
-    }
-    loadData();
+    if (!boardSlug) return;
+    setIsLoading(true);
+    getBoardBySlug(boardSlug).then(b => { setBoard(b); setIsLoading(false); });
   }, [boardSlug]);
+
+  const fetchThreads = useCallback((limit: number, offset: number) => {
+    if (!board) return Promise.resolve([]);
+    return getThreadsByBoard(board.id, limit, offset);
+  }, [board]);
 
   if (isLoading) {
     return (
-      <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
+      <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
         加载中...
       </div>
     );
@@ -64,7 +34,7 @@ export default function Board() {
 
   if (!board) {
     return (
-      <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
         <div className="text-center py-20">
           <h1 className="text-2xl font-bold mb-2">版块不存在</h1>
           <Link to="/" style={{ color: 'var(--color-primary)' }}>返回首页</Link>
@@ -75,14 +45,7 @@ export default function Board() {
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
-      {/* Board header */}
-      <div
-        className="rounded-lg px-6 py-5 mb-6"
-        style={{
-          backgroundColor: 'var(--color-card-bg)',
-          boxShadow: 'var(--shadow-card)',
-        }}
-      >
+      <div className="rounded-lg px-6 py-5 mb-6" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <span className="text-3xl">{board.icon}</span>
@@ -93,53 +56,24 @@ export default function Board() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
+          <button onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer border-none transition-colors"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary)'}
-          >
-            <PenSquare size={16} />
-            发帖
+            style={{ backgroundColor: 'var(--color-primary)' }}>
+            <PenSquare size={16} /> 发帖
           </button>
         </div>
       </div>
 
-      {/* Thread list */}
-      <div className="flex flex-col gap-4">
-        {threads.length === 0 ? (
-          <div className="text-center py-16 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            暂无帖子，成为第一个发帖的人吧！
-          </div>
-        ) : (
-          threads.map((thread) => (
-            <PostCard key={thread.id} thread={thread} />
-          ))
-        )}
-        {hasMore && (
-          <div ref={loaderRef} className="text-center py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            加载更多...
-          </div>
-        )}
-      </div>
+      <ThreadFeed fetchThreads={fetchThreads} refreshKey={refreshKey}
+        emptyMessage="暂无帖子，成为第一个发帖的人吧！" />
 
       {isCreateModalOpen && (
         <CreatePostForm
           onClose={() => setIsCreateModalOpen(false)}
-          onCreated={async () => {
-            if (boardSlug) {
-              const fetchedBoard = await getBoardBySlug(boardSlug);
-              if (fetchedBoard) {
-                const fetchedThreads = await getThreadsByBoard(fetchedBoard.id);
-                setThreads(fetchedThreads);
-              }
-            }
-          }}
+          onCreated={() => setRefreshKey(k => k + 1)}
           defaultBoardSlug={board.slug}
         />
       )}
     </div>
   );
 }
-

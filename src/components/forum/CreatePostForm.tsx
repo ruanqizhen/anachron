@@ -7,7 +7,7 @@ import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
 import { useMentions } from '../../hooks/useMentions';
 import type { Board, Profile } from '../../lib/types';
-import { supabase } from '../../lib/supabase';
+import { useImageUpload } from '../../lib/useImageUpload';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -159,56 +159,19 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     // Don't auto-submit - user still needs to fill form and verify
   }
 
-  async function compressImage(file: File): Promise<Blob> {
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); });
-    const maxDim = 1024;
-    const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return new Promise((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.8));
-  }
+  const { handlePaste, handleFileChange } = useImageUpload({
+    userId: user?.id,
+    onInsert: (md) => {
+      setContent(prev => prev.includes('![Uploading image...]()')
+        ? prev.replace('![Uploading image...]()', md)
+        : prev + md);
+    },
+    onPlaceholder: () => '\n![Uploading image...]()\n',
+    onError: () => setError('图片上传失败'),
+  });
 
-  async function uploadImage(file: File) {
-    if (!supabase) return;
-    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.jpg`;
-    const filePath = `${user?.id || 'guest'}/${fileName}`;
-
-    try {
-      setContent(prev => prev + '\n![Uploading image...]()\n');
-      const compressed = await compressImage(file);
-      const { error: uploadError } = await supabase.storage.from('post-images').upload(filePath, compressed, { contentType: 'image/jpeg' });
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(filePath);
-      setContent(prev => prev.replace('![Uploading image...]()', `![image](${publicUrl})`));
-    } catch (err) {
-      console.error('Upload error:', err);
-      setContent(prev => prev.replace('\n![Uploading image...]()\n', ''));
-      setError('图片上传失败');
-    }
-  }
-
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) uploadImage(file);
-  }
-
-  function handlePaste(e: React.ClipboardEvent) {
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          e.preventDefault();
-          uploadImage(file);
-          break;
-        }
-      }
-    }
-  }
+  // Custom paste wrapper for React ClipboardEvent
+  function onPaste(e: React.ClipboardEvent) { handlePaste(e as unknown as ClipboardEvent); }
 
   function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value;
@@ -317,7 +280,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
                   value={content}
                   onChange={handleContentChange}
                   onKeyDown={handleKeyDown}
-                  onPaste={handlePaste}
+                  onPaste={onPaste}
                   className="w-full flex-1 min-h-[200px] p-3 outline-none text-sm resize-none bg-transparent"
                   style={{ color: 'var(--color-text-primary)' }}
                 />
@@ -337,7 +300,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
                     ref={fileInputRef}
                     className="hidden"
                     accept="image/*"
-                    onChange={handleImageUpload}
+                    onChange={handleFileChange}
                   />
                   <span className="text-xs text-[var(--color-text-muted)] ml-auto">支持拖拽或剪贴板粘贴图片</span>
                 </div>
