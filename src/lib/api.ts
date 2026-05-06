@@ -206,6 +206,7 @@ export async function createThread(params: {
   authorId?: string;
   guestId?: string;
   turnstileToken?: string;
+  createdAt?: string;
 }): Promise<Thread> {
   // Try Edge Function first (verifies Turnstile server-side)
   if (supabase) {
@@ -217,6 +218,7 @@ export async function createThread(params: {
       author_id: params.authorId || undefined,
       guest_id: params.guestId || undefined,
       turnstile_token: params.turnstileToken || '',
+      created_at: params.createdAt || undefined,
     });
     if (result?.thread) return result.thread as Thread;
   }
@@ -245,6 +247,7 @@ export async function createPost(params: {
   guestId?: string;
   parentPostId?: string;
   turnstileToken?: string;
+  createdAt?: string;
 }): Promise<Post> {
   // Try Edge Function first
   if (supabase) {
@@ -256,6 +259,7 @@ export async function createPost(params: {
       guest_id: params.guestId || undefined,
       parent_post_id: params.parentPostId || undefined,
       turnstile_token: params.turnstileToken || '',
+      created_at: params.createdAt || undefined,
     });
     if (result?.post) return result.post as Post;
   }

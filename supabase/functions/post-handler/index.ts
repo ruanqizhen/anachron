@@ -202,6 +202,7 @@ Deno.serve(async (req: Request) => {
       author_id?: string;
       guest_id?: string;
       parent_post_id?: string;
+      created_at?: string;
       turnstile_token: string;
     } = await req.json();
 
@@ -214,7 +215,7 @@ Deno.serve(async (req: Request) => {
           const { data, error } = await supabase.from('threads').insert({
             board_id: payload.board_id, title: payload.title,
             content: payload.content, author_id: payload.author_id,
-            status: 'published',
+            status: 'published', created_at: payload.created_at || undefined,
           }).select('*').single();
           if (error) throw new Error(error.message);
           return ok({ ok: true, thread: data, status: 'published' });
@@ -225,6 +226,7 @@ Deno.serve(async (req: Request) => {
             author_id: payload.author_id, guest_id: payload.guest_id || null,
             parent_post_id: payload.parent_post_id || null,
             status: 'published', is_ai_post: true,
+            created_at: payload.created_at || undefined,
           }).select('*').single();
           if (error) throw new Error(error.message);
           return ok({ ok: true, post: data, status: 'published' });
@@ -281,6 +283,7 @@ Deno.serve(async (req: Request) => {
           content: payload.content,
           author_id: payload.author_id || null,
           status,
+          created_at: payload.created_at || undefined,
         })
         .select('*').single();
       if (error) throw new Error(error.message);
@@ -297,6 +300,7 @@ Deno.serve(async (req: Request) => {
           guest_id: payload.guest_id || null,
           parent_post_id: payload.parent_post_id || null,
           status,
+          created_at: payload.created_at || undefined,
         })
         .select('*').single();
       if (error) throw new Error(error.message);

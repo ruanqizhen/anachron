@@ -30,7 +30,7 @@ function timeAgo(dateStr: string): string {
 }
 
 function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean }) {
-  const { user } = useAuth();
+  const { user, impersonating } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
@@ -41,6 +41,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
+  const [replyTime, setReplyTime] = useState('');
   const author = post.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
   const canEdit = isOwn || admin;
@@ -186,10 +187,16 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
       </article>
 
       {showReply && (
-        <div className="flex items-center gap-2 py-2">
-          <input
-            type="text"
-            placeholder={`回复 ${getDisplayName(post)}...`}
+        <div className="flex flex-col gap-1 py-2">
+          {impersonating && (
+            <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
+              className="px-2 py-1 rounded border outline-none text-xs bg-transparent w-48"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder={`回复 ${getDisplayName(post)}...`}
             value={replyText}
             onChange={e => setReplyText(e.target.value)}
             className="flex-1 py-1.5 px-3 rounded-full text-sm bg-transparent border outline-none"
@@ -205,6 +212,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
                   content: replyText.trim(),
                   authorId: user?.id,
                   parentPostId: post.id,
+                  createdAt: impersonating ? replyTime || undefined : undefined,
                 });
                 setReplyText('');
                 setShowReply(false);
@@ -218,6 +226,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
           >
             {replying ? '...' : '发送'}
           </button>
+          </div>
         </div>
       )}
 
@@ -263,6 +272,7 @@ export default function ThreadPage() {
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [replyTime, setReplyTime] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -357,6 +367,7 @@ export default function ThreadPage() {
         content: replyText.trim(),
         authorId: impersonating?.profileId || user?.id,
         guestId: gid,
+        createdAt: impersonating ? replyTime || undefined : undefined,
       });
       setReplyText('');
 
@@ -578,6 +589,14 @@ export default function ThreadPage() {
           </div>
         )}
 
+        {impersonating && (
+          <div className="flex items-center gap-2 px-6 py-2">
+            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>回帖时间</span>
+            <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
+              className="px-2 py-1 rounded border outline-none text-xs bg-transparent"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+          </div>
+        )}
         {!thread.is_locked && (
         <form onSubmit={handleReply} className="flex items-start gap-3 py-4">
           <Avatar name={profile?.username || guest?.username || '你'} size={36} />

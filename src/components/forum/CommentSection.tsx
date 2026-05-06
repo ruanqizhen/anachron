@@ -187,7 +187,7 @@ function timeAgo(dateStr: string): string {
 }
 
 function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post: Post; isNested?: boolean; likedIds: Set<string>; onPostUpdated: () => void }) {
-  const { user } = useAuth();
+  const { user, impersonating } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
@@ -202,6 +202,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_${post.id}`) || '');
   const [replying, setReplying] = useState(false);
+  const [replyTime, setReplyTime] = useState('');
 
   useEffect(() => {
     localStorage.setItem(`draft_reply_${post.id}`, replyText);
@@ -377,6 +378,11 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
 
       {showReply && (
         <div className="flex items-start gap-2 mt-2 mb-1" style={{ paddingLeft: isNested ? 0 : 0 }}>
+          {impersonating && (
+            <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
+              className="px-2 py-1 rounded border outline-none text-xs bg-transparent w-48 mb-1"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+          )}
           <CommentInput
             value={replyText}
             onChange={setReplyText}
@@ -391,6 +397,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   content: replyText.trim(),
                   authorId: user?.id,
                   parentPostId: post.id,
+                  createdAt: impersonating ? replyTime || undefined : undefined,
                 });
                 setReplyText('');
                 localStorage.removeItem(`draft_reply_${post.id}`);
@@ -445,6 +452,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [replyTime, setReplyTime] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -481,6 +489,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       content: replyText.trim(),
       authorId: impersonating?.profileId || user?.id,
       guestId: gid,
+      createdAt: impersonating ? replyTime || undefined : undefined,
     });
     setReplyText('');
 
@@ -558,6 +567,14 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
         </div>
       )}
 
+      {impersonating && (
+        <div className="flex items-center gap-2 px-4 pt-2">
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>回复时间</span>
+          <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
+            className="px-2 py-1 rounded border outline-none text-xs bg-transparent"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+        </div>
+      )}
       <div className="flex items-start gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
         <Avatar name={user ? '你' : '游客'} size={32} />
         <div className="flex-1 flex flex-col">

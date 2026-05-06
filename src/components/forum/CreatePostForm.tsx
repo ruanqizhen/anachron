@@ -26,6 +26,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(guest?.username || null);
+  const [customTime, setCustomTime] = useState('');
+  const isImpersonating = !!impersonating;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -111,6 +113,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         authorId: impersonating?.profileId || user?.id,
         guestId,
         turnstileToken: token,
+        createdAt: customTime || undefined,
       });
 
       // Notify @mentioned users
@@ -359,6 +362,20 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
             {error && (
               <div className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: '#FDEDED', color: 'var(--color-danger)' }}>
                 {error}
+              </div>
+            )}
+
+            {isImpersonating && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>发帖时间</label>
+                <input
+                  type="datetime-local"
+                  value={customTime}
+                  onChange={e => setCustomTime(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg border outline-none text-sm bg-transparent"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+                />
+                {!customTime && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>不填则使用当前时间</span>}
               </div>
             )}
 
