@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2, ImagePlus, AlertTriangle } from 'lucide-react';
 import type { Post } from '../../lib/types';
@@ -395,7 +395,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                 await createPost({
                   threadId: post.thread_id,
                   content: replyText.trim(),
-                  authorId: user?.id,
+                  authorId: impersonating?.profileId || user?.id,
                   parentPostId: post.id,
                   createdAt: impersonating ? replyTime || undefined : undefined,
                 });
@@ -547,19 +547,20 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     );
   }
 
+  // Recursively render a post and all descendants
+function renderChildren(p: Post, depth: number): ReactNode {
+  const descendants = childPosts.filter(cp => cp.parent_post_id === p.id);
   return (
+    <div key={p.id}>
+      <CommentItem post={p} likedIds={likedIds} onPostUpdated={loadPosts} isNested={depth > 0} />
+      {descendants.map(d => renderChildren(d, depth + 1))}
+    </div>
+  );
+}
+
+return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
-      {topLevelPosts.map((post) => (
-        <div key={post.id}>
-          <CommentItem post={post} likedIds={likedIds} onPostUpdated={loadPosts} />
-          {childPosts
-            .filter(cp => cp.parent_post_id === post.id)
-            .map(cp => (
-              <CommentItem key={cp.id} post={cp} isNested likedIds={likedIds} onPostUpdated={loadPosts} />
-            ))
-          }
-        </div>
-      ))}
+      {topLevelPosts.map(post => renderChildren(post, 0))}
 
       {posts.length === 0 && (
         <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>

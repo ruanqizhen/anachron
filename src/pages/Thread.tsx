@@ -210,7 +210,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
                 await createPost({
                   threadId: post.thread_id,
                   content: replyText.trim(),
-                  authorId: user?.id,
+                  authorId: impersonating?.profileId || user?.id,
                   parentPostId: post.id,
                   createdAt: impersonating ? replyTime || undefined : undefined,
                 });
