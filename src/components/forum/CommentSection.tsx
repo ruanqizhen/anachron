@@ -32,15 +32,28 @@ function CommentInput({
     textareaRef, handleMentionChange, insertMention
   } = useMentions();
 
+  async function compressImage(file: File): Promise<Blob> {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); });
+    const maxDim = 1024;
+    const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.8));
+  }
+
   async function uploadImage(file: File) {
     if (!supabase) return;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.jpg`;
     const filePath = `${user?.id || 'guest'}/${fileName}`;
 
     try {
       onChange(value + '\n![Uploading image...]()\n');
-      const { error: uploadError } = await supabase.storage.from('post-images').upload(filePath, file);
+      const compressed = await compressImage(file);
+      const { error: uploadError } = await supabase.storage.from('post-images').upload(filePath, compressed, { contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(filePath);
       onChange((value + '\n![Uploading image...]()\n').replace('![Uploading image...]()', `![image](${publicUrl})`));
