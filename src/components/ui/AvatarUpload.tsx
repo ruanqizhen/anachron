@@ -7,10 +7,11 @@ interface AvatarUploadProps {
   currentUrl?: string | null;
   name: string;
   userId: string;
+  adminMode?: boolean;
   onUrlChange?: (url: string) => void;
 }
 
-export default function AvatarUpload({ currentUrl, name, userId, onUrlChange }: AvatarUploadProps) {
+export default function AvatarUpload({ currentUrl, name, userId, adminMode, onUrlChange }: AvatarUploadProps) {
   const [url, setUrl] = useState(currentUrl || '');
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -25,7 +26,11 @@ export default function AvatarUpload({ currentUrl, name, userId, onUrlChange }: 
       if (!supabase) return;
       await supabase.storage.from('avatars').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
+      if (adminMode) {
+        await supabase.rpc('admin_update_avatar', { p_id: userId, p_avatar_url: publicUrl });
+      } else {
+        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
+      }
       setUrl(publicUrl);
       onUrlChange?.(publicUrl);
       setMsg('头像已更新');

@@ -19,6 +19,7 @@ export default function CharacterEdit() {
   const [comedy, setComedy] = useState('');
   const [style, setStyle] = useState('');
   const [active, setActive] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState('');
 
   useEffect(() => {
     adminGetAllCharacters().then((list) => {
@@ -30,6 +31,7 @@ export default function CharacterEdit() {
         setComedy(found.comedy_notes || '');
         setStyle(found.writing_style || '');
         setActive(found.is_active);
+        setAvatarUrl((found as any).avatar_url || '');
       }
       setIsLoading(false);
     });
@@ -101,9 +103,11 @@ export default function CharacterEdit() {
               {/* Avatar */}
               <div className="mb-2">
                 <AvatarUpload
-                  currentUrl={(char as any).avatar_url}
+                  currentUrl={avatarUrl}
                   name={(char as any).username || '?'}
                   userId={char.id}
+                  adminMode
+                  onUrlChange={setAvatarUrl}
                 />
               </div>
 

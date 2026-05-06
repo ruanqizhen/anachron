@@ -257,6 +257,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Admin update profile avatar
+CREATE OR REPLACE FUNCTION admin_update_avatar(p_id UUID, p_avatar_url TEXT)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE profiles SET avatar_url = p_avatar_url WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Admin delete a user
 CREATE OR REPLACE FUNCTION admin_delete_user(p_id UUID)
 RETURNS void AS $$
