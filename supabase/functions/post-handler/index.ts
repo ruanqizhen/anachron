@@ -222,7 +222,8 @@ Deno.serve(async (req: Request) => {
         if (payload.action === 'create_post') {
           const { data, error } = await supabase.from('posts').insert({
             thread_id: payload.thread_id, content: payload.content,
-            author_id: payload.author_id, parent_post_id: payload.parent_post_id || null,
+            author_id: payload.author_id, guest_id: payload.guest_id || null,
+            parent_post_id: payload.parent_post_id || null,
             status: 'published', is_ai_post: true,
           }).select('*').single();
           if (error) throw new Error(error.message);
@@ -293,6 +294,7 @@ Deno.serve(async (req: Request) => {
           thread_id: payload.thread_id,
           content: payload.content,
           author_id: payload.author_id || null,
+          guest_id: payload.guest_id || null,
           parent_post_id: payload.parent_post_id || null,
           status,
         })

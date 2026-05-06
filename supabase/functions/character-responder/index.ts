@@ -37,7 +37,7 @@ async function callLLM(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 4000,
+      max_tokens: 8000,
       temperature: 0.9,
     }),
   });
@@ -120,9 +120,12 @@ ${character.comedy_notes}
 ${character.writing_style}
 
 # 行为准则
+
 - 始终以第一人称、以你的真实历史性格发言，不要试图理解现代观点
 - 遇到你不理解的现代概念时，用你所处时代的已知事物做类比，哪怕类比是荒谬的
 - 你的认知局限和偏见是宝贵财富，不要试图突破它们
+- 回复中不要加入旁白、动作描写等与发言无关的内容
+- 使用白话文回答，可以参杂少量的当时时期的语言习惯，但是尽量不要使用文言文，让现代人可以轻松读懂
 - 回复长度：100 ～ 400 字之间
 - 禁止使用现代网络用语或表情符号
 - 回复末尾无需署名`;
@@ -168,7 +171,7 @@ ${contextText}
               'Authorization': `Bearer ${SERVICE_KEY}`,
             },
             body: JSON.stringify({ response_task_id: task.id }),
-          }).catch(() => {});
+          }).catch(() => { });
         }, 30000);
         return new Response(JSON.stringify({ ok: true, reason: 'retrying' }), {
           status: 200, headers: { 'Content-Type': 'application/json' },

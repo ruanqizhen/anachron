@@ -274,11 +274,6 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                 </Link>
                 {author?.is_ai_character && <Badge type="verified" />}
                 {author && !author.is_ai_character && <KarmaBadge karma={author.karma} />}
-                {author?.is_ai_character && (
-                  <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
-                    东汉末年
-                  </span>
-                )}
               </div>
               <div className="relative">
                 <button
@@ -385,7 +380,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
           <CommentInput
             value={replyText}
             onChange={setReplyText}
-            placeholder={`回复 ${getDisplayName(post)}...`}
+            placeholder={`回复 ${getDisplayName(post)}，至少 2 个字...`}
             isSubmitting={replying}
             onSubmit={async () => {
               if (!replyText.trim() || replying) return;
@@ -503,6 +498,8 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       }
     }
 
+    // Enrich new post with local guest info for immediate display
+    if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
     setPosts(prev => [...prev, newPost as Post]);
     localStorage.removeItem(`draft_reply_thread_${threadId}`);
   }
@@ -570,7 +567,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
           <CommentInput
             value={replyText}
             onChange={setReplyText}
-            placeholder="写评论..."
+            placeholder="写回复... 至少 2 个字"
             onSubmit={handleReply}
             isSubmitting={isSubmitting}
           />

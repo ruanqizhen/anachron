@@ -78,8 +78,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
       setError('请填写标题和正文');
       return;
     }
-    if (title.trim().length < 5) {
-      setError('标题至少 5 个字符');
+    if (title.trim().length < 2) {
+      setError('标题至少 2 个字符');
       return;
     }
     if (content.trim().length < 20) {
@@ -280,7 +280,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>标题</label>
               <input
                 type="text"
-                placeholder="一句话概括主题（5-100字）..."
+                placeholder="一句话概括主题... 至少 2 个字，最多 100 字"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={100}
@@ -297,7 +297,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
               <div className="relative flex-1 flex flex-col rounded-lg border focus-within:border-[var(--color-primary)] transition-colors" style={{ borderColor: 'var(--color-border)' }}>
                 <textarea
                   ref={textareaRef}
-                  placeholder="分享你的想法、问题或见解... 试试输入 @ 召唤名流，或直接 Ctrl+V 粘贴图片"
+                  placeholder="分享你的想法、问题或见解... 至少 20 个字，支持 Markdown 和 @ 召唤"
                   value={content}
                   onChange={handleContentChange}
                   onKeyDown={handleKeyDown}

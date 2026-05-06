@@ -332,8 +332,8 @@ export default function ThreadPage() {
       setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
       return;
     }
-    if (replyText.trim().length < 5) {
-      setError('评论至少 5 个字符');
+    if (replyText.trim().length < 2) {
+      setError('回复至少 2 个字符');
       return;
     }
 
@@ -375,7 +375,8 @@ export default function ThreadPage() {
         }
       }
 
-      // Append new post immediately instead of reloading all
+      // Append new post with local guest info for immediate display
+      if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
       setPosts(prev => [...prev, newPost as Post]);
       await loadThread();
     } catch (err: unknown) {
@@ -583,7 +584,7 @@ export default function ThreadPage() {
           <div className="flex-1">
             <textarea
               ref={replyInputRef}
-              placeholder="写评论... 支持 Markdown 格式"
+              placeholder="写回复... 至少 2 个字，支持 Markdown"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               rows={3}
