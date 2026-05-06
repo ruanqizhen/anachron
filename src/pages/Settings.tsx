@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Lock, ArrowLeft } from 'lucide-react';
+import { User, Lock, FileText, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import AvatarUpload from '../components/ui/AvatarUpload';
@@ -15,8 +15,12 @@ export default function Settings() {
 
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
+  const [newPw2, setNewPw2] = useState('');
   const [pwMsg, setPwMsg] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
+  const [bio, setBio] = useState(profile?.bio || '');
+  const [bioMsg, setBioMsg] = useState('');
+  const [bioSaving, setBioSaving] = useState(false);
 
   if (!user) {
     return (
@@ -77,6 +81,7 @@ export default function Settings() {
     setPwMsg('');
     if (!currentPw || !newPw) { setPwMsg('请填写当前密码和新密码'); return; }
     if (newPw.length < 6) { setPwMsg('新密码至少 6 位'); return; }
+    if (newPw !== newPw2) { setPwMsg('两次输入的密码不一致'); return; }
 
     setPwSaving(true);
     const { error: signInErr } = await supabase!.auth.signInWithPassword({
@@ -96,6 +101,7 @@ export default function Settings() {
       setPwMsg('密码已更新');
       setCurrentPw('');
       setNewPw('');
+      setNewPw2('');
     }
   }
 
@@ -162,6 +168,39 @@ export default function Settings() {
         </form>
       </div>
 
+      {/* Bio */}
+      <div className="rounded-lg p-5 mb-4" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
+        <h2 className="flex items-center gap-2 text-base font-bold mb-4">
+          <FileText size={18} /> 自我介绍
+        </h2>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setBioMsg('');
+          setBioSaving(true);
+          const { error } = await supabase!.from('profiles').update({ bio: bio.trim() }).eq('id', uid);
+          setBioSaving(false);
+          if (error) setBioMsg('保存失败: ' + error.message);
+          else setBioMsg('已更新');
+        }} className="flex flex-col gap-3">
+          <div>
+            <p className="text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>展示在个人主页，最多 300 字</p>
+            <textarea rows={4} value={bio} onChange={e => setBio(e.target.value)} maxLength={300} style={{
+              width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
+              outline: 'none', fontSize: 14, color: 'var(--color-text-primary)', backgroundColor: 'var(--color-card-bg)',
+              resize: 'none',
+            }} />
+          </div>
+          {bioMsg && (
+            <p className="text-xs m-0" style={{ color: bioMsg.includes('失败') ? 'var(--color-danger)' : 'var(--color-success)' }}>{bioMsg}</p>
+          )}
+          <button type="submit" disabled={bioSaving}
+            className="self-start px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer border-none disabled:opacity-50"
+            style={{ backgroundColor: 'var(--color-primary)' }}>
+            {bioSaving ? '保存中...' : '保存'}
+          </button>
+        </form>
+      </div>
+
       {/* Password */}
       <div className="rounded-lg p-5" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
         <h2 className="flex items-center gap-2 text-base font-bold mb-4">
@@ -175,6 +214,10 @@ export default function Settings() {
           <div>
             <label className="block text-sm font-medium mb-1">新密码</label>
             <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">重复新密码</label>
+            <input type="password" value={newPw2} onChange={e => setNewPw2(e.target.value)} style={inputStyle} />
           </div>
           {pwMsg && (
             <p className="text-xs m-0" style={{ color: pwMsg.includes('失败') || pwMsg.includes('错误') ? 'var(--color-danger)' : 'var(--color-success)' }}>
