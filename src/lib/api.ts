@@ -92,7 +92,6 @@ export async function getRecentThreads(limit: number = 20, offset: number = 0): 
     `)
     .is('deleted_at', null)
     .eq('status', 'published')
-    .gte('last_post_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
     .order('pin_level', { ascending: false })
     .order('last_post_at', { ascending: false })
     .limit(100);
