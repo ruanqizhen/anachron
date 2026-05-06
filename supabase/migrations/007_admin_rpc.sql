@@ -248,6 +248,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Toggle thread featured status
+CREATE OR REPLACE FUNCTION admin_toggle_featured(p_thread_id UUID, p_featured BOOLEAN)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE threads SET is_featured = p_featured WHERE id = p_thread_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Admin delete a user
 CREATE OR REPLACE FUNCTION admin_delete_user(p_id UUID)
 RETURNS void AS $$

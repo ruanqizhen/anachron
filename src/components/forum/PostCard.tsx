@@ -13,7 +13,7 @@ import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
-import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel } from '../../lib/api';
+import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel, toggleFeatured } from '../../lib/api';
 
 interface PostCardProps {
   thread: Thread;
@@ -136,6 +136,16 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
                   )}
                 </div>
               )}
+              {/* Featured toggle (admin only) */}
+              {admin && (
+                <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  <button onClick={async () => { setShowMenu(false); await toggleFeatured(thread.id, !thread.is_featured); setThread({...thread, is_featured: !thread.is_featured}); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]"
+                    style={{ color: thread.is_featured ? 'var(--color-text-muted)' : '#D97706' }}>
+                    {thread.is_featured ? '取消精华' : '⭐ 设为精华'}
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -179,16 +189,24 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         </div>
       </div>
 
-      {/* Pin indicator */}
-      {thread.pin_level > 0 && (
-        <div className="px-4 pt-2">
-          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
-            style={{
-              backgroundColor: thread.pin_level === 3 ? '#FDEDED' : thread.pin_level === 2 ? '#E3F0FD' : '#E8F5E9',
-              color: thread.pin_level === 3 ? 'var(--color-danger)' : thread.pin_level === 2 ? 'var(--color-primary)' : 'var(--color-success)',
-            }}>
-            📌 {thread.pin_level === 3 ? '主页置顶' : thread.pin_level === 2 ? '版块置顶' : '博客置顶'}
-          </span>
+      {/* Pin / Featured indicators */}
+      {(thread.pin_level > 0 || thread.is_featured) && (
+        <div className="px-4 pt-2 flex items-center gap-2">
+          {thread.pin_level > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{
+                backgroundColor: thread.pin_level === 3 ? '#FDEDED' : thread.pin_level === 2 ? '#E3F0FD' : '#E8F5E9',
+                color: thread.pin_level === 3 ? 'var(--color-danger)' : thread.pin_level === 2 ? 'var(--color-primary)' : 'var(--color-success)',
+              }}>
+              📌 {thread.pin_level === 3 ? '主页置顶' : thread.pin_level === 2 ? '版块置顶' : '博客置顶'}
+            </span>
+          )}
+          {thread.is_featured && (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: '#FFF7ED', color: '#D97706', border: '1px solid #FDE68A' }}>
+              ⭐ 精华
+            </span>
+          )}
         </div>
       )}
 

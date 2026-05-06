@@ -60,6 +60,7 @@ export interface Thread {
   status: PostStatus;
   pin_level: number;
   is_locked: boolean;
+  is_featured: boolean;
   view_count: number;
   reply_count: number;
   last_post_at: string;

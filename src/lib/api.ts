@@ -682,6 +682,12 @@ export async function adminDeleteBoard(id: string): Promise<void> {
 }
 
 // ─── Pin Levels ───
+export async function toggleFeatured(threadId: string, featured: boolean): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_toggle_featured', { p_thread_id: threadId, p_featured: featured });
+  if (error) throw error;
+}
+
 export async function setPinLevel(threadId: string, level: number): Promise<void> {
   const db = requireSupabase();
   const { error } = await db.rpc('admin_set_pin_level', { p_thread_id: threadId, p_level: level });
