@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Save, ArrowLeft } from 'lucide-react';
 import { adminGetAllCharacters, adminUpdateCharacter } from '../../lib/api';
 import AdminGuard from '../../components/layout/AdminGuard';
+import AvatarUpload from '../../components/ui/AvatarUpload';
 import type { AICharacter } from '../../lib/types';
 
 export default function CharacterEdit() {
@@ -97,6 +98,15 @@ export default function CharacterEdit() {
             )}
 
             <div className="rounded-lg p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
+              {/* Avatar */}
+              <div className="mb-2">
+                <AvatarUpload
+                  currentUrl={(char as any).avatar_url}
+                  name={(char as any).username || '?'}
+                  userId={char.id}
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1">简介 (bio)</label>
                 <textarea rows={3} value={bio} onChange={e => setBio(e.target.value)} style={FIELD_STYLE} />

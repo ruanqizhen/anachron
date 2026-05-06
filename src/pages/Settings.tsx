@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Lock, Camera, ArrowLeft } from 'lucide-react';
+import { User, Lock, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import Avatar from '../components/ui/Avatar';
+import AvatarUpload from '../components/ui/AvatarUpload';
 
 export default function Settings() {
   const { user, profile } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarMsg, setAvatarMsg] = useState('');
   const [username, setUsername] = useState(profile?.username || '');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameChecking, setUsernameChecking] = useState(false);
@@ -21,15 +18,24 @@ export default function Settings() {
   const [pwMsg, setPwMsg] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
 
-  const uid = user?.id || '';
-  const userEmail = user?.email || '';
+  if (!user) {
+    return (
+      <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
+        <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
+        <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
+      </div>
+    );
+  }
+
+  const uid = user.id;
+  const userEmail = user.email;
 
   // Debounced username availability check
   useEffect(() => {
     const name = username.trim();
-    if (!name || name === (profile?.username || '')) { setTimeout(() => setUsernameAvailable(null), 0); return; }
-    if (name.length < 2) { setTimeout(() => setUsernameAvailable(null), 0); return; }
-    setTimeout(() => setUsernameChecking(true), 0);
+    if (!name || name === (profile?.username || '')) { setUsernameAvailable(null); return; }
+    if (name.length < 2) { setUsernameAvailable(null); return; }
+    setUsernameChecking(true);
     const timer = setTimeout(async () => {
       const { data } = await supabase!
         .from('profiles')
@@ -42,15 +48,6 @@ export default function Settings() {
     return () => clearTimeout(timer);
   }, [username, profile?.username]);
 
-  if (!user) {
-    return (
-      <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
-        <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
-        <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
-      </div>
-    );
-  }
-
   async function handleSaveUsername(e: React.FormEvent) {
     e.preventDefault();
     setUsernameMsg('');
@@ -59,7 +56,6 @@ export default function Settings() {
     if (name.length > 20) { setUsernameMsg('用户名最多 20 个字符'); return; }
     if (!/^[\w一-鿿]+$/.test(name)) { setUsernameMsg('用户名只能包含中文、字母、数字和下划线'); return; }
 
-    // Pre-check availability
     if (name !== (profile?.username || '')) {
       const { data: existing } = await supabase!.from('profiles').select('id').eq('username', name).maybeSingle();
       if (existing) { setUsernameMsg('该用户名已被占用，请换一个'); return; }
@@ -83,7 +79,6 @@ export default function Settings() {
     if (newPw.length < 6) { setPwMsg('新密码至少 6 位'); return; }
 
     setPwSaving(true);
-    // Supabase requires recent sign-in for sensitive operations — re-authenticate first
     const { error: signInErr } = await supabase!.auth.signInWithPassword({
       email: userEmail,
       password: currentPw,
@@ -104,25 +99,6 @@ export default function Settings() {
     }
   }
 
-  async function compressImage(file: File, maxSize = 256, quality = 0.8): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, w, h);
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('compress failed')), 'image/jpeg', quality);
-      };
-      img.onerror = () => reject(new Error('failed to load image'));
-      img.src = URL.createObjectURL(file);
-    });
-  }
-
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
     outline: 'none', fontSize: 14, color: 'var(--color-text-primary)', backgroundColor: 'var(--color-card-bg)',
@@ -138,58 +114,12 @@ export default function Settings() {
 
       {/* Avatar */}
       <div className="rounded-lg p-5 mb-4" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
-        <h2 className="flex items-center gap-2 text-base font-bold mb-4">
-          <Camera size={18} /> 头像
-        </h2>
-        <div className="flex items-center gap-4">
-          <Avatar name={profile?.username || userEmail} url={avatarUrl} size={64} />
-          <div className="flex-1">
-            <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>选择一个图片文件来替换当前头像，支持 JPG、PNG 格式，上传后自动压缩</p>
-            <label
-              className="inline-block px-3 py-1.5 rounded-lg text-sm font-medium text-white cursor-pointer transition-colors hover:opacity-80"
-              style={{ backgroundColor: avatarUploading ? 'var(--color-text-muted)' : 'var(--color-primary)' }}
-            >
-              {avatarUploading ? '上传中...' : '选择文件'}
-              <input
-                type="file"
-                accept="image/*"
-                disabled={avatarUploading}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (file.size > 5 * 1024 * 1024) { setAvatarMsg('图片不能超过 5MB'); return; }
-                  setAvatarUploading(true);
-                  setAvatarMsg('');
-                  try {
-                    const compressed = await compressImage(file);
-                    const path = `avatars/${uid}_${Date.now()}.jpg`;
-                    const { error } = await supabase!.storage.from('avatars').upload(path, compressed, {
-                      upsert: true,
-                      contentType: 'image/jpeg',
-                    });
-                    if (error) {
-                      setAvatarMsg('上传失败: ' + error.message);
-                    } else {
-                      const { data: { publicUrl } } = supabase!.storage.from('avatars').getPublicUrl(path);
-                      await supabase!.from('profiles').update({ avatar_url: publicUrl }).eq('id', uid);
-                      setAvatarUrl(publicUrl);
-                      setAvatarMsg('头像已更新');
-                    }
-                  } catch (err: unknown) {
-                    setAvatarMsg('图片处理失败: ' + ((err as Error).message || ''));
-                  }
-                  setAvatarUploading(false);
-                }}
-                className="hidden"
-              />
-            </label>
-            {avatarMsg && (
-              <p className="text-xs mt-1 m-0" style={{ color: avatarMsg.includes('失败') ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                {avatarMsg}
-              </p>
-            )}
-          </div>
-        </div>
+        <h2 className="text-base font-bold mb-4">头像</h2>
+        <AvatarUpload
+          currentUrl={profile?.avatar_url}
+          name={profile?.username || userEmail}
+          userId={uid}
+        />
       </div>
 
       {/* Username */}
