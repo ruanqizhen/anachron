@@ -58,7 +58,7 @@ export interface Thread {
   title: string;
   content: string;
   status: PostStatus;
-  is_pinned: boolean;
+  pin_level: number;
   is_locked: boolean;
   view_count: number;
   reply_count: number;

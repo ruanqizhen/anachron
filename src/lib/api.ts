@@ -114,7 +114,7 @@ export async function getThreadsByBoard(boardId: string, limit: number = 20, off
     .eq('board_id', boardId)
     .is('deleted_at', null)
     .eq('status', 'published')
-    .order('is_pinned', { ascending: false })
+    .order('pin_level', { ascending: false })
     .order('last_post_at', { ascending: false })
     .range(offset, offset + limit - 1);
     
@@ -678,6 +678,13 @@ export async function adminUpdateBoard(id: string, params: {
 export async function adminDeleteBoard(id: string): Promise<void> {
   const db = requireSupabase();
   const { error } = await db.rpc('admin_delete_board', { p_id: id });
+  if (error) throw error;
+}
+
+// ─── Pin Levels ───
+export async function setPinLevel(threadId: string, level: number): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db.rpc('admin_set_pin_level', { p_thread_id: threadId, p_level: level });
   if (error) throw error;
 }
 

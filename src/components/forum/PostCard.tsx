@@ -13,7 +13,7 @@ import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
-import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards } from '../../lib/api';
+import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel } from '../../lib/api';
 
 interface PostCardProps {
   thread: Thread;
@@ -107,6 +107,35 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
                   <AlertTriangle size={14} /> 举报
                 </button>
               )}
+              {/* Pin controls */}
+              {(isOwn || admin) && (
+                <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  {thread.pin_level !== 1 && (
+                    <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 1); setThread({...thread, pin_level: 1}); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-primary)' }}>
+                      📌 博客置顶
+                    </button>
+                  )}
+                  {thread.pin_level >= 1 && (
+                    <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 0); setThread({...thread, pin_level: 0}); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-muted)' }}>
+                      取消置顶
+                    </button>
+                  )}
+                  {admin && thread.pin_level < 2 && (
+                    <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 2); setThread({...thread, pin_level: 2}); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-primary)' }}>
+                      📌 版块置顶
+                    </button>
+                  )}
+                  {admin && thread.pin_level < 3 && (
+                    <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 3); setThread({...thread, pin_level: 3}); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
+                      📌 主页置顶
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -149,6 +178,19 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           </div>
         </div>
       </div>
+
+      {/* Pin indicator */}
+      {thread.pin_level > 0 && (
+        <div className="px-4 pt-2">
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+            style={{
+              backgroundColor: thread.pin_level === 3 ? '#FDEDED' : thread.pin_level === 2 ? '#E3F0FD' : '#E8F5E9',
+              color: thread.pin_level === 3 ? 'var(--color-danger)' : thread.pin_level === 2 ? 'var(--color-primary)' : 'var(--color-success)',
+            }}>
+            📌 {thread.pin_level === 3 ? '主页置顶' : thread.pin_level === 2 ? '版块置顶' : '博客置顶'}
+          </span>
+        </div>
+      )}
 
       {/* Title + Content */}
       <div className="px-4 pt-3 pb-2">

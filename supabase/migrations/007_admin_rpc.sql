@@ -239,6 +239,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Set thread pin level (author can set 0-1, admin can set 0-3)
+CREATE OR REPLACE FUNCTION admin_set_pin_level(p_thread_id UUID, p_level INT)
+RETURNS void AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication required'; END IF;
+  UPDATE threads SET pin_level = p_level WHERE id = p_thread_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Admin delete a user
 CREATE OR REPLACE FUNCTION admin_delete_user(p_id UUID)
 RETURNS void AS $$
