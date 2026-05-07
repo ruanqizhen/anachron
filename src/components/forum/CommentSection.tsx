@@ -427,7 +427,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
 }
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
-  const { user, guest, impersonating } = useAuth();
+  const { user, guest, impersonating, startGuestSession } = useAuth();
   const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_thread_${threadId}`) || '');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -579,6 +579,7 @@ return (
         <GuestNameDialog
           onConfirm={async (name) => {
             setShowGuestDialog(false);
+            startGuestSession(name);
             const gid = await createGuestSession(name);
             setGuestId(gid);
             // Auto-submit after guest session created

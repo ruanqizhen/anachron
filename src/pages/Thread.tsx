@@ -29,7 +29,7 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('zh-CN');
 }
 
-function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean }) {
+function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin, depth = 0 }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean; depth?: number }) {
   const { user, impersonating, guest } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [guestId, setGuestId] = useState<string | null>(null);
@@ -81,7 +81,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
 
   return (
     <>
-      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)', marginLeft: depth * 24 }}>
         <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
           <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={36} />
         </Link>
@@ -266,7 +266,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
 
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
-  const { user, profile, guest, impersonating } = useAuth();
+  const { user, profile, guest, impersonating, startGuestSession } = useAuth();
   const admin = isAdmin(user?.id);
   const [replyText, setReplyText] = useState('');
   const [thread, setThread] = useState<Thread | null>(null);
@@ -333,7 +333,9 @@ export default function ThreadPage() {
         event: 'INSERT', schema: 'public', table: 'posts',
         filter: `thread_id=eq.${threadId}`,
       }, (payload) => {
-        setPosts(prev => [...prev, payload.new as Post]);
+        const p = payload.new as Post;
+        if (!user && guest && !p.guest_sessions) (p as any).guest_sessions = { username: guest.username };
+        setPosts(prev => [...prev, p]);
         loadThread();
       })
       .subscribe();
@@ -581,9 +583,20 @@ export default function ThreadPage() {
             暂无评论，来说点什么吧
           </div>
         ) : (
-          posts.map(post => (
-            <ReplyItem key={post.id} post={post} likedIds={likedIds} isAdmin={admin} onPostUpdated={() => loadPosts(postPage)} />
-          ))
+          (() => {
+            const topLevel = posts.filter(p => !p.parent_post_id);
+            const children = posts.filter(p => p.parent_post_id);
+            function renderTree(p: Post, depth: number): React.ReactNode {
+              const descendants = children.filter(c => c.parent_post_id === p.id);
+              return (
+                <div key={p.id}>
+                  <ReplyItem post={p} likedIds={likedIds} isAdmin={admin} depth={depth} onPostUpdated={() => loadPosts(postPage)} />
+                  {descendants.map(d => renderTree(d, depth + 1))}
+                </div>
+              );
+            }
+            return topLevel.map(p => renderTree(p, 0));
+          })()
         )}
         {hasMorePosts && (
           <div className="text-center py-3">
@@ -682,6 +695,7 @@ export default function ThreadPage() {
         <GuestNameDialog
           onConfirm={async (name) => {
             setShowGuestDialog(false);
+            startGuestSession(name);
             const gid = await createGuestSession(name);
             setGuestId(gid);
           }}
