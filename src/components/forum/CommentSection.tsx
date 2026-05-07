@@ -397,6 +397,15 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
             isSubmitting={replying}
             onSubmit={async () => {
               if (!replyText.trim() || replying) return;
+              if (replyText.trim().length < 2) {
+                setError('回复内容至少需要 2 个字符');
+                return;
+              }
+              const rateCheck = canCreateReply(!user);
+              if (!rateCheck.ok) {
+                setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
+                return;
+              }
               setReplying(true);
               try {
                 // Handle guest posting for reply-to-reply
@@ -405,7 +414,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   gid = guestId || await createGuestSession(guest.username);
                   if (!guestId) setGuestId(gid);
                 }
-                await createPost({
+                const newPost = await createPost({
                   threadId: post.thread_id,
                   content: replyText.trim(),
                   authorId: impersonating?.profileId || user?.id,
@@ -413,6 +422,12 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   parentPostId: post.id,
                   createdAt: impersonating ? replyTime || undefined : undefined,
                 });
+                
+                // Enrich for immediate display before refetching
+                if (!user && guest) {
+                  (newPost as any).guest_sessions = { username: guest.username };
+                }
+                
                 setReplyText('');
                 localStorage.removeItem(`draft_reply_${post.id}`);
                 setShowReply(false);
@@ -490,11 +505,13 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     loadData();
   }, [threadId, loadPosts]);
 
-  async function doSubmitReply() {
+  async function doSubmitReply(overrideGuestName?: string) {
     setError('');
     let gid: string | undefined = guestId || undefined;
-    if (!user && !gid && guest) {
-      gid = await createGuestSession(guest.username);
+    const currentGuestName = overrideGuestName || guest?.username;
+
+    if (!user && !gid && currentGuestName) {
+      gid = await createGuestSession(currentGuestName);
       setGuestId(gid);
     }
 
@@ -529,6 +546,12 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
   async function handleReply() {
     if (!replyText.trim() || isSubmitting) return;
+    
+    if (replyText.trim().length < 2) {
+      setError('回复内容至少需要 2 个字符');
+      return;
+    }
+
     const rateCheck = canCreateReply(!user);
     if (!rateCheck.ok) {
       setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
@@ -579,7 +602,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
         </div>
       )}
       <div className="flex items-start gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <Avatar name={user ? '你' : '游客'} size={32} />
+        <Avatar name={user ? '你' : (guest?.username || '游客')} size={32} />
         <div className="flex-1 flex flex-col">
           {error && (
             <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
@@ -588,7 +611,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
             value={replyText}
             onChange={setReplyText}
             placeholder="写回复... 至少 2 个字"
-            onSubmit={handleReply}
+            onSubmit={() => handleReply()}
             isSubmitting={isSubmitting}
           />
         </div>
@@ -603,7 +626,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
             setGuestId(gid);
             // Auto-submit after guest session created
             setIsSubmitting(true);
-            try { await doSubmitReply(); } catch (err: unknown) { setError((err as Error).message || '发送失败'); }
+            try { await doSubmitReply(name); } catch (err: unknown) { setError((err as Error).message || '发送失败'); }
             setIsSubmitting(false);
           }}
           onClose={() => setShowGuestDialog(false)}
