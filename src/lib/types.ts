@@ -63,6 +63,7 @@ export interface Thread {
   is_featured: boolean;
   view_count: number;
   reply_count: number;
+  like_count: number;
   last_post_at: string;
   edited_at: string | null;
   deleted_at: string | null;

@@ -250,7 +250,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}
         >
           <ThumbsUp size={16} fill={liked ? 'currentColor' : 'none'} />
-          <span>点赞</span>
+          <span>点赞{((thread.like_count || 0) + (liked ? 1 : 0)) > 0 ? ` ${(thread.like_count || 0) + (liked ? 1 : 0)}` : ''}</span>
         </button>
         <button
           onClick={() => setShowComments(!showComments)}
