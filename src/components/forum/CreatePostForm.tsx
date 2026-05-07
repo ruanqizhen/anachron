@@ -281,8 +281,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
                   onChange={handleContentChange}
                   onKeyDown={handleKeyDown}
                   onPaste={onPaste}
-                  className="w-full flex-1 min-h-[200px] p-3 outline-none text-sm resize-none bg-transparent"
-                  style={{ color: 'var(--color-text-primary)' }}
+                  className="w-full flex-1 p-3 outline-none text-sm bg-transparent"
+                  style={{ color: 'var(--color-text-primary)', minHeight: 200, resize: 'none' } as React.CSSProperties}
                 />
                 
                 {/* Formatting toolbar */}
@@ -302,7 +302,35 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
                     accept="image/*"
                     onChange={handleFileChange}
                   />
-                  <span className="text-xs text-[var(--color-text-muted)] ml-auto">支持拖拽或剪贴板粘贴图片</span>
+                </div>
+                
+                {/* Drag handle */}
+                <div
+                  className="h-2 cursor-s-resize hover:bg-[var(--color-primary)]/10 transition-colors flex items-center justify-center group border-t border-dashed"
+                  style={{ borderColor: 'var(--color-border)' }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const container = e.currentTarget.parentElement;
+                    if (!container) return;
+                    const startY = e.clientY;
+                    const startH = container.offsetHeight;
+                    const onMove = (ev: MouseEvent) => {
+                      container.style.height = Math.max(250, Math.min(800, startH + ev.clientY - startY)) + 'px';
+                      container.style.flex = 'none'; // Disable flex-1 when manually resized
+                    };
+                    const onUp = () => {
+                      document.removeEventListener('mousemove', onMove);
+                      document.removeEventListener('mouseup', onUp);
+                    };
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                  }}
+                >
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
+                    <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
+                    <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
+                  </div>
                 </div>
               </div>
 

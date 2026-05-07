@@ -617,15 +617,9 @@ export default function ThreadPage() {
               placeholder="写回复... 至少 2 个字，支持 Markdown"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg px-3 py-2 text-sm border outline-none resize-none transition-colors"
-              style={{
-                borderColor: error ? 'var(--color-danger)' : 'var(--color-border)',
-                backgroundColor: 'var(--color-page-bg)',
-                color: 'var(--color-text-primary)',
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = error ? 'var(--color-danger)' : 'var(--color-border)'}
+              rows={6}
+              className="w-full rounded-lg px-3 py-2 text-sm border outline-none transition-colors"
+              style={{ borderColor: error ? 'var(--color-danger)' : 'var(--color-border)', backgroundColor: 'var(--color-page-bg)', color: 'var(--color-text-primary)', resize: 'vertical', minHeight: 120 } as React.CSSProperties}
             />
             {error && (
               <p className="text-xs mt-1 m-0" style={{ color: 'var(--color-danger)' }}>{error}</p>

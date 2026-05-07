@@ -96,8 +96,8 @@ function CommentInput({
         }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
-        className="w-full flex-1 min-h-[60px] p-2.5 outline-none text-sm resize-none bg-transparent"
-        style={{ color: 'var(--color-text-primary)' }}
+        className="w-full flex-1 p-2.5 outline-none text-sm bg-transparent"
+        style={{ color: 'var(--color-text-primary)', minHeight: 100, resize: 'none' } as React.CSSProperties}
         disabled={disabled}
       />
       
@@ -122,6 +122,35 @@ function CommentInput({
         >
           {isSubmitting ? <span className="text-xs">发送中</span> : <Send size={16} />}
         </button>
+      </div>
+
+      {/* Drag handle */}
+      <div
+        className="h-2 cursor-s-resize hover:bg-[var(--color-primary)]/10 transition-colors flex items-center justify-center group border-t border-dashed"
+        style={{ borderColor: 'var(--color-border)' }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const container = e.currentTarget.parentElement;
+          if (!container) return;
+          const startY = e.clientY;
+          const startH = container.offsetHeight;
+          const onMove = (ev: MouseEvent) => {
+            container.style.height = Math.max(120, Math.min(600, startH + ev.clientY - startY)) + 'px';
+            container.style.flex = 'none'; // Disable flex-1 when manually resized
+          };
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        }}
+      >
+        <div className="flex gap-1">
+          <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
+          <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
+          <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
+        </div>
       </div>
 
       {mentionQuery !== null && mentionOptions.length > 0 && (
