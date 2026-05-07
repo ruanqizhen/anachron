@@ -15,10 +15,15 @@ export default function AdminCharacters() {
   const [showCreate, setShowCreate] = useState(false);
   const [newChar, setNewChar] = useState({ username: '', era: '', birth_year: '', death_year: '', tags: '', personality: '', comedy: '', style: '' });
   const [createMsg, setCreateMsg] = useState('');
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
     adminGetAllCharacters().then(setCharacters).finally(() => setIsLoading(false));
   }, []);
+
+  const filtered = filter.trim()
+    ? characters.filter(c => (c as any).username?.toLowerCase().includes(filter.toLowerCase()))
+    : characters;
 
   return (
     <AdminGuard>
@@ -33,8 +38,16 @@ export default function AdminCharacters() {
             <PlusCircle size={14} /> 新建角色
           </button>
         </div>
+        <input
+          type="text"
+          placeholder="搜索角色名..."
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          className="w-full px-3 py-2 mb-4 rounded-lg border outline-none text-sm bg-transparent"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+        />
         <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-          共 {characters.length} 个角色
+          共 {filtered.length} 个角色
         </p>
 
         {showCreate && (
@@ -74,7 +87,7 @@ export default function AdminCharacters() {
           <div className="text-center py-12" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
         ) : (
           <div className="flex flex-col gap-3">
-            {characters.map((c) => {
+            {filtered.map((c) => {
               return (
                 <div
                   key={c.id}

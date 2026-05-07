@@ -82,7 +82,7 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin, depth = 0 }:
 
   return (
     <>
-      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)', marginLeft: depth * 24 }}>
+      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
           <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={36} />
         </Link>

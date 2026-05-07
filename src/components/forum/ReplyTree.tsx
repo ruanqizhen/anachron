@@ -7,7 +7,7 @@ interface ReplyTreeProps {
   indent?: number;
 }
 
-export default function ReplyTree({ posts, renderItem, indent = 48 }: ReplyTreeProps) {
+export default function ReplyTree({ posts, renderItem, indent = 24 }: ReplyTreeProps) {
   const topLevel = posts.filter(p => !p.parent_post_id);
   const children = posts.filter(p => p.parent_post_id);
 

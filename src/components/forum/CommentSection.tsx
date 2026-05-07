@@ -193,7 +193,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
 
   if (post.status === 'pending_review') {
     return (
-      <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
+      <div className={`flex gap-2.5 px-4 py-3 ${''}`}>
         <div className="shrink-0">
           <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={32} />
         </div>
@@ -219,7 +219,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   if (post.deleted_at) {
     return (
       <div
-        className={`px-4 py-3 text-sm italic ${isNested ? 'ml-12' : ''}`}
+        className={`px-4 py-3 text-sm italic ${''}`}
         style={{ color: 'var(--color-text-muted)' }}
       >
         [ 此内容已被删除 · 删除于 {new Date(post.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} ]
@@ -229,7 +229,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
 
   return (
     <>
-      <div className={`flex gap-2.5 px-4 py-3 ${isNested ? 'ml-12' : ''}`}>
+      <div className={`flex gap-2.5 px-4 py-3 ${''}`}>
         <Link to={getAuthorLink(post)} className="shrink-0">
           <Avatar
             name={getDisplayName(post)}
