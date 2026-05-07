@@ -30,7 +30,7 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('zh-CN');
 }
 
-function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin, depth = 0 }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean; depth?: number }) {
+function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean }) {
   const { user, impersonating, guest } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [guestId, setGuestId] = useState<string | null>(null);
@@ -584,8 +584,8 @@ export default function ThreadPage() {
             暂无评论，来说点什么吧
           </div>
         ) : (
-          <ReplyTree posts={posts} renderItem={(p, depth) => (
-            <ReplyItem post={p} likedIds={likedIds} isAdmin={admin} depth={depth} onPostUpdated={() => loadPosts(postPage)} />
+          <ReplyTree posts={posts} renderItem={(p) => (
+            <ReplyItem post={p} likedIds={likedIds} isAdmin={admin} onPostUpdated={() => loadPosts(postPage)} />
           )} />
         )}
         {hasMorePosts && (

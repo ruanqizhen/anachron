@@ -1,17 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import PostCard from './PostCard';
 import type { Thread } from '../../lib/types';
 
 interface ThreadFeedProps {
   fetchThreads: (limit: number, offset: number) => Promise<Thread[]>;
-  /** Increase when feed should reload from scratch */
   refreshKey?: number;
   emptyMessage?: string;
+  renderCard?: (thread: Thread) => ReactNode;
 }
 
 const PAGE_SIZE = 20;
 
-export default function ThreadFeed({ fetchThreads, refreshKey, emptyMessage = '暂无内容' }: ThreadFeedProps) {
+export default function ThreadFeed({ fetchThreads, refreshKey, emptyMessage = '暂无内容', renderCard }: ThreadFeedProps) {
+  const render = renderCard || ((t: Thread) => <PostCard thread={t} />);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -54,7 +55,7 @@ export default function ThreadFeed({ fetchThreads, refreshKey, emptyMessage = '�
         <div className="text-center py-8" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
       ) : threads.length > 0 ? (
         <>
-          {threads.map(thread => <PostCard key={thread.id} thread={thread} />)}
+          {threads.map(thread => <React.Fragment key={thread.id}>{render(thread)}</React.Fragment>)}
           {hasMore && (
             <div ref={loaderRef} className="text-center py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
               加载更多...
