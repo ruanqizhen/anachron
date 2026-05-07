@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2, ImagePlus, AlertTriangle } from 'lucide-react';
 import type { Post } from '../../lib/types';
@@ -16,6 +16,7 @@ import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import EditDialog from './EditDialog';
 import ReportDialog from '../ui/ReportDialog';
+import ReplyTree from './ReplyTree';
 import { useMentions } from '../../hooks/useMentions';
 import { useImageUpload } from '../../lib/useImageUpload';
 
@@ -163,10 +164,11 @@ function timeAgo(dateStr: string): string {
 }
 
 function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post: Post; isNested?: boolean; likedIds: Set<string>; onPostUpdated: () => void }) {
-  const { user, impersonating } = useAuth();
+  const { user, impersonating, guest } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
+  const [guestId, setGuestId] = useState<string | null>(null);
   useEffect(() => { 
     if (likedIds.has(post.id) !== liked) {
       setTimeout(() => setLiked(likedIds.has(post.id)), 0);
@@ -519,9 +521,6 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     setIsSubmitting(false);
   }
 
-  const topLevelPosts = posts.filter(p => !p.parent_post_id);
-  const childPosts = posts.filter(p => p.parent_post_id);
-
   if (isLoading) {
     return (
       <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -530,20 +529,11 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     );
   }
 
-  // Recursively render a post and all descendants
-function renderChildren(p: Post, depth: number): ReactNode {
-  const descendants = childPosts.filter(cp => cp.parent_post_id === p.id);
   return (
-    <div key={p.id}>
-      <CommentItem post={p} likedIds={likedIds} onPostUpdated={loadPosts} isNested={depth > 0} />
-      {descendants.map(d => renderChildren(d, depth + 1))}
-    </div>
-  );
-}
-
-return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
-      {topLevelPosts.map(post => renderChildren(post, 0))}
+      <ReplyTree posts={posts} renderItem={(p, depth) => (
+        <CommentItem post={p} likedIds={likedIds} onPostUpdated={loadPosts} isNested={depth > 0} />
+      )} />
 
       {posts.length === 0 && (
         <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>

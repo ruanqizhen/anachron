@@ -13,6 +13,7 @@ import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
+import ReplyTree from '../components/forum/ReplyTree';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
 import { adminUpdateThread, adminUpdatePost, adminSoftDeleteThread, adminSoftDeletePost, getBoards, toggleThreadLock } from '../lib/api';
 import type { Post, Thread, Board } from '../lib/types';
@@ -583,20 +584,9 @@ export default function ThreadPage() {
             暂无评论，来说点什么吧
           </div>
         ) : (
-          (() => {
-            const topLevel = posts.filter(p => !p.parent_post_id);
-            const children = posts.filter(p => p.parent_post_id);
-            function renderTree(p: Post, depth: number): React.ReactNode {
-              const descendants = children.filter(c => c.parent_post_id === p.id);
-              return (
-                <div key={p.id}>
-                  <ReplyItem post={p} likedIds={likedIds} isAdmin={admin} depth={depth} onPostUpdated={() => loadPosts(postPage)} />
-                  {descendants.map(d => renderTree(d, depth + 1))}
-                </div>
-              );
-            }
-            return topLevel.map(p => renderTree(p, 0));
-          })()
+          <ReplyTree posts={posts} renderItem={(p, depth) => (
+            <ReplyItem post={p} likedIds={likedIds} isAdmin={admin} depth={depth} onPostUpdated={() => loadPosts(postPage)} />
+          )} />
         )}
         {hasMorePosts && (
           <div className="text-center py-3">
