@@ -46,7 +46,7 @@ Deno.serve(async () => {
       .eq('status', 'pending')
       .lte('execute_after', now)
       .order('priority', { ascending: false })
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (taskErr) {
