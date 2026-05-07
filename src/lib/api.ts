@@ -723,6 +723,21 @@ export async function setPinLevel(threadId: string, level: number): Promise<void
   if (error) throw error;
 }
 
+export async function getFeaturedThreads(): Promise<Thread[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('threads')
+    .select(`*, boards (*), profiles (*), guest_sessions (*)`)
+    .eq('is_featured', true)
+    .is('deleted_at', null)
+    .eq('status', 'published')
+    .order('last_post_at', { ascending: false })
+    .limit(20);
+
+  if (error) return [];
+  return data as Thread[];
+}
+
 // ─── Admin: Stats ───
 // ─── Likes ───
 export async function toggleLike(postId: string, userId: string): Promise<boolean> {

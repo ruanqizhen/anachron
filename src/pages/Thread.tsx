@@ -30,8 +30,9 @@ function timeAgo(dateStr: string): string {
 }
 
 function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean }) {
-  const { user, impersonating } = useAuth();
+  const { user, impersonating, guest } = useAuth();
   const [liked, setLiked] = useState(likedIds.has(post.id));
+  const [guestId, setGuestId] = useState<string | null>(null);
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
   useEffect(() => { setTimeout(() => setLiked(likedIds.has(post.id)), 0); }, [likedIds, post.id]);
@@ -207,10 +208,17 @@ function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Po
               if (!replyText.trim() || replying) return;
               setReplying(true);
               try {
+                // Handle guest posting for reply-to-reply
+                let gid: string | undefined;
+                if (!user && guest) {
+                  gid = guestId || await createGuestSession(guest.username);
+                  if (!guestId) setGuestId(gid);
+                }
                 await createPost({
                   threadId: post.thread_id,
                   content: replyText.trim(),
                   authorId: impersonating?.profileId || user?.id,
+                  guestId: gid,
                   parentPostId: post.id,
                   createdAt: impersonating ? replyTime || undefined : undefined,
                 });

@@ -1,24 +1,22 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getBoards, getActiveAICharacters } from '../../lib/api';
-import type { Board, AICharacter } from '../../lib/types';
-import Avatar from '../ui/Avatar';
-import Badge from '../ui/Badge';
+import { getBoards, getFeaturedThreads } from '../../lib/api';
+import type { Board, Thread } from '../../lib/types';
 
 export default function RightPanel() {
   const [boards, setBoards] = useState<Board[]>([]);
-  const [aiCharacters, setAiCharacters] = useState<AICharacter[]>([]);
+  const [hotThreads, setHotThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      const [fetchedBoards, fetchedCharacters] = await Promise.all([
+      const [fetchedBoards, fetchedHotThreads] = await Promise.all([
         getBoards(),
-        getActiveAICharacters()
+        getFeaturedThreads(),
       ]);
       setBoards(fetchedBoards);
-      setAiCharacters(fetchedCharacters);
+      setHotThreads(fetchedHotThreads);
       setIsLoading(false);
     }
     loadData();
@@ -60,7 +58,7 @@ export default function RightPanel() {
           </div>
         </div>
 
-        {/* Active AI Characters */}
+        {/* Hot / Featured Threads */}
         <div
           className="rounded-lg overflow-hidden"
           style={{
@@ -69,44 +67,30 @@ export default function RightPanel() {
           }}
         >
           <div
-            className="px-4 py-3 font-semibold text-sm flex items-center justify-between"
+            className="px-4 py-3 font-semibold text-sm"
             style={{ borderBottom: '1px solid var(--color-border)' }}
           >
-            <span>活跃 AI 角色</span>
-            <Link
-              to="/characters"
-              className="text-xs no-underline hover:underline"
-              style={{ color: 'var(--color-primary)' }}
-            >
-              查看全部
-            </Link>
+            ⭐ 论坛热搜
           </div>
-          <div className="py-2">
+          <div className="py-1">
             {isLoading ? (
               <div className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>加载中...</div>
+            ) : hotThreads.length === 0 ? (
+              <div className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>暂无精华帖</div>
             ) : (
-              aiCharacters.map((char) => {
-                const profile = char.profiles;
-                if (!profile) return null;
-                return (
-                  <Link
-                    key={char.id}
-                    to={`/u/${profile.username}`}
-                    className="flex items-center gap-2.5 px-4 py-2 no-underline transition-colors hover:bg-[var(--color-page-bg)]"
-                  >
-                    <Avatar name={profile.username} url={profile.avatar_url} size={32} />
-                    <div className="min-w-0">
-                      <div className="flex items-center text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                        <span className="truncate">{profile.username}</span>
-                        <Badge type="verified" />
-                      </div>
-                      <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {char.era}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })
+              hotThreads.map((thread) => (
+                <Link
+                  key={thread.id}
+                  to={`/b/${thread.boards?.slug || 'current-affairs'}/t/${thread.id}`}
+                  className="block px-4 py-2 text-sm no-underline transition-colors hover:bg-[var(--color-page-bg)]"
+                  style={{ color: 'var(--color-text-primary)' }}
+                >
+                  <div className="truncate font-medium">{thread.title}</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                    {thread.reply_count} 回复 · {thread.like_count || 0} 赞
+                  </div>
+                </Link>
+              ))
             )}
           </div>
         </div>
