@@ -183,7 +183,7 @@ ${contextText}
       throw llmErr;
     }
 
-    // 7. Insert AI reply as a post
+    // 7. Insert AI reply as a post — nest under the trigger post
     const { data: newPost, error: postErr } = await supabase
       .from('posts')
       .insert({
@@ -192,6 +192,7 @@ ${contextText}
         content: reply,
         is_ai_post: true,
         status: 'published',
+        parent_post_id: task.trigger_post_id || null,
       })
       .select()
       .single();

@@ -63,30 +63,46 @@ Deno.serve(async () => {
     const task = tasks[0];
     await supabase.from('ai_task_queue').update({ status: 'processing' }).eq('id', task.id);
 
-    // 2. Get context: trigger post + parent chain + thread
-    const { data: triggerPost } = await supabase
-      .from('posts').select('*, profiles(username)').eq('id', task.trigger_post_id).single();
+    // 2. Get context: trigger post (or thread if no trigger_post) + parent chain + thread
+    let triggerContent = '';
+    let triggerAuthor = '游客';
+    let parentPostId: string | null = null;
+
     const { data: thread } = await supabase
       .from('threads').select('title, content, profiles!threads_author_id_fkey(username)').eq('id', task.thread_id).single();
 
-    if (!triggerPost || !thread) {
+    if (task.trigger_post_id) {
+      const { data: triggerPost } = await supabase
+        .from('posts').select('*, profiles(username)').eq('id', task.trigger_post_id).single();
+      if (triggerPost) {
+        triggerContent = triggerPost.content;
+        triggerAuthor = triggerPost.profiles?.username || '游客';
+        parentPostId = triggerPost.parent_post_id;
+      }
+    } else {
+      // Thread itself is the trigger
+      triggerContent = thread?.content || '';
+      triggerAuthor = (thread as any)?.profiles?.username || '游客';
+    }
+
+    if (!thread) {
       await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', task.id);
       return new Response(JSON.stringify({ error: 'missing context' }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Build parent chain if this is a reply to another post
+    // Build parent chain if replying to a post (not thread itself)
     let chainText = '';
-    if (triggerPost.parent_post_id) {
+    if (parentPostId) {
       const chain: string[] = [];
-      let parentId: string | null = triggerPost.parent_post_id;
-      while (parentId && chain.length < 5) {
+      let pid: string | null = parentPostId;
+      while (pid && chain.length < 5) {
         const { data: parent } = await supabase
-          .from('posts').select('*, profiles(username)').eq('id', parentId).single();
+          .from('posts').select('*, profiles(username)').eq('id', pid).single();
         if (!parent) break;
         chain.unshift(`[${parent.profiles?.username || '游客'}]：${parent.content}`);
-        parentId = parent.parent_post_id;
+        pid = parent.parent_post_id;
       }
       if (chain.length > 0) {
         chainText = '回复链（从早到晚）：\n' + chain.join('\n\n') + '\n\n';
@@ -118,16 +134,12 @@ Deno.serve(async () => {
 内容：${(thread.content || '').slice(0, 300)}
 
 ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
-发帖人：${triggerPost.profiles?.username || '游客'}
-内容：${triggerPost.content.slice(0, 800)}`
+发帖人：${triggerAuthor}
+内容：${triggerContent.slice(0, 800)}`
       : `主贴：
 标题：${thread.title}
 发帖人：${mainPoster}
-内容：${(thread.content || '').slice(0, 600)}
-
-最新回复（同一人发的首帖）：
-发帖人：${triggerPost.profiles?.username || '游客'}
-内容：${triggerPost.content.slice(0, 800)}`;
+内容：${(thread.content || '').slice(0, 800)}`;
 
     let decision: { name: string; reason: string };
     try {

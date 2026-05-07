@@ -287,6 +287,23 @@ Deno.serve(async (req: Request) => {
         })
         .select('*').single();
       if (error) throw new Error(error.message);
+
+      // Trigger dispatcher for new threads too
+      if (!highRisk && status === 'published') {
+        try {
+          const { data: taskData } = await supabase.from('ai_task_queue').insert({
+            thread_id: data.id, trigger_post_id: null,
+            priority: 'normal', execute_after: new Date().toISOString(),
+          }).select('id').single();
+          if (taskData) {
+            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
+              body: JSON.stringify({}),
+            }).catch(() => {});
+          }
+        } catch { /* non-critical */ }
+      }
+
       return ok({ ok: true, thread: data, status });
     }
 

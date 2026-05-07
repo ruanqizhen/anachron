@@ -55,7 +55,11 @@ export default function AdminEditDialog({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-xl flex flex-col max-h-[90vh]" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
+      <div className="w-full rounded-xl flex flex-col overflow-auto" style={{
+        maxWidth: '90vw', width: 800, minHeight: 400, maxHeight: '85vh',
+        backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+        resize: 'both',
+      }}>
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
           <h2 className="text-lg font-bold m-0" style={{ color: 'var(--color-text-primary)' }}>管理员编辑{isThread ? '帖子' : '回复'}</h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-[var(--color-page-bg)] cursor-pointer border-none bg-transparent">
