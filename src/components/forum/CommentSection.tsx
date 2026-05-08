@@ -596,7 +596,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       )} />
 
       {posts.length === 0 && (
-        <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+        <div className="px-4 py-3 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
           暂无评论，来说点什么吧
         </div>
       )}

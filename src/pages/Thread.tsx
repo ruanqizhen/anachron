@@ -580,7 +580,7 @@ export default function ThreadPage() {
         </div>
 
         {posts.length === 0 ? (
-          <div className="py-12 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          <div className="py-3 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
             暂无评论，来说点什么吧
           </div>
         ) : (
