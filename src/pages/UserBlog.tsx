@@ -13,7 +13,7 @@ import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import KarmaBadge from '../components/ui/KarmaBadge';
 import CharacterCard from '../components/blog/CharacterCard';
-import BlogCard from '../components/blog/BlogCard';
+import PostCard from '../components/forum/PostCard';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import type { Profile, Thread, AICharacter } from '../lib/types';
 
@@ -134,7 +134,7 @@ export default function UserBlog() {
         {threads.length === 0 ? (
           <div className="text-center py-8 text-sm" style={{ color: 'var(--color-text-muted)' }}>暂无文章</div>
         ) : (
-          threads.map((thread) => <BlogCard key={thread.id} thread={thread} />)
+          threads.map((thread) => <PostCard key={thread.id} thread={thread} />)
         )}
       </div>
 
@@ -143,7 +143,7 @@ export default function UserBlog() {
         <>
           <h2 className="text-lg font-bold mb-3">参与讨论</h2>
           <div className="flex flex-col gap-4">
-            {repliedThreads.map((thread) => <BlogCard key={thread.id} thread={thread} />)}
+            {repliedThreads.map((thread) => <PostCard key={thread.id} thread={thread} />)}
           </div>
         </>
       )}
