@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import MarkdownEditor from '../ui/MarkdownEditor';
 import type { Board } from '../../lib/types';
 import BCDateTimePicker, { formatBCDate, parseBCDate } from '../ui/BCDateTimePicker';
 
@@ -108,44 +109,7 @@ export default function AdminEditDialog({
             </div>
           )}
 
-          <div className="flex-1 flex flex-col">
-            <label className="block text-sm font-medium mb-1">正文</label>
-            <div className="relative flex-1 flex flex-col rounded-lg border outline-none transition-colors" style={{ borderColor: 'var(--color-border)' }}>
-              <textarea
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                className="w-full flex-1 min-h-[150px] outline-none text-sm bg-transparent px-3 py-2"
-                style={{ ...inputStyle, border: 'none', resize: 'none' }}
-              />
-              <div
-                className="h-2 cursor-s-resize hover:bg-[var(--color-primary)]/10 transition-colors flex items-center justify-center group border-t border-dashed"
-                style={{ borderColor: 'var(--color-border)' }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  const container = e.currentTarget.parentElement;
-                  if (!container) return;
-                  const startY = e.clientY;
-                  const startH = container.offsetHeight;
-                  const onMove = (ev: MouseEvent) => {
-                    container.style.height = Math.max(150, Math.min(800, startH + ev.clientY - startY)) + 'px';
-                    container.style.flex = 'none';
-                  };
-                  const onUp = () => {
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                  };
-                  document.addEventListener('mousemove', onMove);
-                  document.addEventListener('mouseup', onUp);
-                }}
-              >
-                <div className="flex gap-1">
-                  <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
-                  <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
-                  <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <MarkdownEditor value={content} onChange={setContent} />
           {error && <div className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: '#FDEDED', color: 'var(--color-danger)' }}>{error}</div>}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-secondary)' }}>取消</button>

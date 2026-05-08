@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, ImagePlus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { getBoards, createThread, createGuestSession, getProfileByUsername, createNotification, canCreateThread } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -7,7 +7,7 @@ import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
 import { useMentions } from '../../hooks/useMentions';
 import type { Board, Profile } from '../../lib/types';
-import { useImageUpload } from '../../lib/useImageUpload';
+import MarkdownEditor from '../ui/MarkdownEditor';
 import Avatar from '../ui/Avatar';
 import BCDateTimePicker from '../ui/BCDateTimePicker';
 
@@ -34,8 +34,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     return now.toISOString().slice(0, 16);
   });
   const isImpersonating = !!impersonating;
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const {
     mentionQuery,
     setMentionQuery,
@@ -165,26 +163,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     // Don't auto-submit - user still needs to fill form and verify
   }
 
-  const { handlePaste, handleFileChange } = useImageUpload({
-    userId: user?.id,
-    onInsert: (md) => {
-      setContent(prev => prev.includes('![Uploading image...]()')
-        ? prev.replace('![Uploading image...]()', md)
-        : prev + md);
-    },
-    onPlaceholder: () => '\n![Uploading image...]()\n',
-    onError: () => setError('图片上传失败'),
-  });
-
-  // Custom paste wrapper for React ClipboardEvent
-  function onPaste(e: React.ClipboardEvent) { handlePaste(e as unknown as ClipboardEvent); }
-
-  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const val = e.target.value;
-    setContent(val);
-    handleMentionChange(val, e.target.selectionStart);
-  }
-
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (mentionQuery !== null && mentionOptions.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -286,66 +264,18 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
             <div className="flex-1 flex flex-col relative">
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>正文 (支持 Markdown)</label>
               
-              <div className="relative flex-1 flex flex-col rounded-lg border focus-within:border-[var(--color-primary)] transition-colors" style={{ borderColor: 'var(--color-border)' }}>
-                <textarea
-                  ref={textareaRef}
-                  placeholder="分享你的想法、问题或见解... 至少 20 个字，支持 Markdown 和 @ 召唤"
-                  value={content}
-                  onChange={handleContentChange}
-                  onKeyDown={handleKeyDown}
-                  onPaste={onPaste}
-                  className="w-full flex-1 p-3 outline-none text-sm bg-transparent"
-                  style={{ color: 'var(--color-text-primary)', minHeight: 200, resize: 'none' } as React.CSSProperties}
-                />
-                
-                {/* Formatting toolbar */}
-                <div className="px-3 py-2 border-t flex items-center gap-2" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-page-bg)' }}>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-1.5 rounded hover:bg-[var(--color-hover)] text-[var(--color-text-secondary)] transition-colors cursor-pointer border-none bg-transparent"
-                    title="上传图片"
-                  >
-                    <ImagePlus size={18} />
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
-                </div>
-                
-                {/* Drag handle */}
-                <div
-                  className="h-2 cursor-s-resize hover:bg-[var(--color-primary)]/10 transition-colors flex items-center justify-center group border-t border-dashed"
-                  style={{ borderColor: 'var(--color-border)' }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const container = e.currentTarget.parentElement;
-                    if (!container) return;
-                    const startY = e.clientY;
-                    const startH = container.offsetHeight;
-                    const onMove = (ev: MouseEvent) => {
-                      container.style.height = Math.max(250, Math.min(800, startH + ev.clientY - startY)) + 'px';
-                      container.style.flex = 'none'; // Disable flex-1 when manually resized
-                    };
-                    const onUp = () => {
-                      document.removeEventListener('mousemove', onMove);
-                      document.removeEventListener('mouseup', onUp);
-                    };
-                    document.addEventListener('mousemove', onMove);
-                    document.addEventListener('mouseup', onUp);
-                  }}
-                >
-                  <div className="flex gap-1">
-                    <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
-                    <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
-                    <div className="w-1 h-1 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors opacity-30 group-hover:opacity-100" />
-                  </div>
-                </div>
-              </div>
+              <MarkdownEditor
+                value={content}
+                onChange={(v) => { setContent(v); handleMentionChange(v, textareaRef.current?.selectionStart || 0); }}
+                textareaProps={{
+                  ref: textareaRef,
+                  placeholder: '分享你的想法、问题或见解... 至少 20 个字，支持 Markdown 和 @ 召唤',
+                  onKeyDown: handleKeyDown as any,
+                  className: 'p-3',
+                  style: { minHeight: 200 },
+                }}
+                minHeight={200} maxHeight={800}
+              />
 
               {/* Mentions Dropdown */}
               {mentionQuery !== null && mentionOptions.length > 0 && (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import MarkdownEditor from '../ui/MarkdownEditor';
 
 interface EditDialogProps {
   title?: string;
@@ -76,41 +77,7 @@ export default function EditDialog({ title: initialTitle, content: initialConten
             </div>
           )}
 
-          <div className="flex-1 flex flex-col">
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>正文 (Markdown)</label>
-            <div className="relative flex flex-col rounded-lg border focus-within:border-[var(--color-primary)] transition-colors" style={{ borderColor: 'var(--color-border)' }}>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full flex-1 min-h-[150px] px-3 py-2 outline-none text-sm bg-transparent"
-                style={{ color: 'var(--color-text-primary)', resize: 'none' }}
-                onFocus={(e) => e.currentTarget.parentElement!.style.borderColor = 'var(--color-primary)'}
-                onBlur={(e) => e.currentTarget.parentElement!.style.borderColor = 'var(--color-border)'}
-              />
-              <div
-                className="h-1.5 cursor-s-resize hover:bg-[var(--color-primary)]/20 transition-colors flex items-center justify-center group"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  const container = e.currentTarget.parentElement;
-                  if (!container) return;
-                  const startY = e.clientY;
-                  const startH = container.offsetHeight;
-                  const onMove = (ev: MouseEvent) => {
-                    container.style.height = Math.max(150, Math.min(600, startH + ev.clientY - startY)) + 'px';
-                    container.style.flex = 'none';
-                  };
-                  const onUp = () => {
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                  };
-                  document.addEventListener('mousemove', onMove);
-                  document.addEventListener('mouseup', onUp);
-                }}
-              >
-                <div className="w-8 h-1 rounded-full bg-[var(--color-border)] group-hover:bg-[var(--color-primary)] transition-colors opacity-0 group-hover:opacity-100" />
-              </div>
-            </div>
-          </div>
+          <MarkdownEditor value={content} onChange={setContent} />
 
           {error && (
             <div className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: '#FDEDED', color: 'var(--color-danger)' }}>
