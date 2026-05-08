@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Board } from '../../lib/types';
+import BCDateTimePicker, { formatBCDate, parseBCDate } from '../ui/BCDateTimePicker';
 
 interface AdminEditDialogProps {
   title?: string;
@@ -18,9 +19,11 @@ export default function AdminEditDialog({
   boardId: initBoardId, boards, isThread, onSave, onClose,
 }: AdminEditDialogProps) {
   const [title, setTitle] = useState(initTitle || '');
+  const initialParsed = parseBCDate(initCreatedAt);
   const [content, setContent] = useState(initContent);
   const [boardId, setBoardId] = useState(initBoardId || (boards?.length ? boards[0].id : ''));
-  const [createdAt, setCreatedAt] = useState(initCreatedAt.slice(0, 16));
+  const [year, setYear] = useState(initialParsed.year);
+  const [monthDayTime, setMonthDayTime] = useState(initialParsed.monthDayTime);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,7 +44,7 @@ export default function AdminEditDialog({
         title: isThread ? title.trim() : undefined,
         content: content.trim(),
         boardId: isThread ? boardId : undefined,
-        createdAt: new Date(createdAt).toISOString(),
+        createdAt: formatBCDate(year, monthDayTime) || new Date().toISOString(),
       });
       onClose();
     } catch (err: unknown) { setError((err as Error).message || '保存失败'); }
@@ -67,7 +70,7 @@ export default function AdminEditDialog({
           </button>
         </div>
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-          {isThread && boards && (
+          {isThread && boards ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">版块</label>
@@ -75,24 +78,36 @@ export default function AdminEditDialog({
                   {boards.map(b => <option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">发帖时间</label>
-                <input type="datetime-local" value={createdAt} onChange={e => setCreatedAt(e.target.value)} style={inputStyle} />
-              </div>
+              <BCDateTimePicker
+                isoString={formatBCDate(year, monthDayTime) || ''}
+                onChange={(val) => {
+                  const p = parseBCDate(val);
+                  setYear(p.year);
+                  setMonthDayTime(p.monthDayTime);
+                }}
+                label="发帖时间"
+              />
             </div>
+          ) : (
+            <BCDateTimePicker
+              isoString={formatBCDate(year, monthDayTime) || ''}
+              onChange={(val) => {
+                const p = parseBCDate(val);
+                setYear(p.year);
+                setMonthDayTime(p.monthDayTime);
+              }}
+              label={isThread ? "发帖时间" : "回复时间"}
+              className="max-w-md"
+            />
           )}
-          {!isThread && (
-            <div>
-              <label className="block text-sm font-medium mb-1">发帖时间</label>
-              <input type="datetime-local" value={createdAt} onChange={e => setCreatedAt(e.target.value)} style={{ ...inputStyle, width: 280 }} />
-            </div>
-          )}
+
           {isThread && (
             <div>
               <label className="block text-sm font-medium mb-1">标题</label>
               <input value={title} onChange={e => setTitle(e.target.value)} maxLength={100} style={inputStyle} />
             </div>
           )}
+
           <div className="flex-1 flex flex-col">
             <label className="block text-sm font-medium mb-1">正文</label>
             <div className="relative flex-1 flex flex-col rounded-lg border outline-none transition-colors" style={{ borderColor: 'var(--color-border)' }}>

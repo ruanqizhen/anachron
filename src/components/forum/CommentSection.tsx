@@ -19,6 +19,7 @@ import ReportDialog from '../ui/ReportDialog';
 import ReplyTree from './ReplyTree';
 import { useMentions } from '../../hooks/useMentions';
 import { useImageUpload } from '../../lib/useImageUpload';
+import BCDateTimePicker, { formatBCDate, formatDisplayDate } from '../ui/BCDateTimePicker';
 
 
 function CommentInput({ 
@@ -180,17 +181,8 @@ interface CommentSectionProps {
   threadId: string;
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '刚刚';
-  if (mins < 60) return `${mins} 分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(dateStr).toLocaleDateString('zh-CN');
-}
+// timeAgo logic is now in formatDisplayDate
+
 
 function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post: Post; isNested?: boolean; likedIds: Set<string>; onPostUpdated: () => void }) {
   const { user, impersonating, guest } = useAuth();
@@ -209,7 +201,8 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_${post.id}`) || '');
   const [replying, setReplying] = useState(false);
-  const [replyTime, setReplyTime] = useState('');
+  const [replyYear, setReplyYear] = useState('');
+  const [replyMonthDayTime, setReplyMonthDayTime] = useState('');
 
   useEffect(() => {
     localStorage.setItem(`draft_reply_${post.id}`, replyText);
@@ -238,7 +231,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
             </div>
           </div>
           <div className="text-xs mt-1 px-1" style={{ color: 'var(--color-text-muted)' }}>
-            <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
+            <time dateTime={post.created_at}>{formatDisplayDate(post.created_at)}</time>
           </div>
         </div>
       </div>
@@ -377,20 +370,29 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
               回复
             </button>
             <span>·</span>
-            <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
+            <time dateTime={post.created_at}>{formatDisplayDate(post.created_at)}</time>
             {post.edited_at && <span>(已编辑)</span>}
           </div>
         </div>
       </div>
 
       {showReply && (
-        <div className="flex items-start gap-2 mt-2 mb-1" style={{ paddingLeft: isNested ? 0 : 0 }}>
+        <div className="flex flex-col gap-2 mt-2 mb-1" style={{ paddingLeft: isNested ? 42 : 42 }}>
           {impersonating && (
-            <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
-              className="px-2 py-1 rounded border outline-none text-xs bg-transparent w-48 mb-1"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            <BCDateTimePicker
+              isoString={replyTime}
+              onChange={setReplyTime}
+              label=""
+              className="mb-1 border-none bg-transparent p-0"
+            />
           )}
-          <CommentInput
+          <div className="flex items-start gap-2">
+            <Avatar 
+              name={impersonating ? impersonating.username : (user ? '你' : (guest?.username || '游客'))} 
+              url={impersonating?.avatarUrl}
+              size={24} 
+            />
+            <CommentInput
             value={replyText}
             onChange={setReplyText}
             placeholder={`回复 ${getDisplayName(post)}，至少 2 个字...`}
@@ -420,7 +422,7 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
                   authorId: impersonating?.profileId || user?.id,
                   guestId: gid,
                   parentPostId: post.id,
-                  createdAt: impersonating ? replyTime || undefined : undefined,
+                  createdAt: replyTime || undefined,
                 });
                 
                 // Enrich for immediate display before refetching
@@ -435,7 +437,8 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
               } catch (e: unknown) { console.warn(e); }
               setReplying(false);
             }}
-          />
+            />
+          </div>
         </div>
       )}
 
@@ -520,7 +523,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       content: replyText.trim(),
       authorId: impersonating?.profileId || user?.id,
       guestId: gid,
-      createdAt: impersonating ? replyTime || undefined : undefined,
+      createdAt: replyTime || undefined,
     });
     setReplyText('');
 
@@ -594,15 +597,19 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       )}
 
       {impersonating && (
-        <div className="flex items-center gap-2 px-4 pt-2">
-          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>回复时间</span>
-          <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
-            className="px-2 py-1 rounded border outline-none text-xs bg-transparent"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-        </div>
+        <BCDateTimePicker
+          isoString={replyTime}
+          onChange={setReplyTime}
+          label="回复时间"
+          className="mx-4 mt-2"
+        />
       )}
       <div className="flex items-start gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <Avatar name={user ? '你' : (guest?.username || '游客')} size={32} />
+        <Avatar 
+          name={impersonating ? impersonating.username : (user ? '你' : (guest?.username || '游客'))} 
+          url={impersonating?.avatarUrl}
+          size={32} 
+        />
         <div className="flex-1 flex flex-col">
           {error && (
             <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>

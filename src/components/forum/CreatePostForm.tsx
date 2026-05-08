@@ -8,6 +8,8 @@ import GuestNameDialog from './GuestNameDialog';
 import { useMentions } from '../../hooks/useMentions';
 import type { Board, Profile } from '../../lib/types';
 import { useImageUpload } from '../../lib/useImageUpload';
+import Avatar from '../ui/Avatar';
+import BCDateTimePicker, { formatBCDate } from '../ui/BCDateTimePicker';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -220,9 +222,16 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
           style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 24px rgba(0,0,0,0.1)' }}
         >
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
-            <h2 className="text-xl font-bold m-0 text-[var(--color-text-primary)]">
+            <h2 className="text-xl font-bold m-0 text-[var(--color-text-primary)] flex items-center gap-2">
               发布新帖
-              {effectiveGuestName && (
+              {impersonating ? (
+                <div className="flex items-center gap-2 ml-2 px-2 py-1 rounded-full bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
+                  <Avatar name={impersonating.username} url={impersonating.avatarUrl} size={24} />
+                  <span className="text-sm font-medium" style={{ color: 'var(--color-success)' }}>
+                    以「{impersonating.username}」身份
+                  </span>
+                </div>
+              ) : effectiveGuestName && (
                 <span className="text-sm font-normal ml-2" style={{ color: 'var(--color-text-muted)' }}>
                   以「{effectiveGuestName}」身份
                 </span>
@@ -370,17 +379,10 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
             )}
 
             {isImpersonating && (
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>发帖时间</label>
-                <input
-                  type="datetime-local"
-                  value={customTime}
-                  onChange={e => setCustomTime(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg border outline-none text-sm bg-transparent"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-                />
-                {!customTime && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>不填则使用当前时间</span>}
-              </div>
+              <BCDateTimePicker
+                isoString={customTime}
+                onChange={setCustomTime}
+              />
             )}
 
             <div className="flex items-center justify-between mt-2">

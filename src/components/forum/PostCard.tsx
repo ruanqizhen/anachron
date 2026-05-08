@@ -13,23 +13,15 @@ import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
+import { formatDisplayDate } from '../ui/BCDateTimePicker';
 import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel, toggleFeatured } from '../../lib/api';
 
 interface PostCardProps {
   thread: Thread;
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '刚刚';
-  if (mins < 60) return `${mins} 分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(dateStr).toLocaleDateString('zh-CN');
-}
+// timeAgo logic is now in formatDisplayDate
+
 
 const MAX_PREVIEW_LENGTH = 200;
 
@@ -184,7 +176,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
                 <span>·</span>
               </>
             )}
-            <time dateTime={thread.created_at}>{timeAgo(thread.created_at)}</time>
+            <time dateTime={thread.created_at}>{formatDisplayDate(thread.created_at)}</time>
           </div>
         </div>
       </div>
