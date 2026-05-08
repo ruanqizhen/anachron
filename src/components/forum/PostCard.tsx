@@ -44,9 +44,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
   const canEdit = isOwn || admin;
   const isLong = thread.content.length > MAX_PREVIEW_LENGTH;
-  const displayContent = isLong && !expanded
-    ? thread.content.slice(0, MAX_PREVIEW_LENGTH) + '...'
-    : thread.content;
+  const displayContent = thread.content;
 
   if (thread.deleted_at) {
     return (
@@ -215,7 +213,18 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
             {thread.title}
           </h2>
         </Link>
-        <MarkdownRenderer content={displayContent} />
+        <div 
+          className="relative overflow-hidden transition-all duration-300"
+          style={{ maxHeight: !expanded && isLong ? '300px' : 'none' }}
+        >
+          <MarkdownRenderer content={displayContent} />
+          {!expanded && isLong && (
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+              style={{ background: 'linear-gradient(to bottom, transparent, var(--color-card-bg))' }}
+            />
+          )}
+        </div>
         {isLong && (
           <button
             onClick={() => setExpanded(!expanded)}
