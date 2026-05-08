@@ -19,7 +19,7 @@ import ReportDialog from '../ui/ReportDialog';
 import ReplyTree from './ReplyTree';
 import { useMentions } from '../../hooks/useMentions';
 import { useImageUpload } from '../../lib/useImageUpload';
-import BCDateTimePicker, { formatBCDate, formatDisplayDate } from '../ui/BCDateTimePicker';
+import BCDateTimePicker, { formatDisplayDate } from '../ui/BCDateTimePicker';
 
 
 function CommentInput({ 
@@ -201,9 +201,11 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_${post.id}`) || '');
   const [replying, setReplying] = useState(false);
-  const [replyYear, setReplyYear] = useState('');
-  const [replyMonthDayTime, setReplyMonthDayTime] = useState('');
-
+  const [replyTime, setReplyTime] = useState(() => {
+    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
+  const [error, setError] = useState('');
   useEffect(() => {
     localStorage.setItem(`draft_reply_${post.id}`, replyText);
   }, [replyText, post.id]);
@@ -386,11 +388,14 @@ function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post
               className="mb-1 border-none bg-transparent p-0"
             />
           )}
+          {error && (
+            <p className="text-xs m-0 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
+          )}
           <div className="flex items-start gap-2">
-            <Avatar 
-              name={impersonating ? impersonating.username : (user ? '你' : (guest?.username || '游客'))} 
+            <Avatar
+              name={impersonating ? impersonating.username : (user ? '你' : (guest?.username || '游客'))}
               url={impersonating?.avatarUrl}
-              size={24} 
+              size={24}
             />
             <CommentInput
             value={replyText}
