@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface BCDateTimePickerProps {
   isoString: string;
   onChange: (val: string) => void;
@@ -16,19 +14,26 @@ export default function BCDateTimePicker({
   const isBC = parsed.year.startsWith('-');
   const displayYear = isBC ? parsed.year.slice(1) : parsed.year;
   
-  // To work with datetime-local, we need YYYY-MM-DDTHH:mm
+  // Split into date part (YYYY-MM-DD) and time part (HH:mm) for stable cross-browser behavior
   const localDateTime = parsed.monthDayTime.replace('2000', displayYear.padStart(4, '0'));
+  const localDate = localDateTime.split('T')[0];
+  const localTime = localDateTime.split('T')[1]?.slice(0, 5) || '12:00';
 
   const handleToggle = () => {
     const newYear = isBC ? displayYear : '-' + displayYear;
     onChange(formatBCDate(newYear, localDateTime) || '');
   };
 
-  const handleDateTimeChange = (newVal: string) => {
-    // Extract year from the new picker value
-    const parts = newVal.split('T');
-    if (parts.length === 0) return;
-    const yearPart = parts[0].split('-')[0];
+  const handleDateChange = (dateVal: string) => {
+    const newVal = `${dateVal}T${localTime}`;
+    const yearPart = dateVal.split('-')[0];
+    const newYear = isBC ? '-' + yearPart : yearPart;
+    onChange(formatBCDate(newYear, newVal) || '');
+  };
+
+  const handleTimeChange = (timeVal: string) => {
+    const newVal = `${localDate}T${timeVal}`;
+    const yearPart = localDate.split('-')[0];
     const newYear = isBC ? '-' + yearPart : yearPart;
     onChange(formatBCDate(newYear, newVal) || '');
   };
@@ -54,10 +59,17 @@ export default function BCDateTimePicker({
           </button>
         </div>
         <input
-          type="datetime-local"
-          value={localDateTime}
-          onChange={e => handleDateTimeChange(e.target.value)}
-          className="flex-1 px-3 py-1.5 rounded-lg border outline-none text-sm bg-transparent"
+          type="date"
+          value={localDate}
+          onChange={e => handleDateChange(e.target.value)}
+          className="px-3 py-1.5 rounded-lg border outline-none text-sm bg-transparent"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+        />
+        <input
+          type="time"
+          value={localTime}
+          onChange={e => handleTimeChange(e.target.value)}
+          className="w-24 px-3 py-1.5 rounded-lg border outline-none text-sm bg-transparent"
           style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
         />
       </div>

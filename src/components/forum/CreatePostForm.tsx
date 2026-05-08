@@ -9,7 +9,7 @@ import { useMentions } from '../../hooks/useMentions';
 import type { Board, Profile } from '../../lib/types';
 import { useImageUpload } from '../../lib/useImageUpload';
 import Avatar from '../ui/Avatar';
-import BCDateTimePicker, { formatBCDate } from '../ui/BCDateTimePicker';
+import BCDateTimePicker from '../ui/BCDateTimePicker';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -28,7 +28,11 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(guest?.username || null);
-  const [customTime, setCustomTime] = useState('');
+  const [useCustomTime, setUseCustomTime] = useState(false);
+  const [customTime, setCustomTime] = useState(() => {
+    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
   const isImpersonating = !!impersonating;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -115,7 +119,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         authorId: impersonating?.profileId || user?.id,
         guestId,
         turnstileToken: token,
-        createdAt: customTime || undefined,
+        createdAt: useCustomTime ? customTime : undefined,
       });
 
       // Notify @mentioned users
@@ -379,6 +383,12 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
             )}
 
             {isImpersonating && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>
+                <input type="checkbox" checked={useCustomTime} onChange={e => setUseCustomTime(e.target.checked)} />
+                设置自定义时间
+              </label>
+            )}
+            {isImpersonating && useCustomTime && (
               <BCDateTimePicker
                 isoString={customTime}
                 onChange={setCustomTime}
