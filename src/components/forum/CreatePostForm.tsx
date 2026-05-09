@@ -262,8 +262,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
             </div>
 
             <div className="flex-1 flex flex-col relative">
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>正文 (支持 Markdown)</label>
-              
               <MarkdownEditor
                 value={content}
                 onChange={(v) => { setContent(v); handleMentionChange(v, textareaRef.current?.selectionStart || 0); }}
