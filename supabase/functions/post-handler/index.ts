@@ -291,17 +291,21 @@ Deno.serve(async (req: Request) => {
       // Trigger dispatcher for new threads too
       if (!highRisk && status === 'published') {
         try {
-          const { data: taskData } = await supabase.from('ai_task_queue').insert({
+          const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
             thread_id: data.id, trigger_post_id: null,
             priority: 'normal', execute_after: new Date().toISOString(),
           }).select('id').single();
+          if (taskInsertErr) console.error('[POST-HANDLER] ai_task_queue insert error:', taskInsertErr.message);
           if (taskData) {
-            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
+            const dUrl = `${FUNCTIONS_BASE}/dispatcher`;
+            console.log('[POST-HANDLER] triggering dispatcher for thread:', data.id);
+            fetch(dUrl, {
               method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
               body: JSON.stringify({}),
-            }).catch(() => {});
+            }).then(r => console.log('[POST-HANDLER] dispatcher status:', r.status))
+              .catch(e => console.error('[POST-HANDLER] dispatcher error:', e));
           }
-        } catch { /* non-critical */ }
+        } catch (e) { console.error('[POST-HANDLER] ai_task_queue error:', e); }
       }
 
       return ok({ ok: true, thread: data, status });

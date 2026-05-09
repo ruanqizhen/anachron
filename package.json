@@ -19,6 +19,7 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.14.2",
     "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
     "textarea-caret": "^3.1.0"
   },
   "devDependencies": {
