@@ -759,6 +759,35 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
   }
 }
 
+// ─── Thread Likes (PostCard 点赞) ───
+export async function toggleThreadLike(threadId: string, userId: string): Promise<boolean> {
+  const db = requireSupabase();
+  const { data: existing } = await db
+    .from('thread_likes')
+    .select('id')
+    .eq('thread_id', threadId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    await db.from('thread_likes').delete().eq('id', existing.id);
+    return false; // unliked
+  } else {
+    await db.from('thread_likes').insert({ thread_id: threadId, user_id: userId });
+    return true; // liked
+  }
+}
+
+export async function getThreadLikes(userId: string, threadIds: string[]): Promise<Set<string>> {
+  if (!supabase || threadIds.length === 0) return new Set();
+  const { data } = await supabase
+    .from('thread_likes')
+    .select('thread_id')
+    .eq('user_id', userId)
+    .in('thread_id', threadIds);
+  return new Set((data || []).map((l: { thread_id: string }) => l.thread_id));
+}
+
 export async function getUserLikes(userId: string, postIds: string[]): Promise<Set<string>> {
   if (!supabase || postIds.length === 0) return new Set();
   const { data } = await supabase

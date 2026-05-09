@@ -22,20 +22,9 @@ export default function Settings() {
   const [bioMsg, setBioMsg] = useState('');
   const [bioSaving, setBioSaving] = useState(false);
 
-  if (!user) {
-    return (
-      <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
-        <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
-        <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
-      </div>
-    );
-  }
-
-  const uid = user.id;
-  const userEmail = user.email;
-
-  // Debounced username availability check
+  // Debounced username availability check — must be before any early return (Hooks rules)
   useEffect(() => {
+    if (!user) return;
     const name = username.trim();
     if (!name || name === (profile?.username || '')) { setUsernameAvailable(null); return; }
     if (name.length < 2) { setUsernameAvailable(null); return; }
@@ -50,7 +39,19 @@ export default function Settings() {
       setUsernameChecking(false);
     }, 500);
     return () => clearTimeout(timer);
-  }, [username, profile?.username]);
+  }, [username, profile?.username, user]);
+
+  if (!user) {
+    return (
+      <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
+        <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
+        <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
+      </div>
+    );
+  }
+
+  const uid = user.id;
+  const userEmail = user.email;
 
   async function handleSaveUsername(e: React.FormEvent) {
     e.preventDefault();

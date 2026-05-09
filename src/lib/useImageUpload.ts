@@ -35,14 +35,18 @@ export function useImageUpload(options: {
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(filePath);
 
-      // Replace placeholder with actual image
-      onInsert(placeholder.replace('![Uploading image...]()', `![image](${publicUrl})`).replace(placeholder, `![image](${publicUrl})`));
+      // Upload succeeded — call onInsert with the real markdown.
+      // The caller's onInsert (e.g. MarkdownEditor) handles finding and
+      // replacing the placeholder in the current editor content.
+      onInsert(`![image](${publicUrl})`);
     } catch (err) {
       console.error('Image upload error:', err);
-      onInsert(placeholder.replace('\n![Uploading image...]()\n', ''));
+      // On failure, call onInsert with empty string so the caller can
+      // remove the placeholder it previously inserted.
+      onInsert('');
       onError?.();
     }
-  }, [supabase, userId, onInsert, onPlaceholder]);
+  }, [userId, onInsert, onPlaceholder, onError]);
 
   // Ctrl+V paste
   const handlePaste = useCallback((e: ClipboardEvent) => {

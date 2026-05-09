@@ -64,6 +64,7 @@ export interface Thread {
   view_count: number;
   reply_count: number;
   like_count: number;
+  thread_like_count?: number;   // Added by migration 024: explicit thread-level likes
   last_post_at: string;
   edited_at: string | null;
   deleted_at: string | null;

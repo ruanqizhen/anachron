@@ -25,15 +25,23 @@ export default function MarkdownEditor({
   const { handlePaste, handleFileChange } = useImageUpload({
     userId: user?.id,
     onInsert: (md) => {
+      // md is either the final image markdown (success) or '' (upload failed).
+      // We look for the placeholder first; if found, replace or remove it.
+      // If not found (race condition / direct insert), insert at cursor.
+      const PLACEHOLDER = '![Uploading image...]()';
+      if (value.includes(PLACEHOLDER)) {
+        // Replace the whole "\n![Uploading image...]()\n" block;
+        // on error md === '' which effectively removes the placeholder.
+        onChange(value.replace(`\n${PLACEHOLDER}\n`, md ? `\n${md}\n` : ''));
+        return;
+      }
+      // No placeholder found — insert at cursor position (normal paste/upload path)
+      if (!md) return; // nothing to insert on error
       const ta = containerRef.current?.querySelector('textarea');
       if (!ta) { onChange(value + md); return; }
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
-      if (value.includes('![Uploading image...]()')) {
-        onChange(value.replace('![Uploading image...]()', md));
-      } else {
-        onChange(value.slice(0, start) + md + value.slice(end));
-      }
+      onChange(value.slice(0, start) + md + value.slice(end));
     },
     onPlaceholder: () => '\n![Uploading image...]()\n',
   });

@@ -14,7 +14,7 @@ import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
 import { formatDisplayDate } from '../ui/BCDateTimePicker';
-import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel, toggleFeatured } from '../../lib/api';
+import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel, toggleFeatured, toggleThreadLike, getThreadLikes } from '../../lib/api';
 
 interface PostCardProps {
   thread: Thread;
@@ -38,6 +38,16 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [showReport, setShowReport] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(thread.thread_like_count ?? thread.like_count ?? 0);
+  const [isLiking, setIsLiking] = useState(false);
+
+  // Load initial like status for this thread
+  useEffect(() => {
+    if (!user) return;
+    getThreadLikes(user.id, [thread.id]).then(likedIds => {
+      setLiked(likedIds.has(thread.id));
+    });
+  }, [user, thread.id]);
 
   const author = thread.profiles;
   const board = thread.boards;
@@ -246,12 +256,33 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         style={{ borderColor: 'var(--color-border)' }}
       >
         <button
-          onClick={() => setLiked(!liked)}
-          className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)]`}
+          onClick={async () => {
+            if (!user || isLiking) return;
+            // Optimistic update
+            const wasLiked = liked;
+            setLiked(!wasLiked);
+            setLikeCount(c => c + (wasLiked ? -1 : 1));
+            setIsLiking(true);
+            try {
+              const result = await toggleThreadLike(thread.id, user.id);
+              // Reconcile with server truth
+              setLiked(result);
+              setLikeCount(c => c + (result === wasLiked ? (wasLiked ? -1 : 1) : 0));
+            } catch {
+              // Rollback on error
+              setLiked(wasLiked);
+              setLikeCount(c => c + (wasLiked ? 1 : -1));
+            } finally {
+              setIsLiking(false);
+            }
+          }}
+          disabled={!user}
+          className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)] disabled:cursor-default`}
           style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}
+          title={!user ? '登录后可点赞' : undefined}
         >
           <ThumbsUp size={16} fill={liked ? 'currentColor' : 'none'} />
-          <span>点赞{((thread.like_count || 0) + (liked ? 1 : 0)) > 0 ? ` ${(thread.like_count || 0) + (liked ? 1 : 0)}` : ''}</span>
+          <span>点赞{likeCount > 0 ? ` ${likeCount}` : ''}</span>
         </button>
         <button
           onClick={() => setShowComments(!showComments)}

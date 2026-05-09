@@ -282,19 +282,24 @@ Deno.serve(async (req: Request) => {
           title: payload.title,
           content: payload.content,
           author_id: payload.author_id || null,
+          guest_id: payload.guest_id || null,
           status,
           created_at: payload.created_at || undefined,
         })
         .select('*').single();
       if (error) throw new Error(error.message);
 
-      // Trigger dispatcher for new threads too
+      // Trigger AI dispatcher for the new thread.
+      // trigger_post_id is NULL for thread-level tasks (migration 023 made the column nullable).
       if (!highRisk && status === 'published') {
         try {
           const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
-            thread_id: data.id, trigger_post_id: null,
-            priority: 'normal', execute_after: new Date().toISOString(),
+            thread_id: data.id,
+            trigger_post_id: null,  // Intentionally null: this is a thread-level task, not a reply
+            priority: 'normal',
+            execute_after: new Date().toISOString(),
           }).select('id').single();
+
           if (taskInsertErr) console.error('[POST-HANDLER] ai_task_queue insert error:', taskInsertErr.message);
           if (taskData) {
             const dUrl = `${FUNCTIONS_BASE}/dispatcher`;
