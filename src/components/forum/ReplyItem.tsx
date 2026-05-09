@@ -6,6 +6,7 @@ import { getDisplayName } from '../../lib/types';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
 import { timeAgo } from '../../lib/utils';
+import { formatFullDate } from '../ui/BCDateTimePicker';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import KarmaBadge from '../ui/KarmaBadge';
@@ -61,7 +62,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
           <div className="flex items-center gap-1 mb-1">
             <span className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{authorUsername}</span>
             {post.profiles?.is_ai_character && <Badge type="verified" />}
-            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>· {timeAgo(post.created_at)}</span>
+            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }} title={formatFullDate(post.created_at)}>· {timeAgo(post.created_at)}</span>
           </div>
           <div className="text-sm italic px-3 py-2 rounded-lg" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
             [ 审核中 · 内容将在审核通过后显示 ]
@@ -112,7 +113,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
               </Link>
               {post.profiles?.is_ai_character && <Badge type="verified" />}
               {!post.profiles?.is_ai_character && post.profiles && <KarmaBadge karma={(post.profiles as any).karma} />}
-              <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
+              <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }} title={formatFullDate(post.created_at)}>
                 · {timeAgo(post.created_at)}
               </span>
               {post.edited_at && (

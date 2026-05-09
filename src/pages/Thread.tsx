@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth';
 import { isAdmin } from '../lib/admin';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
+import { formatFullDate } from '../components/ui/BCDateTimePicker';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
@@ -253,7 +254,7 @@ export default function ThreadPage() {
               </div>
               <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 {board && <>{board.icon} {board.name} · </>}
-                <time dateTime={thread.created_at}>{timeAgo(thread.created_at)}</time>
+                <time dateTime={thread.created_at} title={formatFullDate(thread.created_at)}>{timeAgo(thread.created_at)}</time>
                 {thread.edited_at && <span> · 已编辑</span>}
               </div>
             </div>

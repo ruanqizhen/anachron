@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
 import type { Thread, Board } from '../../lib/types';
@@ -13,7 +14,7 @@ import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
-import { formatDisplayDate } from '../ui/BCDateTimePicker';
+import { formatDisplayDate, formatFullDate } from '../ui/BCDateTimePicker';
 import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel, toggleFeatured, toggleThreadLike, getThreadLikes } from '../../lib/api';
 
 interface PostCardProps {
@@ -39,6 +40,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
   const [shareToast, setShareToast] = useState(false);
+  const [loginToast, setLoginToast] = useState(false);
   const [likeCount, setLikeCount] = useState(thread.thread_like_count ?? thread.like_count ?? 0);
   const [isLiking, setIsLiking] = useState(false);
 
@@ -56,6 +58,8 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const canEdit = isOwn || admin;
   const isLong = thread.content.length > MAX_PREVIEW_LENGTH;
   const displayContent = thread.content;
+  const navigate = useNavigate();
+  const threadUrl = board ? `/b/${board.slug}/t/${thread.id}` : '#';
 
   if (thread.deleted_at) {
     return (
@@ -185,7 +189,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
                 <span>·</span>
               </>
             )}
-            <time dateTime={thread.created_at}>{formatDisplayDate(thread.created_at)}</time>
+            <time dateTime={thread.created_at} title={formatFullDate(thread.created_at)}>{formatDisplayDate(thread.created_at)}</time>
           </div>
         </div>
       </div>
@@ -211,19 +215,22 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         </div>
       )}
 
-      {/* Title + Content */}
-      <div className="px-4 pt-3 pb-2">
-        <Link
-          to={board ? `/b/${board.slug}/t/${thread.id}` : `#`}
-          className="no-underline"
+      {/* Title + Content — clickable to navigate to thread */}
+      <div
+        className="px-4 pt-3 pb-2 cursor-pointer"
+        onClick={(e) => {
+          // Don't navigate if user clicked on a link, button, or selected text
+          const target = e.target as HTMLElement;
+          if (target.closest('a') || target.closest('button') || window.getSelection()?.toString()) return;
+          if (threadUrl !== '#') navigate(threadUrl);
+        }}
+      >
+        <h2
+          className="text-xl font-bold mb-2 hover:underline"
+          style={{ color: 'var(--color-text-primary)' }}
         >
-          <h2
-            className="text-xl font-bold mb-2 hover:underline"
-            style={{ color: 'var(--color-text-primary)' }}
-          >
-            {thread.title}
-          </h2>
-        </Link>
+          {thread.title}
+        </h2>
         <div 
           className="relative overflow-hidden transition-all duration-300"
           style={{ maxHeight: !expanded && isLong ? '300px' : 'none' }}
@@ -258,7 +265,12 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
       >
         <button
           onClick={async () => {
-            if (!user || isLiking) return;
+            if (!user) {
+              setLoginToast(true);
+              setTimeout(() => setLoginToast(false), 2000);
+              return;
+            }
+            if (isLiking) return;
             // Optimistic update
             const wasLiked = liked;
             setLiked(!wasLiked);
@@ -277,10 +289,8 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
               setIsLiking(false);
             }
           }}
-          disabled={!user}
-          className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)] disabled:cursor-default`}
+          className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)]`}
           style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}
-          title={!user ? '登录后可点赞' : undefined}
         >
           <ThumbsUp size={16} fill={liked ? 'currentColor' : 'none'} />
           <span>点赞{likeCount > 0 ? ` ${likeCount}` : ''}</span>
@@ -306,6 +316,15 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           <span>{shareToast ? '✓ 已复制' : '分享'}</span>
         </button>
       </div>
+
+      {/* Login toast */}
+      {loginToast && (
+        <div className="mx-4 mb-2 px-3 py-2 rounded-lg text-xs text-center animate-pulse"
+          style={{ backgroundColor: '#FFF7ED', color: '#D97706', border: '1px solid #FDE68A' }}
+        >
+          请先 <Link to="/login" className="font-medium underline" style={{ color: '#D97706' }}>登录</Link> 后再点赞
+        </div>
+      )}
 
       {/* Inline comments */}
       {showComments && (

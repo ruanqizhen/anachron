@@ -70,7 +70,7 @@ export default function RightPanel() {
             className="px-4 py-3 font-semibold text-sm"
             style={{ borderBottom: '1px solid var(--color-border)' }}
           >
-            ⭐ 论坛热搜
+            ⭐ 精华帖子
           </div>
           <div className="py-1">
             {isLoading ? (

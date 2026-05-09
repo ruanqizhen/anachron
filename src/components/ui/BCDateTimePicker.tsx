@@ -183,3 +183,47 @@ export function formatDisplayDate(dateStr: string): string {
   }
 }
 
+/**
+ * Returns a precise, fully spelled-out date for tooltip use.
+ * e.g. "2026年5月9日 16:30"  or  "公元前 202年3月15日"
+ */
+export function formatFullDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const cleanStr = dateStr.toString().replace(/\.\d+/, '').trim();
+  const isBC = cleanStr.includes(' BC') || cleanStr.startsWith('-');
+
+  if (!isBC) {
+    const normalized = cleanStr.replace(' ', 'T');
+    const date = new Date(normalized);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    }
+    return cleanStr;
+  }
+
+  try {
+    let yearStr = '';
+    let rest = '';
+    if (cleanStr.startsWith('-')) {
+      const idx = cleanStr.indexOf('-', 1);
+      if (idx === -1) return cleanStr;
+      yearStr = Math.abs(parseInt(cleanStr.slice(0, idx), 10)).toString();
+      rest = cleanStr.slice(idx);
+    } else {
+      const idx = cleanStr.indexOf('-');
+      if (idx === -1) return cleanStr;
+      yearStr = parseInt(cleanStr.slice(0, idx), 10).toString();
+      rest = cleanStr.slice(idx).replace(' BC', '');
+    }
+    const parts = rest.split(/T| /)[0].split('-');
+    const month = parseInt(parts[1] || '1', 10);
+    const day = parseInt(parts[2] || '1', 10);
+    return `公元前 ${yearStr}年${month}月${day}日`;
+  } catch {
+    return cleanStr;
+  }
+}
+
