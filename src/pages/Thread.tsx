@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
-import { Send, ChevronRight, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { ChevronRight, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, getProfileByUsername, createNotification, createGuestSession, getUserLikes, canCreateReply } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
@@ -15,6 +15,7 @@ import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import ReplyTree from '../components/forum/ReplyTree';
 import ReplyItem from '../components/forum/ReplyItem';
+import CommentInput from '../components/forum/CommentInput';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
 import { adminUpdateThread, adminSoftDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
 import type { Post, Thread, Board } from '../lib/types';
@@ -49,7 +50,6 @@ export default function ThreadPage() {
   const [guestId, setGuestId] = useState<string | null>(null);
   const [replyTime, setReplyTime] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
-  const replyInputRef = useRef<HTMLTextAreaElement>(null);
 
   async function loadThread() {
     if (!threadId) return;
@@ -110,8 +110,7 @@ export default function ThreadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
-  async function handleReply(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleReply() {
     setError('');
     if (!replyText.trim() || !threadId || isSubmitting) return;
     const rateCheck = canCreateReply(!user);
@@ -375,34 +374,21 @@ export default function ThreadPage() {
           </div>
         )}
         {!thread.is_locked && (
-        <form onSubmit={handleReply} className="flex items-start gap-3 py-4">
+        <div className="flex items-start gap-3 py-4">
           <Avatar name={profile?.username || guest?.username || '我'} size={36} />
           <div className="flex-1">
-            <textarea
-              ref={replyInputRef}
-              placeholder="写回复... 至少 2 个字，支持 Markdown"
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              rows={6}
-              className="w-full rounded-lg px-3 py-2 text-sm border outline-none transition-colors"
-              style={{ borderColor: error ? 'var(--color-danger)' : 'var(--color-border)', backgroundColor: 'var(--color-page-bg)', color: 'var(--color-text-primary)', resize: 'vertical', minHeight: 120 } as React.CSSProperties}
-            />
             {error && (
-              <p className="text-xs mt-1 m-0" style={{ color: 'var(--color-danger)' }}>{error}</p>
+              <p className="text-xs mb-1 m-0" style={{ color: 'var(--color-danger)' }}>{error}</p>
             )}
-            <div className="flex justify-end mt-2">
-              <button
-                type="submit"
-                disabled={!replyText.trim() || isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer border-none disabled:opacity-40"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                <Send size={14} />
-                {isSubmitting ? '发送中...' : '发送'}
-              </button>
-            </div>
+            <CommentInput
+              value={replyText}
+              onChange={setReplyText}
+              onSubmit={handleReply}
+              placeholder="写回复... 至少 2 个字，支持 Markdown"
+              isSubmitting={isSubmitting}
+            />
           </div>
-        </form>
+        </div>
         )}
       </div>
 

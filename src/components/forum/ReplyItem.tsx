@@ -12,6 +12,7 @@ import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
+import CommentInput from './CommentInput';
 import {
   updatePost, softDeletePost, adminUpdatePost, adminSoftDeletePost,
   createPost, createGuestSession, toggleLike,
@@ -72,6 +73,30 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
 
   const avatarUrl = author?.avatar_url;
   const linkPath = post.profiles?.username ? `/u/${post.profiles.username}` : '#';
+
+  async function handleReplySubmit() {
+    if (!replyText.trim() || replying) return;
+    setReplying(true);
+    try {
+      let gid: string | undefined;
+      if (!user && authGuest) {
+        gid = guestId || await createGuestSession(authGuest.username);
+        if (!guestId) setGuestId(gid);
+      }
+      await createPost({
+        threadId: post.thread_id,
+        content: replyText.trim(),
+        authorId: impersonating?.profileId || user?.id,
+        guestId: gid,
+        parentPostId: post.id,
+        createdAt: impersonating ? replyTime || undefined : undefined,
+      });
+      setReplyText('');
+      setShowReply(false);
+      onPostUpdated();
+    } catch { /* ignore */ }
+    setReplying(false);
+  }
 
   return (
     <>
@@ -134,22 +159,15 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
         </div>
       </article>
       {showReply && (
-        <div className="flex gap-2 py-2 pl-9">
-          <input type="text" placeholder={`回复 ${authorUsername}...`} value={replyText}
-            onChange={e => setReplyText(e.target.value)}
-            className="flex-1 py-1.5 px-3 rounded-full text-sm bg-transparent border outline-none"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-          <button onClick={async () => { if (!replyText.trim() || replying) return; setReplying(true);
-            try {
-              let gid: string | undefined;
-              if (!user && authGuest) { gid = guestId || await createGuestSession(authGuest.username); if (!guestId) setGuestId(gid); }
-              await createPost({ threadId: post.thread_id, content: replyText.trim(), authorId: impersonating?.profileId || user?.id, guestId: gid, parentPostId: post.id, createdAt: impersonating ? replyTime || undefined : undefined });
-              setReplyText(''); setShowReply(false); onPostUpdated();
-            } catch {}
-            setReplying(false); }}
-            disabled={!replyText.trim() || replying}
-            className="px-3 py-1.5 rounded-full text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
-            style={{ backgroundColor: 'var(--color-primary)' }}>{replying ? '...' : '发送'}</button>
+        <div className="py-2 pl-9">
+          <CommentInput
+            value={replyText}
+            onChange={setReplyText}
+            onSubmit={handleReplySubmit}
+            placeholder={`回复 ${authorUsername}...`}
+            isSubmitting={replying}
+            minHeight={80}
+          />
         </div>
       )}
       {showEdit && <EditDialog content={post.content} onSave={async (_, c) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
