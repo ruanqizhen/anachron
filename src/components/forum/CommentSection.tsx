@@ -1,31 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { ThumbsUp, Send, MoreHorizontal, Pencil, Trash2, ImagePlus, AlertTriangle } from 'lucide-react';
+import { Send, ImagePlus } from 'lucide-react';
 import type { Post } from '../../lib/types';
-import { getDisplayName, getAuthorLink } from '../../lib/types';
-import { getPostsByThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../../lib/api';
+import { getPostsByThread, createPost, getProfileByUsername, createNotification, createGuestSession, getUserLikes, canCreateReply } from '../../lib/api';
 import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
-import { isAdmin } from '../../lib/admin';
 import { parseMentions } from '../../lib/mentions';
-import AdminEditDialog from './AdminEditDialog';
-import { adminUpdatePost, adminSoftDeletePost } from '../../lib/api';
 import Avatar from '../ui/Avatar';
-import Badge from '../ui/Badge';
-import KarmaBadge from '../ui/KarmaBadge';
-import MarkdownRenderer from '../ui/MarkdownRenderer';
-import EditDialog from './EditDialog';
-import ReportDialog from '../ui/ReportDialog';
 import ReplyTree from './ReplyTree';
+import ReplyItem from './ReplyItem';
 import { useMentions } from '../../hooks/useMentions';
 import { useImageUpload } from '../../lib/useImageUpload';
-import BCDateTimePicker, { formatDisplayDate } from '../ui/BCDateTimePicker';
+import BCDateTimePicker from '../ui/BCDateTimePicker';
 
 
-function CommentInput({ 
+function CommentInput({
   value, onChange, onSubmit, placeholder, disabled, isSubmitting, className = ''
-}: { 
-  value: string; onChange: (val: string) => void; onSubmit: () => void; 
+}: {
+  value: string; onChange: (val: string) => void; onSubmit: () => void;
   placeholder: string; disabled?: boolean; isSubmitting?: boolean; className?: string;
 }) {
   const { user } = useAuth();
@@ -101,7 +92,7 @@ function CommentInput({
         style={{ color: 'var(--color-text-primary)', minHeight: 100, resize: 'none' } as React.CSSProperties}
         disabled={disabled}
       />
-      
+
       <div className="px-2 py-1.5 flex items-center justify-between border-t" style={{ borderColor: 'var(--color-border)' }}>
         <div>
           <button
@@ -137,7 +128,7 @@ function CommentInput({
           const startH = container.offsetHeight;
           const onMove = (ev: MouseEvent) => {
             container.style.height = Math.max(120, Math.min(600, startH + ev.clientY - startY)) + 'px';
-            container.style.flex = 'none'; // Disable flex-1 when manually resized
+            container.style.flex = 'none';
           };
           const onUp = () => {
             document.removeEventListener('mousemove', onMove);
@@ -155,7 +146,7 @@ function CommentInput({
       </div>
 
       {mentionQuery !== null && mentionOptions.length > 0 && (
-        <div 
+        <div
           className="absolute z-50 bg-[var(--color-card-bg)] border rounded-lg shadow-lg overflow-hidden py-1 max-h-48 overflow-y-auto w-full"
           style={{ top: mentionPosition.top + 'px', left: mentionPosition.left + 'px', borderColor: 'var(--color-border)' }}
         >
@@ -181,304 +172,6 @@ interface CommentSectionProps {
   threadId: string;
 }
 
-// timeAgo logic is now in formatDisplayDate
-
-
-function CommentItem({ post, isNested = false, likedIds, onPostUpdated }: { post: Post; isNested?: boolean; likedIds: Set<string>; onPostUpdated: () => void }) {
-  const { user, impersonating, guest } = useAuth();
-  const [liked, setLiked] = useState(likedIds.has(post.id));
-  const [likes, setLikes] = useState(post.likes);
-  const [showMenu, setShowMenu] = useState(false);
-  const [guestId, setGuestId] = useState<string | null>(null);
-  useEffect(() => { 
-    if (likedIds.has(post.id) !== liked) {
-      setTimeout(() => setLiked(likedIds.has(post.id)), 0);
-    }
-  }, [likedIds, post.id, liked]);
-  const [showEdit, setShowEdit] = useState(false);
-  const [showReport, setShowReport] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showReply, setShowReply] = useState(false);
-  const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_${post.id}`) || '');
-  const [replying, setReplying] = useState(false);
-  const [replyTime, setReplyTime] = useState(() => {
-    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  });
-  const [error, setError] = useState('');
-  useEffect(() => {
-    localStorage.setItem(`draft_reply_${post.id}`, replyText);
-  }, [replyText, post.id]);
-  const author = post.profiles;
-  const isOwn = user && author && user.id === author.id && !author.is_ai_character;
-  const admin = isAdmin(user?.id);
-  const canEdit = isOwn || admin;
-  const [showAdminEdit, setShowAdminEdit] = useState(false);
-
-  if (post.status === 'pending_review') {
-    return (
-      <div className={`flex gap-2.5 px-4 py-3 ${''}`}>
-        <div className="shrink-0">
-          <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={32} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--color-page-bg)' }}>
-            <div className="flex items-center flex-wrap gap-1 mb-1">
-              <span className="font-semibold text-[13px]" style={{ color: 'var(--color-text-primary)' }}>{getDisplayName(post)}</span>
-              {author?.is_ai_character && <Badge type="verified" />}
-              {author && !author.is_ai_character && <KarmaBadge karma={author.karma} />}
-            </div>
-            <div className="text-sm italic px-2 py-1 rounded" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
-              [ 审核中 · 内容将在审核通过后显示 ]
-            </div>
-          </div>
-          <div className="text-xs mt-1 px-1" style={{ color: 'var(--color-text-muted)' }}>
-            <time dateTime={post.created_at}>{formatDisplayDate(post.created_at)}</time>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (post.deleted_at) {
-    return (
-      <div
-        className={`px-4 py-3 text-sm italic ${''}`}
-        style={{ color: 'var(--color-text-muted)' }}
-      >
-        [ 此内容已被删除 · 删除于 {new Date(post.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} ]
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className={`flex gap-2.5 px-4 py-3 ${''}`}>
-        <Link to={getAuthorLink(post)} className="shrink-0">
-          <Avatar
-            name={getDisplayName(post)}
-            url={author?.avatar_url}
-            size={32}
-          />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div
-            className="rounded-xl px-3 py-2"
-            style={{ backgroundColor: 'var(--color-page-bg)' }}
-          >
-            <div className="flex items-center justify-between gap-1">
-              <div className="flex items-center flex-wrap gap-1">
-                <Link
-                  to={getAuthorLink(post)}
-                  className="font-semibold text-[13px] no-underline hover:underline"
-                  style={{ color: 'var(--color-text-primary)' }}
-                >
-                  {getDisplayName(post)}
-                </Link>
-                {author?.is_ai_character && <Badge type="verified" />}
-                {author && !author.is_ai_character && <KarmaBadge karma={author.karma} />}
-              </div>
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-0.5 rounded-full hover:bg-white/50 transition-colors cursor-pointer border-none bg-transparent"
-                >
-                  <MoreHorizontal size={12} style={{ color: 'var(--color-text-muted)' }} />
-                </button>
-                {showMenu && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                    <div
-                      className="absolute right-0 top-full mt-1 w-24 rounded-lg z-20 overflow-hidden"
-                      style={{
-                        backgroundColor: 'var(--color-card-bg)',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                        border: '1px solid var(--color-border)',
-                      }}
-                    >
-                      {canEdit && (
-                        <button
-                          onClick={() => {
-                            setShowMenu(false);
-                            if (admin && !isOwn) setShowAdminEdit(true);
-                            else setShowEdit(true);
-                          }}
-                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                          style={{ color: 'var(--color-text-primary)' }}
-                        >
-                          <Pencil size={11} /> 编辑
-                        </button>
-                      )}
-                      {canEdit && (
-                        <button
-                          onClick={async () => {
-                            setShowMenu(false);
-                            if (isDeleting) return;
-                            setIsDeleting(true);
-                            try {
-                              if (admin && !isOwn) await adminSoftDeletePost(post.id);
-                              else await softDeletePost(post.id);
-                              onPostUpdated();
-                            } catch { /* ignore */ }
-                            setIsDeleting(false);
-                          }}
-                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                          style={{ color: 'var(--color-danger)' }}
-                        >
-                          <Trash2 size={11} /> {isDeleting ? '...' : '删除'}
-                        </button>
-                      )}
-                      {!isOwn && (
-                        <button
-                          onClick={() => {
-                            setShowMenu(false);
-                            setShowReport(true);
-                          }}
-                          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                          style={{ color: 'var(--color-danger)' }}
-                        >
-                          <AlertTriangle size={11} /> 举报
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <MarkdownRenderer content={post.content} className="text-sm" />
-          </div>
-          <div className="flex items-center gap-3 mt-1 px-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            <button
-              onClick={async () => {
-                if (!user) return;
-                setLiked(!liked);
-                setLikes(l => l + (liked ? -1 : 1));
-                const result = await toggleLike(post.id, user.id);
-                setLiked(result);
-                setLikes(post.likes + (result ? 1 : 0));
-              }}
-              className="flex items-center gap-1 font-medium cursor-pointer bg-transparent border-none"
-              style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)', fontSize: 12 }}
-            >
-              <ThumbsUp size={12} fill={liked ? 'currentColor' : 'none'} />
-              {likes > 0 && likes}
-            </button>
-            <span>·</span>
-            <button
-              onClick={() => setShowReply(!showReply)}
-              className="font-medium cursor-pointer bg-transparent border-none"
-              style={{ color: 'var(--color-text-muted)', fontSize: 12 }}
-            >
-              回复
-            </button>
-            <span>·</span>
-            <time dateTime={post.created_at}>{formatDisplayDate(post.created_at)}</time>
-            {post.edited_at && <span>(已编辑)</span>}
-          </div>
-        </div>
-      </div>
-
-      {showReply && (
-        <div className="flex flex-col gap-2 mt-2 mb-1" style={{ paddingLeft: isNested ? 42 : 42 }}>
-          {impersonating && (
-            <BCDateTimePicker
-              isoString={replyTime}
-              onChange={setReplyTime}
-              label=""
-              className="mb-1 border-none bg-transparent p-0"
-            />
-          )}
-          {error && (
-            <p className="text-xs m-0 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
-          )}
-          <div className="flex items-start gap-2">
-            <Avatar
-              name={impersonating ? impersonating.username : (user ? '你' : (guest?.username || '游客'))}
-              url={impersonating?.avatarUrl}
-              size={24}
-            />
-            <CommentInput
-            value={replyText}
-            onChange={setReplyText}
-            placeholder={`回复 ${getDisplayName(post)}，至少 2 个字...`}
-            isSubmitting={replying}
-            onSubmit={async () => {
-              if (!replyText.trim() || replying) return;
-              if (replyText.trim().length < 2) {
-                setError('回复内容至少需要 2 个字符');
-                return;
-              }
-              const rateCheck = canCreateReply(!user);
-              if (!rateCheck.ok) {
-                setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
-                return;
-              }
-              setReplying(true);
-              try {
-                // Handle guest posting for reply-to-reply
-                let gid: string | undefined;
-                if (!user && guest) {
-                  gid = guestId || await createGuestSession(guest.username);
-                  if (!guestId) setGuestId(gid);
-                }
-                const newPost = await createPost({
-                  threadId: post.thread_id,
-                  content: replyText.trim(),
-                  authorId: impersonating?.profileId || user?.id,
-                  guestId: gid,
-                  parentPostId: post.id,
-                  createdAt: replyTime || undefined,
-                });
-                
-                // Enrich for immediate display before refetching
-                if (!user && guest) {
-                  (newPost as any).guest_sessions = { username: guest.username };
-                }
-                
-                setReplyText('');
-                localStorage.removeItem(`draft_reply_${post.id}`);
-                setShowReply(false);
-                onPostUpdated();
-              } catch (e: unknown) { console.warn(e); }
-              setReplying(false);
-            }}
-            />
-          </div>
-        </div>
-      )}
-
-      {showEdit && (
-        <EditDialog
-          content={post.content}
-          onSave={async (_title, content) => {
-            await updatePost(post.id, content);
-            onPostUpdated();
-          }}
-          onClose={() => setShowEdit(false)}
-        />
-      )}
-      {showReport && user && (
-        <ReportDialog
-          targetType="post"
-          targetId={post.id}
-          reporterId={user.id}
-          onClose={() => setShowReport(false)}
-        />
-      )}
-      {showAdminEdit && (
-        <AdminEditDialog
-          content={post.content}
-          createdAt={post.created_at}
-          onSave={async (data) => {
-            await adminUpdatePost(post.id, data.content, data.createdAt!);
-            onPostUpdated();
-          }}
-          onClose={() => setShowAdminEdit(false)}
-        />
-      )}
-    </>
-  );
-}
 
 export default function CommentSection({ threadId }: CommentSectionProps) {
   const { user, guest, impersonating, startGuestSession } = useAuth();
@@ -546,7 +239,6 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       }
     }
 
-    // Enrich new post with local guest info for immediate display
     if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
     setPosts(prev => [...prev, newPost as Post]);
     localStorage.removeItem(`draft_reply_thread_${threadId}`);
@@ -554,7 +246,7 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
   async function handleReply() {
     if (!replyText.trim() || isSubmitting) return;
-    
+
     if (replyText.trim().length < 2) {
       setError('回复内容至少需要 2 个字符');
       return;
@@ -566,7 +258,6 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
       return;
     }
 
-    // If guest and no guest session yet, prompt
     if (!user && !guest && !guestId) {
       setShowGuestDialog(true);
       return;
@@ -591,8 +282,8 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
   return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
-      <ReplyTree posts={posts} renderItem={(p, depth) => (
-        <CommentItem post={p} likedIds={likedIds} onPostUpdated={loadPosts} isNested={depth > 0} />
+      <ReplyTree posts={posts} renderItem={(p) => (
+        <ReplyItem post={p} likedIds={likedIds} onPostUpdated={loadPosts} />
       )} />
 
       {posts.length === 0 && (
@@ -610,10 +301,10 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
         />
       )}
       <div className="flex items-start gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <Avatar 
-          name={impersonating ? impersonating.username : (user ? '你' : (guest?.username || '游客'))} 
+        <Avatar
+          name={impersonating ? impersonating.username : (user ? '我' : (guest?.username || '游客'))}
           url={impersonating?.avatarUrl}
-          size={32} 
+          size={32}
         />
         <div className="flex-1 flex flex-col">
           {error && (
@@ -636,7 +327,6 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
             startGuestSession(name);
             const gid = await createGuestSession(name);
             setGuestId(gid);
-            // Auto-submit after guest session created
             setIsSubmitting(true);
             try { await doSubmitReply(name); } catch (err: unknown) { setError((err as Error).message || '发送失败'); }
             setIsSubmitting(false);

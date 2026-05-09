@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
-import { Send, ChevronRight, ThumbsUp, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
+import { Send, ChevronRight, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, updatePost, softDeletePost, getProfileByUsername, createNotification, createGuestSession, toggleLike, getUserLikes, canCreateReply } from '../lib/api';
+import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, getProfileByUsername, createNotification, createGuestSession, getUserLikes, canCreateReply } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { parseMentions } from '../lib/mentions';
 import { supabase } from '../lib/supabase';
@@ -14,8 +14,9 @@ import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import ReplyTree from '../components/forum/ReplyTree';
+import ReplyItem from '../components/forum/ReplyItem';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
-import { adminUpdateThread, adminUpdatePost, adminSoftDeleteThread, adminSoftDeletePost, getBoards, toggleThreadLock } from '../lib/api';
+import { adminUpdateThread, adminSoftDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
 import type { Post, Thread, Board } from '../lib/types';
 
 function timeAgo(dateStr: string): string {
@@ -28,241 +29,6 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days} 天前`;
   return new Date(dateStr).toLocaleDateString('zh-CN');
-}
-
-function ReplyItem({ post, likedIds, onPostUpdated, isAdmin: admin }: { post: Post; likedIds: Set<string>; onPostUpdated: () => void; isAdmin: boolean }) {
-  const { user, impersonating, guest } = useAuth();
-  const [liked, setLiked] = useState(likedIds.has(post.id));
-  const [guestId, setGuestId] = useState<string | null>(null);
-  const [likes, setLikes] = useState(post.likes);
-  const [showMenu, setShowMenu] = useState(false);
-  useEffect(() => { setTimeout(() => setLiked(likedIds.has(post.id)), 0); }, [likedIds, post.id]);
-  const [showEdit, setShowEdit] = useState(false);
-  const [showAdminEdit, setShowAdminEdit] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showReply, setShowReply] = useState(false);
-  const [replyText, setReplyText] = useState('');
-  const [replying, setReplying] = useState(false);
-  const [replyTime, setReplyTime] = useState('');
-  const author = post.profiles;
-  const isOwn = user && author && user.id === author.id && !author.is_ai_character;
-  const canEdit = isOwn || admin;
-
-  if (post.status === 'pending_review') {
-    return (
-      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
-          <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={36} />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1 mb-1">
-            <Link to={author ? `/u/${author.username}` : '#'} className="font-semibold text-sm no-underline hover:underline" style={{ color: 'var(--color-text-primary)' }}>
-              {getDisplayName(post)}
-            </Link>
-            {author?.is_ai_character && <Badge type="verified" />}
-                        <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>· {timeAgo(post.created_at)}</span>
-          </div>
-          <div className="text-sm italic px-3 py-2 rounded-lg" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
-            [ 审核中 · 内容将在审核通过后显示 ]
-          </div>
-        </div>
-      </article>
-    );
-  }
-
-  if (post.deleted_at) {
-    return (
-      <div className="flex gap-3 py-4">
-        <div className="text-sm italic px-4 py-3" style={{ color: 'var(--color-text-muted)' }}>
-          [ 此内容已被删除 · 删除于 {new Date(post.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} ]
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <Link to={author ? `/u/${author.username}` : '#'} className="shrink-0">
-          <Avatar name={getDisplayName(post)} url={author?.avatar_url} size={36} />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-1 mb-1">
-            <div className="flex items-center gap-1">
-              <Link
-                to={author ? `/u/${author.username}` : '#'}
-                className="font-semibold text-sm no-underline hover:underline"
-                style={{ color: 'var(--color-text-primary)' }}
-              >
-                {getDisplayName(post)}
-              </Link>
-              {author?.is_ai_character && <Badge type="verified" />}
-                            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
-                · {timeAgo(post.created_at)}
-              </span>
-              {post.edited_at && (
-                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  · 已编辑
-                </span>
-              )}
-            </div>
-
-            {canEdit && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-1 rounded-full hover:bg-[var(--color-page-bg)] transition-colors cursor-pointer border-none bg-transparent"
-                >
-                  <MoreHorizontal size={14} style={{ color: 'var(--color-text-muted)' }} />
-                </button>
-                {showMenu && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                    <div
-                      className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
-                      style={{
-                        backgroundColor: 'var(--color-card-bg)',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                        border: '1px solid var(--color-border)',
-                      }}
-                    >
-                      <button
-                        onClick={() => {
-                          setShowMenu(false);
-                          if (admin && !isOwn) setShowAdminEdit(true);
-                          else setShowEdit(true);
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                        style={{ color: 'var(--color-text-primary)' }}
-                      >
-                        <Pencil size={12} /> 编辑
-                      </button>
-                      <button
-                        onClick={async () => {
-                          setShowMenu(false);
-                          if (isDeleting) return;
-                          setIsDeleting(true);
-                          try {
-                            if (admin && !isOwn) await adminSoftDeletePost(post.id);
-                            else await softDeletePost(post.id);
-                            onPostUpdated();
-                          } catch { /* ignore */ }
-                          setIsDeleting(false);
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                        style={{ color: 'var(--color-danger)' }}
-                      >
-                        <Trash2 size={12} /> {isDeleting ? '删除中...' : '删除'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          <MarkdownRenderer content={post.content} className="text-sm" />
-          <div className="flex items-center gap-3 mt-2">
-            <button
-              onClick={async () => {
-                if (!user) return;
-                setLiked(!liked);
-                setLikes(l => l + (liked ? -1 : 1));
-                const result = await toggleLike(post.id, user.id);
-                setLiked(result);
-                setLikes(post.likes + (result ? 1 : 0));
-              }}
-              className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none"
-              style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}
-            >
-              <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} />
-              {likes}
-            </button>
-            <button
-              onClick={() => setShowReply(!showReply)}
-              className="text-xs font-medium cursor-pointer bg-transparent border-none"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              回复
-            </button>
-          </div>
-        </div>
-      </article>
-
-      {showReply && (
-        <div className="flex flex-col gap-1 py-2">
-          {impersonating && (
-            <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
-              className="px-2 py-1 rounded border outline-none text-xs bg-transparent w-48"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-          )}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder={`回复 ${getDisplayName(post)}...`}
-            value={replyText}
-            onChange={e => setReplyText(e.target.value)}
-            className="flex-1 py-1.5 px-3 rounded-full text-sm bg-transparent border outline-none"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-          />
-          <button
-            onClick={async () => {
-              if (!replyText.trim() || replying) return;
-              setReplying(true);
-              try {
-                // Handle guest posting for reply-to-reply
-                let gid: string | undefined;
-                if (!user && guest) {
-                  gid = guestId || await createGuestSession(guest.username);
-                  if (!guestId) setGuestId(gid);
-                }
-                await createPost({
-                  threadId: post.thread_id,
-                  content: replyText.trim(),
-                  authorId: impersonating?.profileId || user?.id,
-                  guestId: gid,
-                  parentPostId: post.id,
-                  createdAt: impersonating ? replyTime || undefined : undefined,
-                });
-                setReplyText('');
-                setShowReply(false);
-                onPostUpdated();
-              } catch (e: unknown) { console.warn(e); }
-              setReplying(false);
-            }}
-            disabled={!replyText.trim() || replying}
-            className="px-3 py-1.5 rounded-full text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            {replying ? '...' : '发送'}
-          </button>
-          </div>
-        </div>
-      )}
-
-      {showEdit && (
-        <EditDialog
-          content={post.content}
-          onSave={async (_title, content) => {
-            await updatePost(post.id, content);
-            onPostUpdated();
-          }}
-          onClose={() => setShowEdit(false)}
-        />
-      )}
-
-      {showAdminEdit && (
-        <AdminEditDialog
-          content={post.content}
-          createdAt={post.created_at}
-          onSave={async (data) => {
-            await adminUpdatePost(post.id, data.content, data.createdAt!);
-            onPostUpdated();
-          }}
-          onClose={() => setShowAdminEdit(false)}
-        />
-      )}
-    </>
-  );
 }
 
 export default function ThreadPage() {
@@ -435,7 +201,7 @@ export default function ThreadPage() {
       <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
         <div className="text-center py-20">
           <div className="text-lg" style={{ color: 'var(--color-text-muted)' }}>
-            [ 此内容已被删除 · 删除于 {new Date(thread.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} ]
+            [ 此内容已被删除 · 删除于 {new Date(thread.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) } ]
           </div>
           <Link to="/" className="mt-4 inline-block" style={{ color: 'var(--color-primary)' }}>返回首页</Link>
         </div>
@@ -485,7 +251,7 @@ export default function ThreadPage() {
                   {getDisplayName(thread)}
                 </Link>
                 {author?.is_ai_character && <Badge type="verified" />}
-                              </div>
+              </div>
               <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 {board && <>{board.icon} {board.name} · </>}
                 <time dateTime={thread.created_at}>{timeAgo(thread.created_at)}</time>
@@ -585,7 +351,7 @@ export default function ThreadPage() {
           </div>
         ) : (
           <ReplyTree posts={posts} renderItem={(p) => (
-            <ReplyItem post={p} likedIds={likedIds} isAdmin={admin} onPostUpdated={() => loadPosts(postPage)} />
+            <ReplyItem post={p} likedIds={likedIds} onPostUpdated={() => loadPosts(postPage)} />
           )} />
         )}
         {hasMorePosts && (
@@ -610,7 +376,7 @@ export default function ThreadPage() {
         )}
         {!thread.is_locked && (
         <form onSubmit={handleReply} className="flex items-start gap-3 py-4">
-          <Avatar name={profile?.username || guest?.username || '你'} size={36} />
+          <Avatar name={profile?.username || guest?.username || '我'} size={36} />
           <div className="flex-1">
             <textarea
               ref={replyInputRef}

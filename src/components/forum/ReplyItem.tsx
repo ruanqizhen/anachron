@@ -1,0 +1,160 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import type { Post } from '../../lib/types';
+import { getDisplayName } from '../../lib/types';
+import { useAuth } from '../../lib/auth';
+import { isAdmin } from '../../lib/admin';
+import { timeAgo } from '../../lib/utils';
+import Avatar from '../ui/Avatar';
+import Badge from '../ui/Badge';
+import KarmaBadge from '../ui/KarmaBadge';
+import MarkdownRenderer from '../ui/MarkdownRenderer';
+import EditDialog from './EditDialog';
+import AdminEditDialog from './AdminEditDialog';
+import {
+  updatePost, softDeletePost, adminUpdatePost, adminSoftDeletePost,
+  createPost, createGuestSession, toggleLike,
+} from '../../lib/api';
+
+interface ReplyItemProps {
+  post: Post;
+  likedIds: Set<string>;
+  showEditDelete?: boolean;
+  onPostUpdated: () => void;
+}
+
+export default function ReplyItem({ post, likedIds, showEditDelete = true, onPostUpdated }: ReplyItemProps) {
+  const { user, impersonating, guest: authGuest } = useAuth();
+  const admin = isAdmin(user?.id);
+  const [liked, setLiked] = useState(likedIds.has(post.id));
+  const [likes, setLikes] = useState(post.likes);
+  const [showMenu, setShowMenu] = useState(false);
+  useEffect(() => { setLiked(likedIds.has(post.id)); }, [likedIds, post.id]);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showAdminEdit, setShowAdminEdit] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replying, setReplying] = useState(false);
+  const replyTime = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const [guestId, setGuestId] = useState<string | null>(null);
+  const author = post.profiles;
+  const authorUsername = getDisplayName(post);
+  const isOwn = user && post.profiles && user.id === post.profiles.id && !post.profiles.is_ai_character;
+  const canEdit = showEditDelete && (isOwn || admin);
+
+  if (post.deleted_at) {
+    return (
+      <div className="py-3 text-sm italic" style={{ color: 'var(--color-text-muted)' }}>
+        [ 此内容已被删除 · 删除于 {new Date(post.deleted_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) } ]
+      </div>
+    );
+  }
+
+  if (post.status === 'pending_review') {
+    return (
+      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <Avatar name={authorUsername} url={author?.avatar_url} size={36} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-1">
+            <span className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{authorUsername}</span>
+            {post.profiles?.is_ai_character && <Badge type="verified" />}
+            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>· {timeAgo(post.created_at)}</span>
+          </div>
+          <div className="text-sm italic px-3 py-2 rounded-lg" style={{ color: 'var(--color-text-muted)', backgroundColor: '#FFF8E1' }}>
+            [ 审核中 · 内容将在审核通过后显示 ]
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  const avatarUrl = author?.avatar_url;
+  const linkPath = post.profiles?.username ? `/u/${post.profiles.username}` : '#';
+
+  return (
+    <>
+      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <Link to={linkPath} className="shrink-0">
+          <Avatar name={authorUsername} url={avatarUrl} size={36} />
+        </Link>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1 mb-1">
+            <div className="flex items-center gap-1">
+              <Link to={linkPath} className="font-semibold text-sm no-underline hover:underline" style={{ color: 'var(--color-text-primary)' }}>
+                {authorUsername}
+              </Link>
+              {post.profiles?.is_ai_character && <Badge type="verified" />}
+              {!post.profiles?.is_ai_character && post.profiles && <KarmaBadge karma={(post.profiles as any).karma} />}
+              <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>
+                · {timeAgo(post.created_at)}
+              </span>
+              {post.edited_at && (
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>· 已编辑</span>
+              )}
+            </div>
+            {canEdit && (
+              <div className="relative">
+                <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded-full hover:bg-[var(--color-page-bg)] cursor-pointer border-none bg-transparent">
+                  <MoreHorizontal size={14} style={{ color: 'var(--color-text-muted)' }} />
+                </button>
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                    <div className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
+                      style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--color-border)' }}>
+                      <button onClick={() => { setShowMenu(false); if (admin && !isOwn) setShowAdminEdit(true); else setShowEdit(true); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-primary)' }}>
+                        <Pencil size={12} /> 编辑
+                      </button>
+                      <button onClick={async () => { setShowMenu(false); if (isDeleting) return; setIsDeleting(true);
+                        try { if (admin && !isOwn) await adminSoftDeletePost(post.id); else await softDeletePost(post.id); onPostUpdated(); } catch {}
+                        setIsDeleting(false); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
+                        <Trash2 size={12} /> {isDeleting ? '删除中...' : '删除'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <MarkdownRenderer content={post.content} className="text-sm" />
+          <div className="flex items-center gap-3 mt-2">
+            <button onClick={async () => { if (!user) return; setLiked(!liked); setLikes(l => l + (liked ? -1 : 1));
+              try { const result = await toggleLike(post.id, user.id); setLiked(result); setLikes(post.likes + (result ? 1 : 0)); } catch {} }}
+              className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none"
+              style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+              <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} /> {likes}
+            </button>
+            <button onClick={() => setShowReply(!showReply)} className="text-xs font-medium cursor-pointer bg-transparent border-none"
+              style={{ color: 'var(--color-text-muted)' }}>回复</button>
+          </div>
+        </div>
+      </article>
+      {showReply && (
+        <div className="flex gap-2 py-2 pl-9">
+          <input type="text" placeholder={`回复 ${authorUsername}...`} value={replyText}
+            onChange={e => setReplyText(e.target.value)}
+            className="flex-1 py-1.5 px-3 rounded-full text-sm bg-transparent border outline-none"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+          <button onClick={async () => { if (!replyText.trim() || replying) return; setReplying(true);
+            try {
+              let gid: string | undefined;
+              if (!user && authGuest) { gid = guestId || await createGuestSession(authGuest.username); if (!guestId) setGuestId(gid); }
+              await createPost({ threadId: post.thread_id, content: replyText.trim(), authorId: impersonating?.profileId || user?.id, guestId: gid, parentPostId: post.id, createdAt: impersonating ? replyTime || undefined : undefined });
+              setReplyText(''); setShowReply(false); onPostUpdated();
+            } catch {}
+            setReplying(false); }}
+            disabled={!replyText.trim() || replying}
+            className="px-3 py-1.5 rounded-full text-xs font-medium text-white cursor-pointer border-none disabled:opacity-50"
+            style={{ backgroundColor: 'var(--color-primary)' }}>{replying ? '...' : '发送'}</button>
+        </div>
+      )}
+      {showEdit && <EditDialog content={post.content} onSave={async (_, c) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
+      {showAdminEdit && <AdminEditDialog content={post.content} createdAt={post.created_at}
+        onSave={async (d) => { await adminUpdatePost(post.id, d.content, d.createdAt!); onPostUpdated(); }} onClose={() => setShowAdminEdit(false)} />}
+    </>
+  );
+}
