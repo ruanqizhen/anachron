@@ -207,7 +207,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           className="no-underline"
         >
           <h2
-            className="text-base font-bold mb-2 hover:underline"
+            className="text-xl font-bold mb-2 hover:underline"
             style={{ color: 'var(--color-text-primary)' }}
           >
             {thread.title}
