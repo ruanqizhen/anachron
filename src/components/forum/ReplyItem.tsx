@@ -148,8 +148,8 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
           </div>
           <MarkdownRenderer content={post.content} className="text-sm" />
           <div className="flex items-center gap-3 mt-2">
-            <button onClick={async () => { if (!user) return; setLiked(!liked); setLikes(l => l + (liked ? -1 : 1));
-              try { const result = await toggleLike(post.id, user.id); setLiked(result); setLikes(post.likes + (result ? 1 : 0)); } catch {} }}
+            <button onClick={async () => { setLiked(!liked); setLikes(l => l + (liked ? -1 : 1));
+              try { const result = await toggleLike(post.id, user?.id || null); setLiked(result); setLikes(post.likes + (result ? 1 : 0)); } catch {} }}
               className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none"
               style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
               <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} /> {likes}

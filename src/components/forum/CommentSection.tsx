@@ -34,8 +34,8 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
   const loadPosts = useCallback(async () => {
     const fetchedPosts = await getPostsByThread(threadId);
     setPosts(fetchedPosts);
-    if (user && fetchedPosts.length > 0) {
-      getUserLikes(user.id, fetchedPosts.map(p => p.id)).then(setLikedIds);
+    if (fetchedPosts.length > 0) {
+      getUserLikes(user?.id || null, fetchedPosts.map(p => p.id)).then(setLikedIds);
     }
   }, [threadId, user]);
 

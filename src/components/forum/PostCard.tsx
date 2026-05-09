@@ -40,14 +40,12 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
   const [shareToast, setShareToast] = useState(false);
-  const [loginToast, setLoginToast] = useState(false);
   const [likeCount, setLikeCount] = useState(thread.thread_like_count ?? thread.like_count ?? 0);
   const [isLiking, setIsLiking] = useState(false);
 
   // Load initial like status for this thread
   useEffect(() => {
-    if (!user) return;
-    getThreadLikes(user.id, [thread.id]).then(likedIds => {
+    getThreadLikes(user?.id || null, [thread.id]).then(likedIds => {
       setLiked(likedIds.has(thread.id));
     });
   }, [user, thread.id]);
@@ -265,24 +263,16 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
       >
         <button
           onClick={async () => {
-            if (!user) {
-              setLoginToast(true);
-              setTimeout(() => setLoginToast(false), 2000);
-              return;
-            }
             if (isLiking) return;
-            // Optimistic update
             const wasLiked = liked;
             setLiked(!wasLiked);
             setLikeCount(c => c + (wasLiked ? -1 : 1));
             setIsLiking(true);
             try {
-              const result = await toggleThreadLike(thread.id, user.id);
-              // Reconcile with server truth
+              const result = await toggleThreadLike(thread.id, user?.id || null);
               setLiked(result);
               setLikeCount(c => c + (result === wasLiked ? (wasLiked ? -1 : 1) : 0));
             } catch {
-              // Rollback on error
               setLiked(wasLiked);
               setLikeCount(c => c + (wasLiked ? 1 : -1));
             } finally {
@@ -316,15 +306,6 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           <span>{shareToast ? '✓ 已复制' : '分享'}</span>
         </button>
       </div>
-
-      {/* Login toast */}
-      {loginToast && (
-        <div className="mx-4 mb-2 px-3 py-2 rounded-lg text-xs text-center animate-pulse"
-          style={{ backgroundColor: '#FFF7ED', color: '#D97706', border: '1px solid #FDE68A' }}
-        >
-          请先 <Link to="/login" className="font-medium underline" style={{ color: '#D97706' }}>登录</Link> 后再点赞
-        </div>
-      )}
 
       {/* Inline comments */}
       {showComments && (

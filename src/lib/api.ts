@@ -740,62 +740,121 @@ export async function getFeaturedThreads(): Promise<Thread[]> {
 
 // ─── Admin: Stats ───
 // ─── Likes ───
-export async function toggleLike(postId: string, userId: string): Promise<boolean> {
-  const db = requireSupabase();
-  // Check if already liked
-  const { data: existing } = await db
-    .from('likes')
-    .select('id')
-    .eq('post_id', postId)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (existing) {
-    await db.from('likes').delete().eq('id', existing.id);
-    return false; // unliked
-  } else {
-    await db.from('likes').insert({ post_id: postId, user_id: userId });
-    return true; // liked
+export function getGuestLikeId(): string {
+  let id = localStorage.getItem('anachron_like_id');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('anachron_like_id', id);
   }
+  return id;
+}
+
+export async function toggleLike(postId: string, userId: string | null, guestId?: string): Promise<boolean> {
+  const db = requireSupabase();
+  const guestLikeId = guestId || getGuestLikeId();
+  // Check if already liked
+  if (userId) {
+    const { data: existing } = await db
+      .from('likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existing) {
+      await db.from('likes').delete().eq('id', existing.id);
+      return false;
+    }
+    await db.from('likes').insert({ post_id: postId, user_id: userId });
+  } else {
+    const { data: existing } = await db
+      .from('likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('guest_id', guestLikeId)
+      .maybeSingle();
+
+    if (existing) {
+      await db.from('likes').delete().eq('id', existing.id);
+      return false;
+    }
+    await db.from('likes').insert({ post_id: postId, guest_id: guestLikeId });
+  }
+  return true;
 }
 
 // ─── Thread Likes (PostCard 点赞) ───
-export async function toggleThreadLike(threadId: string, userId: string): Promise<boolean> {
+export async function toggleThreadLike(threadId: string, userId: string | null, guestId?: string): Promise<boolean> {
   const db = requireSupabase();
-  const { data: existing } = await db
-    .from('thread_likes')
-    .select('id')
-    .eq('thread_id', threadId)
-    .eq('user_id', userId)
-    .maybeSingle();
+  const guestLikeId = guestId || getGuestLikeId();
+  if (userId) {
+    const { data: existing } = await db
+      .from('thread_likes')
+      .select('id')
+      .eq('thread_id', threadId)
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  if (existing) {
-    await db.from('thread_likes').delete().eq('id', existing.id);
-    return false; // unliked
-  } else {
+    if (existing) {
+      await db.from('thread_likes').delete().eq('id', existing.id);
+      return false;
+    }
     await db.from('thread_likes').insert({ thread_id: threadId, user_id: userId });
-    return true; // liked
+  } else {
+    const { data: existing } = await db
+      .from('thread_likes')
+      .select('id')
+      .eq('thread_id', threadId)
+      .eq('guest_id', guestLikeId)
+      .maybeSingle();
+
+    if (existing) {
+      await db.from('thread_likes').delete().eq('id', existing.id);
+      return false;
+    }
+    await db.from('thread_likes').insert({ thread_id: threadId, guest_id: guestLikeId });
+  }
+  return true;
+}
+
+export async function getThreadLikes(userId: string | null, threadIds: string[]): Promise<Set<string>> {
+  const guestLikeId = getGuestLikeId();
+  if (!supabase || threadIds.length === 0) return new Set();
+  if (userId) {
+    const { data } = await supabase
+      .from('thread_likes')
+      .select('thread_id')
+      .eq('user_id', userId)
+      .in('thread_id', threadIds);
+    return new Set((data || []).map((l: { thread_id: string }) => l.thread_id));
+  } else {
+    const { data } = await supabase
+      .from('thread_likes')
+      .select('thread_id')
+      .eq('guest_id', guestLikeId)
+      .in('thread_id', threadIds);
+    return new Set((data || []).map((l: { thread_id: string }) => l.thread_id));
   }
 }
 
-export async function getThreadLikes(userId: string, threadIds: string[]): Promise<Set<string>> {
-  if (!supabase || threadIds.length === 0) return new Set();
-  const { data } = await supabase
-    .from('thread_likes')
-    .select('thread_id')
-    .eq('user_id', userId)
-    .in('thread_id', threadIds);
-  return new Set((data || []).map((l: { thread_id: string }) => l.thread_id));
-}
-
-export async function getUserLikes(userId: string, postIds: string[]): Promise<Set<string>> {
+export async function getUserLikes(userId: string | null, postIds: string[]): Promise<Set<string>> {
+  const guestLikeId = getGuestLikeId();
   if (!supabase || postIds.length === 0) return new Set();
-  const { data } = await supabase
-    .from('likes')
-    .select('post_id')
-    .eq('user_id', userId)
-    .in('post_id', postIds);
-  return new Set((data || []).map((l: { post_id: string }) => l.post_id));
+  if (userId) {
+    const { data } = await supabase
+      .from('likes')
+      .select('post_id')
+      .eq('user_id', userId)
+      .in('post_id', postIds);
+    return new Set((data || []).map((l: { post_id: string }) => l.post_id));
+  } else {
+    const { data } = await supabase
+      .from('likes')
+      .select('post_id')
+      .eq('guest_id', guestLikeId)
+      .in('post_id', postIds);
+    return new Set((data || []).map((l: { post_id: string }) => l.post_id));
+  }
 }
 
 export async function adminGetDailyStats(days: number = 7) {

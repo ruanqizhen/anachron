@@ -67,8 +67,8 @@ export default function ThreadPage() {
     const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, (page - 1) * POST_PAGE);
     setPosts(fetchedPosts);
     setHasMorePosts(fetchedPosts.length >= POST_PAGE);
-    if (user && fetchedPosts.length > 0) {
-      getUserLikes(user.id, fetchedPosts.map(p => p.id)).then(setLikedIds);
+    if (fetchedPosts.length > 0) {
+      getUserLikes(user?.id || null, fetchedPosts.map(p => p.id)).then(setLikedIds);
     }
   }
 
