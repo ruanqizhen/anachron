@@ -116,8 +116,17 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-        加载中...
+      <div style={{ borderTop: '1px solid var(--color-border)' }}>
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex gap-3 px-4 py-4 animate-pulse" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <div className="shrink-0 w-9 h-9 rounded-full" style={{ backgroundColor: 'var(--color-page-bg)' }} />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 rounded w-24" style={{ backgroundColor: 'var(--color-page-bg)' }} />
+              <div className="h-3 rounded w-full" style={{ backgroundColor: 'var(--color-page-bg)' }} />
+              <div className="h-3 rounded w-3/4" style={{ backgroundColor: 'var(--color-page-bg)' }} />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

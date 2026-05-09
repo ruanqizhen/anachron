@@ -73,6 +73,15 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     fetchBoards();
   }, [defaultBoardSlug]);
 
+  // ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
   const isLoggedIn = !!user;
   const effectiveGuestName = guestName || guest?.username || null;
@@ -198,10 +207,13 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      >
         <div
           className="w-full max-w-2xl rounded-xl flex flex-col max-h-[90vh]"
           style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 24px rgba(0,0,0,0.1)' }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
             <h2 className="text-xl font-bold m-0 text-[var(--color-text-primary)] flex items-center gap-2">

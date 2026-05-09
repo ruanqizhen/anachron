@@ -38,6 +38,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [showReport, setShowReport] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
   const [likeCount, setLikeCount] = useState(thread.thread_like_count ?? thread.like_count ?? 0);
   const [isLiking, setIsLiking] = useState(false);
 
@@ -294,11 +295,15 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         </button>
         <button
           className="flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)]"
-          style={{ color: 'var(--color-text-secondary)' }}
-          onClick={() => navigator.clipboard?.writeText(window.location.origin + (board ? `/b/${board.slug}/t/${thread.id}` : ''))}
+          style={{ color: shareToast ? 'var(--color-success)' : 'var(--color-text-secondary)' }}
+          onClick={() => {
+            navigator.clipboard?.writeText(window.location.origin + (board ? `/b/${board.slug}/t/${thread.id}` : ''));
+            setShareToast(true);
+            setTimeout(() => setShareToast(false), 1500);
+          }}
         >
           <Share2 size={16} />
-          <span>分享</span>
+          <span>{shareToast ? '✓ 已复制' : '分享'}</span>
         </button>
       </div>
 
