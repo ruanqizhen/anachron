@@ -40,7 +40,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
   const [shareToast, setShareToast] = useState(false);
-  const [likeCount, setLikeCount] = useState(thread.thread_like_count ?? thread.like_count ?? 0);
+  const [likeCount, setLikeCount] = useState((thread.thread_like_count || 0) + (thread.like_count || 0));
   const [isLiking, setIsLiking] = useState(false);
 
   // Load initial like status for this thread
