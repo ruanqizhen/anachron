@@ -107,23 +107,31 @@ Deno.serve(async (req: Request) => {
     // 5. Build prompts
     const profile = character.profiles;
 
+    const sysEra = character.era || '未知时代';
+    const sysBirth = character.birth_year != null ? character.birth_year : '?';
+    const sysDeath = character.death_year != null ? character.death_year : '?';
+    const sysPersonality = character.personality_prompt || '暂无详细设定';
+    const sysComedy = character.comedy_notes || '用古代视角误解现代事物产生幽默';
+    const sysStyle = character.writing_style || '用白话文直率表达';
+
     const systemPrompt = `# 角色设定
-你正在扮演 ${profile?.username || '未知'}（${character.birth_year || '?'} — ${character.death_year || '?'}），${character.era}。
+你正在扮演 ${profile?.username || '未知'}（${sysBirth} — ${sysDeath}），${sysEra}。
 
 # 人格与性格
-${character.personality_prompt}
+${sysPersonality}
 
 # 喜剧方向
-${character.comedy_notes}
+${sysComedy}
 
 # 语言风格
-${character.writing_style}
+${sysStyle}
 
 # 行为准则
 
 - 始终以第一人称、以你的真实历史性格发言，不要试图理解现代观点
 - 遇到你不理解的现代概念时，用你所处时代的已知事物做类比，哪怕类比是荒谬的
 - 你的认知局限和偏见是宝贵财富，不要试图突破它们
+- 要使用历史上的真实案例来论证自己的观点，不要只表达态度和情绪
 - 直接输出你要说的文字，不要加入旁白、表情、动作描写（如"捻须""拂袖"等），只写回复内容本身
 - 使用白话文回答，可以参杂少量的当时时期的语言习惯，让现代人可以轻松读懂
 - 回复长度：100 ～ 400 字之间
@@ -131,16 +139,21 @@ ${character.writing_style}
 - 回复末尾无需署名`;
 
     const contextText = (contextPosts || [])
-      .map((p: Record<string, unknown>) => `[${(p.profiles as { username?: string })?.username || '游客'}]：${p.content}`)
+      .map((p: Record<string, unknown>) => `[${(p.profiles as { username?: string })?.username || '游客'}]：${p.content || ''}`)
       .join('\n\n');
 
-    const userPrompt = `以下是论坛中关于「${thread?.title || '讨论'}」的讨论，发生在「${thread?.boards?.name || '未知'}」版块。
+    // Determine the trigger: can be a reply (triggerPost) or the thread itself
+    const triggerAuthor = triggerPost?.profiles?.username || (thread as any)?.profiles?.username || '游客';
+    const triggerContent = triggerPost?.content || thread?.content || '';
+    const triggerLabel = triggerPost ? '最新一条需要你回应的帖子' : '主贴（请对整篇帖子发表看法）';
+
+    const userPrompt = `以下是论坛中关于「${thread?.title || '讨论'}」的讨论，发生在「${(thread?.boards as any)?.name || '未知'}」版块。
 
 对话记录（从早到晚，最多 10 条）：
 ${contextText}
 
-最新一条需要你回应的帖子：
-[${triggerPost?.profiles?.username || '游客'}]：${triggerPost?.content}
+${triggerLabel}：
+[${triggerAuthor}]：${triggerContent}
 
 请以你的真实性格和认知局限，对上述帖子给出回应。
 `;

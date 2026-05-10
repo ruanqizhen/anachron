@@ -184,7 +184,9 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
 }
 
 // ─── Main ───
+const VERSION = '2.1';
 Deno.serve(async (req: Request) => {
+  console.log('[POST-HANDLER] v' + VERSION, 'request:', req.method);
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }

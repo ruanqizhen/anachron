@@ -241,11 +241,14 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
       .eq('id', task.id);
 
     // 8. Trigger character-responder
-    fetch(`${FUNCTIONS_BASE}/character-responder`, {
+    const crUrl = `${FUNCTIONS_BASE}/character-responder`;
+    console.log('[DISPATCHER] triggering character-responder:', crUrl, 'task:', responseTask.id);
+    fetch(crUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
       body: JSON.stringify({ response_task_id: responseTask.id }),
-    }).catch(() => {});
+    }).then(r => console.log('[DISPATCHER] character-responder status:', r.status))
+      .catch(e => console.error('[DISPATCHER] character-responder error:', e));
 
     return new Response(JSON.stringify({
       ok: true, character: decision.name, reason: decision.reason,

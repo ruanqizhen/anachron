@@ -87,7 +87,7 @@ export default function CommentInput({
         }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
-        className="w-full flex-1 p-2.5 outline-none text-sm bg-transparent"
+        className="w-full flex-1 p-2.5 pr-3 outline-none text-sm bg-transparent"
         style={{ color: 'var(--color-text-primary)', minHeight, resize: 'none' } as React.CSSProperties}
         disabled={disabled}
       />
