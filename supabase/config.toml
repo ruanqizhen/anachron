@@ -1,0 +1,4 @@
+[functions.dispatcher]
+verify_jwt = false
+[functions.character-responder]
+verify_jwt = false

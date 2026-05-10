@@ -207,6 +207,9 @@ Deno.serve(async (req: Request) => {
       created_at?: string;
       turnstile_token: string;
     } = await req.json();
+    const isThread = payload.action === 'create_thread';
+    const isGuest = !payload.author_id;
+    console.log('[POST-HANDLER] action:', payload.action, 'isGuest:', isGuest, 'title:', (payload.title || '').slice(0, 40));
 
     // AI character posts skip all checks — just insert directly
     if (payload.author_id) {
@@ -237,23 +240,22 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 1: Turnstile (required for new threads only; replies skip)
-    const isThread = payload.action === 'create_thread';
-    if (isThread && !payload.turnstile_token) return err('缺少人机验证 token', 400);
+    if (isThread && !payload.turnstile_token) { console.log('[POST-HANDLER] missing turnstile token'); return err('缺少人机验证 token', 400); }
     if (payload.turnstile_token) {
       const turnstileOk = await verifyTurnstile(payload.turnstile_token, clientIp);
-      if (!turnstileOk) return err('人机验证失败', 403);
+      if (!turnstileOk) { console.log('[POST-HANDLER] turnstile failed'); return err('人机验证失败', 403); }
     }
 
-    // Step 2: Rate limiting (per user/IP, no cross-interference)
-    const isGuest = !payload.author_id;
+    // Step 2: Rate limiting
     const userId = payload.author_id;
     const allowed = await checkRateLimit(clientIp, isGuest, isThread, userId, payload.guest_id);
-    if (!allowed) return err('发言过于频繁，请稍后再试', 429);
+    if (!allowed) { console.log('[POST-HANDLER] rate limited'); return err('发言过于频繁，请稍后再试', 429); }
 
-    // Step 3: Risk check — by IP for guests, by user for logged-in
+    // Step 3: Risk check
     const highRiskGuest = isGuest ? await isHighRiskIp(clientIp) : false;
     const highRiskUser = !isGuest && userId ? await isHighRiskUser(userId) : false;
     const highRisk = highRiskGuest || highRiskUser;
+    if (highRisk) console.log('[POST-HANDLER] high risk user/ip');
 
     // Step 4: AI content moderation (logged-in users get 1-point leniency)
     let status = 'published';
@@ -262,6 +264,7 @@ Deno.serve(async (req: Request) => {
     if (!highRisk) {
       const result = await moderateContent(textToCheck);
       const score = result.score || (result.safe ? 1 : 10);
+      console.log('[POST-HANDLER] moderation score:', score, 'threshold:', threshold);
       if (score >= threshold) {
         status = 'pending_review';
         const riskReason = result.reason || `风险评分 ${score}`;
@@ -290,6 +293,7 @@ Deno.serve(async (req: Request) => {
         })
         .select('*').single();
       if (error) throw new Error(error.message);
+      console.log('[POST-HANDLER] thread inserted:', data.id, 'status:', status);
 
       // Trigger AI dispatcher for the new thread.
       // trigger_post_id is NULL for thread-level tasks (migration 023 made the column nullable).
@@ -304,13 +308,12 @@ Deno.serve(async (req: Request) => {
 
           if (taskInsertErr) console.error('[POST-HANDLER] ai_task_queue insert error:', taskInsertErr.message);
           if (taskData) {
-            const dUrl = `${FUNCTIONS_BASE}/dispatcher`;
-            console.log('[POST-HANDLER] triggering dispatcher for thread:', data.id);
-            fetch(dUrl, {
-              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
-              body: JSON.stringify({}),
-            }).then(r => console.log('[POST-HANDLER] dispatcher status:', r.status))
-              .catch(e => console.error('[POST-HANDLER] dispatcher error:', e));
+            console.log('[POST-HANDLER] invoking dispatcher');
+            supabase.functions.invoke('dispatcher', { body: {} })
+              .then(({ data, error }) => {
+                if (error) console.error('[POST-HANDLER] dispatcher error:', error.message);
+                else console.log('[POST-HANDLER] dispatcher ok:', JSON.stringify(data));
+              }).catch(e => console.error('[POST-HANDLER] dispatcher exception:', e));
           }
         } catch (e) { console.error('[POST-HANDLER] ai_task_queue error:', e); }
       }

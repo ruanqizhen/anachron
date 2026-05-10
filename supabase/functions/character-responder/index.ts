@@ -51,8 +51,10 @@ async function callLLM(
 }
 
 Deno.serve(async (req: Request) => {
+  console.log('[RESPONDER] started');
   try {
     const { response_task_id } = await req.json();
+    console.log('[RESPONDER] processing task:', response_task_id);
 
     // 1. Fetch task with character config
     const { data: task, error: taskErr } = await supabase
@@ -211,6 +213,7 @@ ${triggerLabel}：
       .single();
 
     if (postErr) throw new Error(postErr.message);
+    console.log('[RESPONDER] reply posted:', newPost.id, 'by:', profile?.username);
 
     // 8. Update stats (use RPC to avoid upsert reset bug)
     const today = new Date().toISOString().slice(0, 10);

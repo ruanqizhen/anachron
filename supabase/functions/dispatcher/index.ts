@@ -36,7 +36,22 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
   return json.choices[0].message.content;
 }
 
-Deno.serve(async () => {
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  try {
+    if (req.body) await req.json().catch(() => {});
+  } catch {}
+
+  console.log('[DISPATCHER] started');
   try {
     // 1. Fetch next eligible task
     const now = new Date().toISOString();
@@ -56,6 +71,7 @@ Deno.serve(async () => {
       });
     }
     if (!tasks || tasks.length === 0) {
+      console.log('[DISPATCHER] no pending tasks');
       return new Response(JSON.stringify({ ok: true, reason: 'no eligible tasks' }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
@@ -69,7 +85,7 @@ Deno.serve(async () => {
     let parentPostId: string | null = null;
 
     const { data: thread } = await supabase
-      .from('threads').select('title, content, profiles!threads_author_id_fkey(username)').eq('id', task.thread_id).single();
+      .from('threads').select('title, content, profiles(username)').eq('id', task.thread_id).single();
 
     if (task.trigger_post_id) {
       const { data: triggerPost } = await supabase
@@ -80,7 +96,6 @@ Deno.serve(async () => {
         parentPostId = triggerPost.parent_post_id;
       }
     } else {
-      // Thread itself is the trigger
       triggerContent = thread?.content || '';
       triggerAuthor = (thread as any)?.profiles?.username || '游客';
     }
@@ -190,12 +205,11 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
         charInfo = m ? JSON.parse(m[0]) : {};
       } catch { charInfo = {}; }
 
-      // Create profile + ai_character
       const { data: newChar, error: createErr } = await supabase
         .from('profiles')
         .insert({
           username: decision.name,
-          bio: (charInfo.personality_prompt || '').slice(0, 300),
+          bio: String(charInfo.personality_prompt || '').slice(0, 300),
           is_ai_character: true,
           is_admin: false,
         })
