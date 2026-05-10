@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
     const highRisk = highRiskGuest || highRiskUser;
     if (highRisk) console.log('[POST-HANDLER] high risk user/ip');
 
-    // Step 4: AI content moderation (logged-in users get 1-point leniency)
+    // Step 4: AI content moderation
     let status = 'published';
     const threshold = isGuest ? 8 : 9;
     const textToCheck = [payload.title, payload.content].filter(Boolean).join(' ');
@@ -306,16 +306,21 @@ Deno.serve(async (req: Request) => {
             execute_after: new Date().toISOString(),
           }).select('id').single();
 
-          if (taskInsertErr) console.error('[POST-HANDLER] ai_task_queue insert error:', taskInsertErr.message);
-          if (taskData) {
-            console.log('[POST-HANDLER] invoking dispatcher');
+          if (taskInsertErr) {
+            console.error('[POST-HANDLER] thread task insert error:', taskInsertErr.message);
+          } else if (taskData) {
+            console.log('[POST-HANDLER] invoking dispatcher for thread:', data.id);
             supabase.functions.invoke('dispatcher', { body: {} })
               .then(({ data, error }) => {
                 if (error) console.error('[POST-HANDLER] dispatcher error:', error.message);
                 else console.log('[POST-HANDLER] dispatcher ok:', JSON.stringify(data));
               }).catch(e => console.error('[POST-HANDLER] dispatcher exception:', e));
           }
-        } catch (e) { console.error('[POST-HANDLER] ai_task_queue error:', e); }
+        } catch (e) {
+          console.error('[POST-HANDLER] thread task exception:', e);
+        }
+      } else {
+        console.log('[POST-HANDLER] skipping thread AI dispatcher. highRisk:', highRisk, 'status:', status);
       }
 
       return ok({ ok: true, thread: data, status });
@@ -343,7 +348,7 @@ Deno.serve(async (req: Request) => {
 
         const executeAfter = new Date().toISOString();
         try {
-          const { data: taskData } = await supabase.from('ai_task_queue').insert({
+          const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
             trigger_post_id: data.id,
             thread_id: payload.thread_id,
             priority: hasMentions ? 'high' : 'normal',
@@ -351,11 +356,11 @@ Deno.serve(async (req: Request) => {
             execute_after: executeAfter,
           }).select('id').single();
 
-          // Trigger dispatcher asynchronously
-          if (taskData) {
-            const dUrl = `${FUNCTIONS_BASE}/dispatcher`;
-            console.log('[POST-HANDLER] triggering dispatcher:', dUrl);
-            fetch(dUrl, {
+          if (taskInsertErr) {
+            console.error('[POST-HANDLER] post task insert error:', taskInsertErr.message);
+          } else if (taskData) {
+            console.log('[POST-HANDLER] invoking dispatcher for post:', data.id);
+            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -365,7 +370,11 @@ Deno.serve(async (req: Request) => {
             }).then(r => console.log('[POST-HANDLER] dispatcher status:', r.status))
               .catch(e => console.error('[POST-HANDLER] dispatcher error:', e));
           }
-        } catch { /* ai_task_queue insert failed, non-critical */ }
+        } catch (e) {
+          console.error('[POST-HANDLER] post task exception:', e);
+        }
+      } else {
+        console.log('[POST-HANDLER] skipping post AI dispatcher. highRisk:', highRisk, 'status:', status);
       }
 
       return ok({ ok: true, post: data, status });

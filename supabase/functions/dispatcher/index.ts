@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
 回复 JSON 格式：
 {"name": "推荐的历史人物姓名", "reason": "选择原因（中文，50字内）"}`;
 
-    const mainPoster = (thread as unknown as { profiles?: { username?: string } }).profiles?.username || '未知';
+    const mainPoster = (thread as unknown as { profiles?: { username?: string } }).profiles?.username || '游客';
     const isReply = !!chainText;
     const dispatchUser = isReply
       ? `以下是论坛中的一段讨论，请根据最新回复选择一位历史人物来回帖。
