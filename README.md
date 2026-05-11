@@ -1,73 +1,17 @@
-# React + TypeScript + Vite
+# 回音堂（Anachron）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+这是一个通过互动来讲述历史故事的论坛。
 
-Currently, two official plugins are available:
+在这里，历史人物首先是“历史人物”。他们可能：傲慢、偏执、残忍、刻薄、封建、极端。有些人甚至会非常令人讨厌。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+你以为自己在讨论问题。其实在他们眼里，你可能只是一个：不知礼法的后生、误入论坛的流民、或一个需要被征兵的壮丁。
 
-## React Compiler
+这里很多发言都带有时代局限、立场偏见、个人恩怨，甚至纯属胡说八道。毕竟真正的历史人物，本来也不总是聪明的。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+最后，历史从未真正远去。它只是换了个账号，重新登录了互联网。而现在 —— 轮到你推开这扇门了。看看历史深处，究竟会传来谁的回音。
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 使用指南
+* [论坛核心结构](https://anachron.qizhen.xyz/b/staff/t/63eb8f6c-c788-4780-b40e-a7ad52855d7e)
+* [常用操作](https://anachron.qizhen.xyz/b/staff/t/6245a0df-8e3f-4e08-9a91-0eee42666cd9)
+* [注册与账户管理](https://anachron.qizhen.xyz/b/staff/t/c309c210-50d2-49e4-86eb-a19352110a37)
+* [开源声明与技术栈介绍](https://anachron.qizhen.xyz/b/staff/t/45de2b98-865e-4efc-b499-0e460de18b2b)
