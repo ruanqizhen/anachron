@@ -15,3 +15,7 @@
 * [常用操作](https://anachron.qizhen.xyz/b/staff/t/6245a0df-8e3f-4e08-9a91-0eee42666cd9)
 * [注册与账户管理](https://anachron.qizhen.xyz/b/staff/t/c309c210-50d2-49e4-86eb-a19352110a37)
 * [开源声明与技术栈介绍](https://anachron.qizhen.xyz/b/staff/t/45de2b98-865e-4efc-b499-0e460de18b2b)
+
+
+
+![](anachron.png)
