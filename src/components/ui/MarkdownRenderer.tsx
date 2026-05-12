@@ -11,17 +11,35 @@ interface MarkdownRendererProps {
 function preprocessMarkdown(text: string): string {
   if (!text) return '';
 
-  // 1. Normalize line endings and preserve multiple empty lines with ZWSP
-  let processed = text.replace(/\n\n+/g, (match) => {
-    return '\n' + '\u200B\n'.repeat(match.length - 1);
-  });
+  // 1. Normalize line endings and handle multiple empty lines with ZWSP
+  const rawLines = text.split(/\r?\n/);
+  const processedLines: string[] = [];
   
-  // 2. Convert single newlines to double newlines (paragraphs)
-  // This makes every "Enter" act as a paragraph break as requested
-  // We use a replacement that avoids already-doubled lines
-  processed = processed.replace(/([^\n])\n([^\n\u200B])/g, '$1\n\n$2');
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const nextLine = rawLines[i + 1];
+    
+    processedLines.push(line);
+    
+    // If there's a next line and it's not an empty line break
+    if (nextLine !== undefined) {
+      if (line.trim() === '' && nextLine.trim() === '') {
+        // Handle consecutive empty lines by inserting ZWSP
+        processedLines.push('\u200B');
+      } else if (line.trim() !== '' && nextLine.trim() !== '') {
+        // Single newline case: check if we should "paragraph-ize" it
+        const isSpecial = (l: string) => l.trim().match(/^(\s*[*+-]|\s*\d+\.|\s*#|\s*>|\s*```)/);
+        if (!isSpecial(line) && !isSpecial(nextLine)) {
+          // Both are normal text lines -> force a paragraph break
+          processedLines.push('');
+        }
+      }
+    }
+  }
   
-  // 3. Linkify mentions
+  let processed = processedLines.join('\n');
+  
+  // 2. Linkify mentions
   processed = processed.replace(/@([一-鿿\w]{2,30})/g, (_, name) => `[@${name}](/u/${encodeURIComponent(name)})`);
   
   return processed;
