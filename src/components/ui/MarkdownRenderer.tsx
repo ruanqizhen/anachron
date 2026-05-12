@@ -7,9 +7,17 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
-// Convert @username to profile links before Markdown rendering
-function linkifyMentions(text: string): string {
-  return text.replace(/@([一-鿿\w]{2,30})/g, (_, name) => `[@${name}](/u/${encodeURIComponent(name)})`);
+// Pre-process text to preserve formatting
+function preprocessMarkdown(text: string): string {
+  // 1. Preserve multiple empty lines by adding a zero-width space on empty lines
+  let processed = text.replace(/\n\n+/g, (match) => {
+    return '\n' + '\u200B\n'.repeat(match.length - 1);
+  });
+  
+  // 2. Linkify mentions
+  processed = processed.replace(/@([一-鿿\w]{2,30})/g, (_, name) => `[@${name}](/u/${encodeURIComponent(name)})`);
+  
+  return processed;
 }
 
 const sanitizeSchema = {
@@ -37,7 +45,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
           ),
         }}
       >
-        {linkifyMentions(content)}
+        {preprocessMarkdown(content)}
       </ReactMarkdown>
     </div>
   );
