@@ -134,9 +134,13 @@ export default function AdminCharacters() {
                       onClick={async () => {
                         const name = (c as unknown as { username?: string }).username || '';
                         if (!confirm(`确定删除角色「${name}」？`)) return;
-                        await adminDeleteCharacter(c.id);
-                        const list = await adminGetAllCharacters();
-                        setCharacters(list);
+                        try {
+                          await adminDeleteCharacter(c.id);
+                          const list = await adminGetAllCharacters();
+                          setCharacters(list);
+                        } catch (err: unknown) {
+                          alert('删除失败: ' + ((err as Error).message || '未知错误'));
+                        }
                       }}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-colors"
                       style={{ backgroundColor: 'var(--color-danger)', color: '#fff' }}
