@@ -17,6 +17,7 @@ import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import ReplyTree from '../components/forum/ReplyTree';
 import ReplyItem from '../components/forum/ReplyItem';
 import CommentInput from '../components/forum/CommentInput';
+import CommentSection from '../components/forum/CommentSection';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
 import { adminUpdateThread, adminSoftDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
 import type { Post, Thread, Board } from '../lib/types';
@@ -37,19 +38,12 @@ export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
   const { user, profile, guest, impersonating, startGuestSession } = useAuth();
   const admin = isAdmin(user?.id);
-  const [replyText, setReplyText] = useState('');
   const [thread, setThread] = useState<Thread | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showThreadEdit, setShowThreadEdit] = useState(false);
   const [showThreadAdminEdit, setShowThreadAdminEdit] = useState(false);
   const [showThreadMenu, setShowThreadMenu] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [showGuestDialog, setShowGuestDialog] = useState(false);
-  const [guestId, setGuestId] = useState<string | null>(null);
-  const [replyTime, setReplyTime] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   async function loadThread() {
@@ -62,117 +56,24 @@ export default function ThreadPage() {
   const [postPage, setPostPage] = useState(1);
   const [hasMorePosts, setHasMorePosts] = useState(false);
 
-  async function loadPosts(page: number = 1) {
-    if (!threadId) return;
-    const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, (page - 1) * POST_PAGE);
-    setPosts(fetchedPosts);
-    setHasMorePosts(fetchedPosts.length >= POST_PAGE);
-    if (fetchedPosts.length > 0) {
-      getUserLikes(user?.id || null, fetchedPosts.map(p => p.id)).then(setLikedIds);
-    }
-  }
-
-  async function loadMorePosts() {
-    if (!threadId) return;
-    const nextPage = postPage + 1;
-    const more = await getPostsByThread(threadId, POST_PAGE, nextPage * POST_PAGE - POST_PAGE);
-    setPosts(prev => [...prev, ...more]);
-    setHasMorePosts(more.length >= POST_PAGE);
-    setPostPage(nextPage);
+  async function loadPosts() {
+    // Post loading is now handled by CommentSection
   }
 
   useEffect(() => {
     async function loadData() {
       if (!threadId) return;
       setIsLoading(true);
-      await Promise.all([loadThread(), loadPosts(), getBoards().then(setBoards)]);
+      await Promise.all([loadThread(), getBoards().then(setBoards)]);
       setIsLoading(false);
       if (supabase) {
         (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as unknown as Promise<void>).then(() => {}).catch((e: unknown) => console.warn('view count:', e));
       }
     }
     loadData();
-
-    // Real-time subscription for new posts
-    if (!supabase || !threadId) return;
-    const channel = supabase
-      .channel(`thread:${threadId}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'posts',
-        filter: `thread_id=eq.${threadId}`,
-      }, (payload) => {
-        const p = payload.new as Post;
-        if (!user && guest && !p.guest_sessions) (p as any).guest_sessions = { username: guest.username };
-        setPosts(prev => [...prev, p]);
-        loadThread();
-      })
-      .subscribe();
-    return () => { channel.unsubscribe(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
-  async function handleReply() {
-    setError('');
-    if (!replyText.trim() || !threadId || isSubmitting) return;
-    const rateCheck = canCreateReply(!user);
-    if (!rateCheck.ok) {
-      setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
-      return;
-    }
-    if (replyText.trim().length < 2) {
-      setError('回复至少 2 个字符');
-      return;
-    }
-
-    // If guest and no guest session yet, prompt for name
-    if (!user && !guest && !guestId) {
-      setShowGuestDialog(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Create guest session if needed
-      let gid: string | undefined = guestId || undefined;
-      if (!user && !gid && guest) {
-        gid = await createGuestSession(guest.username);
-        setGuestId(gid);
-      }
-
-      const newPost = await createPost({
-        threadId,
-        content: replyText.trim(),
-        authorId: impersonating?.profileId || user?.id,
-        guestId: gid,
-        createdAt: impersonating ? replyTime || undefined : undefined,
-      });
-      setReplyText('');
-
-      // Notify @mentioned users
-      const mentionedUsernames = parseMentions(replyText.trim());
-      for (const mentionedName of mentionedUsernames) {
-        const mentionedProfile = await getProfileByUsername(mentionedName);
-        if (mentionedProfile && mentionedProfile.id !== user?.id) {
-          await createNotification({
-            recipientId: mentionedProfile.id,
-            type: 'mention',
-            actorId: user?.id,
-            threadId,
-            postId: newPost.id,
-          }).catch((e: unknown) => console.warn('notification:', e));
-        }
-      }
-
-      // Append new post with local guest info for immediate display
-      if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
-      setPosts(prev => [...prev, newPost as Post]);
-      await loadThread();
-    } catch (err: unknown) {
-      setError((err as Error).message || '发送失败');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  // handleReply is now handled by CommentSection
 
   if (isLoading) {
     return (
@@ -335,62 +236,17 @@ export default function ThreadPage() {
       )}
 
       <div
-        className="rounded-lg px-6"
+        className="rounded-lg overflow-hidden"
         style={{
           backgroundColor: 'var(--color-card-bg)',
           boxShadow: 'var(--shadow-card)',
         }}
       >
-        <div className="py-4 font-semibold text-sm" style={{ borderBottom: '1px solid var(--color-border)' }}>
-          全部评论 ({posts.length})
-        </div>
-
-        {posts.length === 0 ? (
-          <div className="py-3 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            暂无评论，来说点什么吧
-          </div>
-        ) : (
-          <ReplyTree posts={posts} renderItem={(p) => (
-            <ReplyItem post={p} likedIds={likedIds} onPostUpdated={() => loadPosts(postPage)} />
-          )} />
-        )}
-        {hasMorePosts && (
-          <div className="text-center py-3">
-            <button
-              onClick={loadMorePosts}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80"
-              style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-primary)' }}
-            >
-              加载更多回复
-            </button>
-          </div>
-        )}
-
-        {impersonating && (
-          <div className="flex items-center gap-2 px-6 py-2">
-            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>回帖时间</span>
-            <input type="datetime-local" value={replyTime} onChange={e => setReplyTime(e.target.value)}
-              className="px-2 py-1 rounded border outline-none text-xs bg-transparent"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-          </div>
-        )}
-        {!thread.is_locked && (
-        <div className="flex items-start gap-3 py-4">
-          <Avatar name={profile?.username || guest?.username || '我'} size={36} />
-          <div className="flex-1">
-            {error && (
-              <p className="text-xs mb-1 m-0" style={{ color: 'var(--color-danger)' }}>{error}</p>
-            )}
-            <CommentInput
-              value={replyText}
-              onChange={setReplyText}
-              onSubmit={handleReply}
-              placeholder="写回复... 至少 2 个字，支持 Markdown"
-              isSubmitting={isSubmitting}
-            />
-          </div>
-        </div>
-        )}
+        <CommentSection 
+          threadId={thread.id} 
+          isLocked={thread.is_locked} 
+          realtime={true} 
+        />
       </div>
 
       {showThreadEdit && (
@@ -428,17 +284,7 @@ export default function ThreadPage() {
         />
       )}
 
-      {showGuestDialog && (
-        <GuestNameDialog
-          onConfirm={async (name) => {
-            setShowGuestDialog(false);
-            startGuestSession(name);
-            const gid = await createGuestSession(name);
-            setGuestId(gid);
-          }}
-          onClose={() => setShowGuestDialog(false)}
-        />
-      )}
+      {/* Guest dialog is now handled by CommentSection */}
     </div>
   );
 }

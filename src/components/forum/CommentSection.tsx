@@ -9,13 +9,16 @@ import ReplyTree from './ReplyTree';
 import ReplyItem from './ReplyItem';
 import CommentInput from './CommentInput';
 import BCDateTimePicker from '../ui/BCDateTimePicker';
+import { supabase } from '../../lib/supabase';
 
 interface CommentSectionProps {
   threadId: string;
+  isLocked?: boolean;
+  realtime?: boolean;
 }
 
 
-export default function CommentSection({ threadId }: CommentSectionProps) {
+export default function CommentSection({ threadId, isLocked, realtime }: CommentSectionProps) {
   const { user, guest, impersonating, startGuestSession } = useAuth();
   const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_thread_${threadId}`) || '');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -31,22 +34,76 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
     localStorage.setItem(`draft_reply_thread_${threadId}`, replyText);
   }, [replyText, threadId]);
 
-  const loadPosts = useCallback(async () => {
-    const fetchedPosts = await getPostsByThread(threadId);
-    setPosts(fetchedPosts);
+  const POST_PAGE = 20;
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+
+  const loadPosts = useCallback(async (isMore = false) => {
+    // Determine the page to fetch without depending on the 'page' state directly in the callback's dependencies
+    let targetPage = 1;
+    if (isMore) {
+      setPage(prev => { targetPage = prev + 1; return targetPage; });
+    } else {
+      setPage(1);
+    }
+
+    const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, (targetPage - 1) * POST_PAGE);
+    
+    if (isMore) {
+      setPosts(prev => [...prev, ...fetchedPosts]);
+    } else {
+      setPosts(fetchedPosts);
+    }
+    
+    setHasMore(fetchedPosts.length >= POST_PAGE);
+    
     if (fetchedPosts.length > 0) {
-      getUserLikes(user?.id || null, fetchedPosts.map(p => p.id)).then(setLikedIds);
+      getUserLikes(user?.id || null, fetchedPosts.map(p => p.id)).then(newLikes => {
+        setLikedIds(prev => new Set([...Array.from(prev), ...Array.from(newLikes)]));
+      });
     }
   }, [threadId, user]);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadData() {
       setIsLoading(true);
-      await loadPosts();
+      const initialPosts = await getPostsByThread(threadId, POST_PAGE, 0);
+      if (!isMounted) return;
+      
+      setPosts(initialPosts);
+      setHasMore(initialPosts.length >= POST_PAGE);
+      setPage(1);
       setIsLoading(false);
+      
+      if (initialPosts.length > 0) {
+        getUserLikes(user?.id || null, initialPosts.map(p => p.id)).then(setLikedIds);
+      }
     }
     loadData();
-  }, [threadId, loadPosts]);
+
+    return () => { isMounted = false; };
+  }, [threadId, user]);
+
+  useEffect(() => {
+    // Real-time subscription
+    if (!realtime || !threadId || !supabase) return;
+
+    const channel = supabase
+      .channel(`thread_comments:${threadId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'posts',
+        filter: `thread_id=eq.${threadId}`,
+      }, (payload: any) => {
+        const p = payload.new as Post;
+        setPosts(prev => {
+          if (prev.some(x => x.id === p.id)) return prev;
+          return [...prev, p];
+        });
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [threadId, loadPosts, realtime]);
 
   async function doSubmitReply(overrideGuestName?: string) {
     setError('');
@@ -134,8 +191,20 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
   return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
       <ReplyTree posts={posts} renderItem={(p) => (
-        <ReplyItem post={p} likedIds={likedIds} onPostUpdated={loadPosts} />
+        <ReplyItem post={p} likedIds={likedIds} onPostUpdated={() => loadPosts(false)} />
       )} />
+
+      {hasMore && (
+        <div className="text-center py-3">
+          <button
+            onClick={() => loadPosts(true)}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80"
+            style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-primary)' }}
+          >
+            加载更多回复
+          </button>
+        </div>
+      )}
 
       {posts.length === 0 && (
         <div className="px-4 py-3 text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -143,33 +212,41 @@ export default function CommentSection({ threadId }: CommentSectionProps) {
         </div>
       )}
 
-      {impersonating && (
-        <BCDateTimePicker
-          isoString={replyTime}
-          onChange={setReplyTime}
-          label="回复时间"
-          className="mx-4 mt-2"
-        />
-      )}
-      <div className="flex items-start gap-2 px-4 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <Avatar
-          name={impersonating ? impersonating.username : (user ? '我' : (guest?.username || '游客'))}
-          url={impersonating?.avatarUrl}
-          size={32}
-        />
-        <div className="flex-1 flex flex-col">
-          {error && (
-            <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
-          )}
-          <CommentInput
-            value={replyText}
-            onChange={setReplyText}
-            placeholder="写回复... 至少 2 个字"
-            onSubmit={() => handleReply()}
-            isSubmitting={isSubmitting}
-          />
+      {isLocked ? (
+        <div className="px-4 py-3 text-center text-sm mb-2 mx-4 rounded-lg" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>
+          🔒 此帖已被锁定，无法回复
         </div>
-      </div>
+      ) : (
+        <>
+          {impersonating && (
+            <BCDateTimePicker
+              isoString={replyTime}
+              onChange={setReplyTime}
+              label="回复时间"
+              className="mx-4 mt-2"
+            />
+          )}
+          <div className="flex items-start gap-3 px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+            <Avatar
+              name={impersonating ? impersonating.username : (user ? '我' : (guest?.username || '游客'))}
+              url={impersonating?.avatarUrl}
+              size={36}
+            />
+            <div className="flex-1 flex flex-col">
+              {error && (
+                <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
+              )}
+              <CommentInput
+                value={replyText}
+                onChange={setReplyText}
+                placeholder="写回复... 至少 2 个字，支持 Markdown"
+                onSubmit={() => handleReply()}
+                isSubmitting={isSubmitting}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {showGuestDialog && (
         <GuestNameDialog

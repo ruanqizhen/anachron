@@ -136,7 +136,10 @@ Deno.serve(async (req: Request) => {
 4. 如果是回帖，重点根据最新回复的内容选人，而非主贴
 
 回复 JSON 格式：
-{"name": "推荐的历史人物姓名", "reason": "选择原因（中文，50字内）"}`;
+{"name": "推荐的历史人物姓名", "reason": "选择原因（中文，50字内）"}
+
+人名必须是最广为人知的叫法。比如先秦诸子使用尊称：孔子、墨子；清朝皇帝使用年号：康熙、雍正；其他人使用姓氏+名字：李世民、朱元璋。
+`;
 
     const mainPoster = (thread as unknown as { profiles?: { username?: string } }).profiles?.username || '游客';
     const isReply = !!chainText;
