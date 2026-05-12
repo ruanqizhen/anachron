@@ -11,11 +11,18 @@ CREATE TABLE IF NOT EXISTS thread_likes (
 );
 
 ALTER TABLE thread_likes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "thread_likes_select" ON thread_likes FOR SELECT USING (true);
-CREATE POLICY "thread_likes_insert" ON thread_likes FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "thread_likes_delete" ON thread_likes FOR DELETE
-  USING (auth.uid() = user_id);
+
+DO $$ 
+BEGIN
+    DROP POLICY IF EXISTS "thread_likes_select" ON thread_likes;
+    CREATE POLICY "thread_likes_select" ON thread_likes FOR SELECT USING (true);
+    
+    DROP POLICY IF EXISTS "thread_likes_insert" ON thread_likes;
+    CREATE POLICY "thread_likes_insert" ON thread_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+    
+    DROP POLICY IF EXISTS "thread_likes_delete" ON thread_likes;
+    CREATE POLICY "thread_likes_delete" ON thread_likes FOR DELETE USING (auth.uid() = user_id);
+END $$;
 
 -- Add a separate thread_like_count column so it doesn't conflict with
 -- the existing like_count (which aggregates post likes).
@@ -35,6 +42,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS on_thread_like_change ON thread_likes;
 CREATE TRIGGER on_thread_like_change
 AFTER INSERT OR DELETE ON thread_likes
 FOR EACH ROW EXECUTE FUNCTION update_thread_like_count();
