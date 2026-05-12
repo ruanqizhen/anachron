@@ -56,7 +56,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
 
   if (post.status === 'pending_review') {
     return (
-      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <article className="flex gap-3 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <Avatar name={authorUsername} url={author?.avatar_url} size={36} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 mb-1">
@@ -101,7 +101,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
 
   return (
     <>
-      <article className="flex gap-3 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <article className="flex gap-3 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <Link to={linkPath} className="shrink-0">
           <Avatar name={authorUsername} url={avatarUrl} size={36} />
         </Link>
