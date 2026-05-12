@@ -48,8 +48,8 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
   try {
-    if (req.body) await req.json().catch(() => {});
-  } catch {}
+    if (req.body) await req.json().catch(() => { });
+  } catch { }
 
   console.log('[DISPATCHER] started');
   try {
@@ -131,8 +131,8 @@ Deno.serve(async (req: Request) => {
 
 选择标准：
 1. 寻找与帖子观点水火不容的历史人物，制造激烈辩论
-2. 优先选择对现代概念完全无法理解的古人，利用认知错位制造喜剧效果
-3. 选择性格鲜明、敢说敢骂的人物
+2. 优先选择与当前讨论内容高度相关的历史人物
+3. 优先选择知名度高的历史人物
 4. 如果是回帖，重点根据最新回复的内容选人，而非主贴
 
 回复 JSON 格式：
