@@ -117,7 +117,6 @@ textarea {
   padding-left: 1rem;
   margin: 0.5rem 0;
   color: var(--color-text-secondary);
-  white-space: pre-wrap;
 }
 
 .markdown-content code {
