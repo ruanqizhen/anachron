@@ -321,7 +321,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           onClose={() => setShowEdit(false)} />
       )}
       {showAdminEdit && (
-        <AdminEditDialog title={thread.title} content={thread.content} createdAt={thread.created_at} boardId={thread.board_id} boards={boards} isThread
+        <AdminEditDialog title={thread.title} content={thread.content} createdAt={thread.created_at} boardId={thread.board_id} isThread
           onSave={async (data) => {
             await adminUpdateThread(thread.id, { title: data.title || thread.title, content: data.content, boardId: data.boardId || thread.board_id, createdAt: data.createdAt || thread.created_at });
             setThread({...thread, title: data.title || thread.title, content: data.content, edited_at: new Date().toISOString()});

@@ -1,9 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
 import { ChevronRight, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getThreadById, getPostsByThread, updateThread, softDeleteThread, createPost, getProfileByUsername, createNotification, createGuestSession, getUserLikes, canCreateReply } from '../lib/api';
+import { getThreadById, updateThread, softDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
 import { getDisplayName } from '../lib/types';
-import { parseMentions } from '../lib/mentions';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { isAdmin } from '../lib/admin';
@@ -14,12 +13,9 @@ import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
-import ReplyTree from '../components/forum/ReplyTree';
-import ReplyItem from '../components/forum/ReplyItem';
 import CommentSection from '../components/forum/CommentSection';
-import GuestNameDialog from '../components/forum/GuestNameDialog';
 import { adminUpdateThread, adminSoftDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
-import type { Post, Thread, Board } from '../lib/types';
+import type { Thread, Board } from '../lib/types';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -35,7 +31,7 @@ function timeAgo(dateStr: string): string {
 
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
-  const { user, profile, guest, impersonating, startGuestSession } = useAuth();
+  const { user } = useAuth();
   const admin = isAdmin(user?.id);
   const [thread, setThread] = useState<Thread | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +39,6 @@ export default function ThreadPage() {
   const [showThreadAdminEdit, setShowThreadAdminEdit] = useState(false);
   const [showThreadMenu, setShowThreadMenu] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   async function loadThread() {
     if (!threadId) return;
@@ -51,13 +46,7 @@ export default function ThreadPage() {
     setThread(fetchedThread);
   }
 
-  const POST_PAGE = 20;
-  const [postPage, setPostPage] = useState(1);
-  const [hasMorePosts, setHasMorePosts] = useState(false);
-
-  async function loadPosts() {
-    // Post loading is now handled by CommentSection
-  }
+  // Post loading is now handled by CommentSection
 
   useEffect(() => {
     async function loadData() {
@@ -267,7 +256,6 @@ export default function ThreadPage() {
           content={thread.content}
           createdAt={thread.created_at}
           boardId={thread.board_id}
-          boards={boards}
           isThread
           onSave={async (data) => {
             await adminUpdateThread(thread.id, {

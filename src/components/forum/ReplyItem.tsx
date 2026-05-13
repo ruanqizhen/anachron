@@ -11,6 +11,7 @@ import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
+import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import PostEditor from './PostEditor';
 import {
@@ -170,9 +171,9 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
           />
         </div>
       )}
-      {showEdit && <EditDialog content={post.content} onSave={async (_, c) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
+      {showEdit && <EditDialog content={post.content} onSave={async (_title: string | undefined, c: string) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
       {showAdminEdit && <AdminEditDialog content={post.content} createdAt={post.created_at}
-        onSave={async (d) => { await adminUpdatePost(post.id, d.content, d.createdAt!); onPostUpdated(); }} onClose={() => setShowAdminEdit(false)} />}
+        onSave={async (d: { content: string; createdAt?: string }) => { await adminUpdatePost(post.id, d.content, d.createdAt!); onPostUpdated(); }} onClose={() => setShowAdminEdit(false)} />}
     </>
   );
 }

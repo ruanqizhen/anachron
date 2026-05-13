@@ -14,8 +14,6 @@ interface CreatePostFormProps {
 export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }: CreatePostFormProps) {
   const { user, guest, startGuestSession, impersonating } = useAuth();
   const [showGuestDialog, setShowGuestDialog] = useState(false);
-  const [pendingData, setPendingData] = useState<any>(null);
-
   const isLoggedIn = !!user;
 
   async function doSubmit(data: any) {
@@ -67,7 +65,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         defaultBoardSlug={defaultBoardSlug}
         onSave={async (data) => {
           if (!isLoggedIn && !guest) {
-            setPendingData(data);
             setShowGuestDialog(true);
             throw new Error('please_login');
           }

@@ -4,11 +4,9 @@ import { getPostsByThread, createPost, getProfileByUsername, createNotification,
 import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
-import Avatar from '../ui/Avatar';
 import ReplyTree from './ReplyTree';
 import ReplyItem from './ReplyItem';
 import PostEditor from './PostEditor';
-import BCDateTimePicker from '../ui/BCDateTimePicker';
 import { supabase } from '../../lib/supabase';
 
 interface CommentSectionProps {
@@ -22,8 +20,6 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
   const { user, guest, impersonating, startGuestSession } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -31,19 +27,14 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
   // No longer need localStorage for replyText here, handled by PostEditor if needed or just removed for simplicity
 
   const POST_PAGE = 20;
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   const loadPosts = useCallback(async (isMore = false) => {
-    // Determine the page to fetch without depending on the 'page' state directly in the callback's dependencies
-    let targetPage = 1;
-    if (isMore) {
-      setPage(prev => { targetPage = prev + 1; return targetPage; });
-    } else {
-      setPage(1);
-    }
+    // We use a local calculation for pagination since we don't strictly need the 'page' state for display
+    const currentCount = posts.length;
+    const offset = isMore ? currentCount : 0;
 
-    const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, (targetPage - 1) * POST_PAGE);
+    const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, offset);
     
     if (isMore) {
       setPosts(prev => [...prev, ...fetchedPosts]);
@@ -69,7 +60,6 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
       
       setPosts(initialPosts);
       setHasMore(initialPosts.length >= POST_PAGE);
-      setPage(1);
       setIsLoading(false);
       
       if (initialPosts.length > 0) {
@@ -212,9 +202,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
             startGuestSession(name);
             const gid = await createGuestSession(name);
             setGuestId(gid);
-            setIsSubmitting(true);
-            try { await doSubmitReply(name); } catch (err: unknown) { setError((err as Error).message || '发送失败'); }
-            setIsSubmitting(false);
+            // After getting guest name, the user will have to click submit again
           }}
           onClose={() => setShowGuestDialog(false)}
         />

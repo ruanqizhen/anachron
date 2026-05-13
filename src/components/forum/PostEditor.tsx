@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, Send, ImagePlus, PenSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Send } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth } from '../../lib/auth';
 import { useMentions } from '../../hooks/useMentions';
@@ -35,7 +35,7 @@ export default function PostEditor({
   mode, isThread, initialTitle = '', initialContent = '', initialBoardId = '', initialCreatedAt = '',
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus
 }: PostEditorProps) {
-  const { user, guest, impersonating } = useAuth();
+  const { impersonating } = useAuth();
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [boardId, setBoardId] = useState(initialBoardId);
@@ -59,7 +59,6 @@ export default function PostEditor({
   const showBoardSelect = mode === 'create' && isThread;
   const showTurnstile = mode === 'create';
   const showAdminControls = isImpersonating;
-  const effectiveGuestName = guest?.username || null;
 
   const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
