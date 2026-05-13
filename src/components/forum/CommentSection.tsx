@@ -92,7 +92,6 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
   }, [threadId, loadPosts, realtime]);
 
   async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string) {
-    setError('');
     let gid: string | undefined = guestId || undefined;
     const currentGuestName = overrideGuestName || guest?.username;
 

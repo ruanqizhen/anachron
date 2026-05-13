@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { ChevronRight, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getThreadById, updateThread, softDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
+import { getThreadById, updateThread, softDeleteThread, toggleThreadLock, adminUpdateThread, adminSoftDeleteThread } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -14,8 +14,7 @@ import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import CommentSection from '../components/forum/CommentSection';
-import { adminUpdateThread, adminSoftDeleteThread, getBoards, toggleThreadLock } from '../lib/api';
-import type { Thread, Board } from '../lib/types';
+import type { Thread } from '../lib/types';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -38,7 +37,6 @@ export default function ThreadPage() {
   const [showThreadEdit, setShowThreadEdit] = useState(false);
   const [showThreadAdminEdit, setShowThreadAdminEdit] = useState(false);
   const [showThreadMenu, setShowThreadMenu] = useState(false);
-  const [boards, setBoards] = useState<Board[]>([]);
 
   async function loadThread() {
     if (!threadId) return;
@@ -52,7 +50,7 @@ export default function ThreadPage() {
     async function loadData() {
       if (!threadId) return;
       setIsLoading(true);
-      await Promise.all([loadThread(), getBoards().then(setBoards)]);
+      await loadThread();
       setIsLoading(false);
       if (supabase) {
         (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as unknown as Promise<void>).then(() => {}).catch((e: unknown) => console.warn('view count:', e));

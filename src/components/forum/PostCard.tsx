@@ -4,7 +4,7 @@ import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp, MoreHorizontal
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
-import type { Thread, Board } from '../../lib/types';
+import type { Thread } from '../../lib/types';
 import { getDisplayName } from '../../lib/types';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
@@ -15,7 +15,7 @@ import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
 import { formatDisplayDate, formatFullDate } from '../ui/BCDateTimePicker';
-import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, getBoards, setPinLevel, toggleFeatured, toggleThreadLike, getThreadLikes } from '../../lib/api';
+import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, setPinLevel, toggleFeatured, toggleThreadLike, getThreadLikes } from '../../lib/api';
 
 interface PostCardProps {
   thread: Thread;
@@ -37,7 +37,6 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [boards, setBoards] = useState<Board[]>([]);
   const [liked, setLiked] = useState(false);
   const [shareToast, setShareToast] = useState(false);
   const [likeCount, setLikeCount] = useState((thread.thread_like_count || 0) + (thread.like_count || 0));
@@ -92,7 +91,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
               style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', border: '1px solid var(--color-border)' }}>
               {canEdit && (
                 <>
-                  <button onClick={() => { setShowMenu(false); if (admin && !isOwn) { getBoards().then(setBoards); setShowAdminEdit(true); } else setShowEdit(true); }}
+                  <button onClick={() => { setShowMenu(false); if (admin && !isOwn) { setShowAdminEdit(true); } else setShowEdit(true); }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-primary)' }}>
                     <Pencil size={14} /> 编辑
                   </button>
