@@ -16,7 +16,6 @@ import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import ReplyTree from '../components/forum/ReplyTree';
 import ReplyItem from '../components/forum/ReplyItem';
-import CommentInput from '../components/forum/CommentInput';
 import CommentSection from '../components/forum/CommentSection';
 import GuestNameDialog from '../components/forum/GuestNameDialog';
 import { adminUpdateThread, adminSoftDeleteThread, getBoards, toggleThreadLock } from '../lib/api';

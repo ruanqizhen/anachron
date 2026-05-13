@@ -1,15 +1,9 @@
-import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import { Turnstile } from '@marsidev/react-turnstile';
-import { getBoards, createThread, createGuestSession, getProfileByUsername, createNotification, canCreateThread } from '../../lib/api';
+import { useState } from 'react';
+import { createThread, createGuestSession, getProfileByUsername, createNotification, canCreateThread } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
-import { useMentions } from '../../hooks/useMentions';
-import type { Board, Profile } from '../../lib/types';
-import MarkdownEditor from '../ui/MarkdownEditor';
-import Avatar from '../ui/Avatar';
-import BCDateTimePicker from '../ui/BCDateTimePicker';
+import PostEditorDialog from './PostEditorDialog';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -19,348 +13,77 @@ interface CreatePostFormProps {
 
 export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }: CreatePostFormProps) {
   const { user, guest, startGuestSession, impersonating } = useAuth();
-  const [title, setTitle] = useState(() => localStorage.getItem('draft_new_post_title') || '');
-  const [content, setContent] = useState(() => localStorage.getItem('draft_new_post_content') || '');
-  const [boardId, setBoardId] = useState('');
-  const [token, setToken] = useState<string>('');
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
-  const [guestName, setGuestName] = useState<string | null>(guest?.username || null);
-  const [useCustomTime, setUseCustomTime] = useState(false);
-  const [customTime, setCustomTime] = useState(() => {
-    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  });
-  const isImpersonating = !!impersonating;
-  const {
-    mentionQuery,
-    setMentionQuery,
-    mentionPosition,
-    mentionOptions,
-    mentionIndex,
-    setMentionIndex,
-    textareaRef,
-    handleMentionChange,
-    insertMention
-  } = useMentions();
+  const [pendingData, setPendingData] = useState<any>(null);
 
-  useEffect(() => {
-    localStorage.setItem('draft_new_post_title', title);
-  }, [title]);
-
-  useEffect(() => {
-    localStorage.setItem('draft_new_post_content', content);
-  }, [content]);
-
-  useEffect(() => {
-    async function fetchBoards() {
-      const fetchedBoards = await getBoards();
-      setBoards(fetchedBoards);
-
-      if (fetchedBoards.length > 0) {
-        if (defaultBoardSlug) {
-          const defaultBoard = fetchedBoards.find(b => b.slug === defaultBoardSlug);
-          if (defaultBoard) {
-            setBoardId(defaultBoard.id);
-            return;
-          }
-        }
-        setBoardId(fetchedBoards[0].id);
-      }
-    }
-    fetchBoards();
-  }, [defaultBoardSlug]);
-
-  // ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
-  const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
   const isLoggedIn = !!user;
-  const effectiveGuestName = guestName || guest?.username || null;
 
-  async function doSubmit() {
-    setError('');
-
-    if (!title.trim() || !content.trim()) {
-      setError('请填写标题和正文');
-      return;
-    }
-    if (title.trim().length < 2) {
-      setError('标题至少 2 个字符');
-      return;
-    }
-    if (content.trim().length < 20) {
-      setError('正文至少 20 个字符');
-      return;
-    }
-    if (!token) {
-      setError('请完成人机验证');
-      return;
-    }
+  async function doSubmit(data: any) {
+    const effectiveGuestName = guest?.username || null;
+    
     const rateCheck = canCreateThread(!isLoggedIn);
     if (!rateCheck.ok) {
-      setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
-      return;
+      throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
     }
 
-    setIsSubmitting(true);
-    try {
-      // Create guest session in DB if posting as guest
-      let guestId: string | undefined;
-      if (!user && effectiveGuestName) {
-        guestId = await createGuestSession(effectiveGuestName);
-      }
-
-      const newThread = await createThread({
-        boardId,
-        title: title.trim(),
-        content: content.trim(),
-        authorId: impersonating?.profileId || user?.id,
-        guestId,
-        turnstileToken: token,
-        createdAt: useCustomTime ? customTime : undefined,
-      });
-
-      // Notify @mentioned users
-      const mentionedUsernames = parseMentions(title.trim() + ' ' + content.trim());
-      for (const mentionedName of mentionedUsernames) {
-        const profile = await getProfileByUsername(mentionedName);
-        if (profile && profile.id !== user?.id) {
-          await createNotification({
-            recipientId: profile.id,
-            type: 'mention',
-            actorId: user?.id,
-            threadId: newThread.id,
-          }).catch(() => { /* ignore */ });
-        }
-      }
-
-      localStorage.removeItem('draft_new_post_title');
-      localStorage.removeItem('draft_new_post_content');
-      onCreated?.();
-      onClose();
-    } catch (err: unknown) {
-      setError((err as Error).message || '发帖失败');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!isLoggedIn && !effectiveGuestName) {
-      setShowGuestDialog(true);
-      return;
+    // Create guest session in DB if posting as guest
+    let guestId: string | undefined;
+    if (!user && effectiveGuestName) {
+      guestId = await createGuestSession(effectiveGuestName);
     }
 
-    doSubmit();
-  }
+    const newThread = await createThread({
+      boardId: data.boardId,
+      title: data.title,
+      content: data.content,
+      authorId: impersonating?.profileId || user?.id,
+      guestId,
+      turnstileToken: data.turnstileToken,
+      createdAt: data.createdAt,
+    });
 
-  function handleGuestConfirm(name: string) {
-    setGuestName(name);
-    setShowGuestDialog(false);
-    startGuestSession(name);
-    // Don't auto-submit - user still needs to fill form and verify
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (mentionQuery !== null && mentionOptions.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setMentionIndex(prev => (prev + 1) % mentionOptions.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setMentionIndex(prev => (prev - 1 + mentionOptions.length) % mentionOptions.length);
-      } else if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        handleMentionSelect(mentionOptions[mentionIndex]);
-      } else if (e.key === 'Escape') {
-        setMentionQuery(null);
+    // Notify @mentioned users
+    const mentionedUsernames = parseMentions(data.title + ' ' + data.content);
+    for (const mentionedName of mentionedUsernames) {
+      const profile = await getProfileByUsername(mentionedName);
+      if (profile && profile.id !== user?.id) {
+        await createNotification({
+          recipientId: profile.id,
+          type: 'mention',
+          actorId: user?.id,
+          threadId: newThread.id,
+        }).catch(() => { /* ignore */ });
       }
     }
-  }
 
-  function handleMentionSelect(profile: Profile) {
-    if (!textareaRef.current) return;
-    const pos = textareaRef.current.selectionStart;
-    const result = insertMention(profile, content, pos);
-    if (result) {
-      setContent(result.newText);
-      setMentionQuery(null);
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(result.newCursorPos, result.newCursorPos);
-        }
-      }, 0);
-    }
+    onCreated?.();
+    onClose();
   }
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      >
-        <div
-          className="w-full max-w-2xl rounded-xl flex flex-col max-h-[90vh]"
-          style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: '0 4px 24px rgba(0,0,0,0.1)' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
-            <h2 className="text-xl font-bold m-0 text-[var(--color-text-primary)] flex items-center gap-2">
-              发布新帖
-              {impersonating ? (
-                <div className="flex items-center gap-2 ml-2 px-2 py-1 rounded-full bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
-                  <Avatar name={impersonating.username} url={impersonating.avatarUrl} size={24} />
-                  <span className="text-sm font-medium" style={{ color: 'var(--color-success)' }}>
-                    以「{impersonating.username}」身份
-                  </span>
-                </div>
-              ) : effectiveGuestName && (
-                <span className="text-sm font-normal ml-2" style={{ color: 'var(--color-text-muted)' }}>
-                  以「{effectiveGuestName}」身份
-                </span>
-              )}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-full hover:bg-[var(--color-page-bg)] transition-colors cursor-pointer border-none bg-transparent"
-            >
-              <X size={24} style={{ color: 'var(--color-text-secondary)' }} />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>版块</label>
-              <select
-                value={boardId}
-                onChange={(e) => setBoardId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-transparent"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              >
-                {boards.map(board => (
-                  <option key={board.id} value={board.id}>
-                    {board.icon} {board.name} ({board.era_tag})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>标题</label>
-              <input
-                type="text"
-                placeholder="一句话概括主题... 至少 2 个字，最多 100 字"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={100}
-                className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-transparent transition-colors"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              />
-            </div>
-
-            <div className="flex-1 flex flex-col relative">
-              <MarkdownEditor
-                value={content}
-                onChange={(v) => { setContent(v); handleMentionChange(v, textareaRef.current?.selectionStart || 0); }}
-                textareaProps={{
-                  ref: textareaRef,
-                  placeholder: '分享你的想法、问题或见解... 至少 20 个字，支持 Markdown 和 @ 召唤',
-                  onKeyDown: handleKeyDown as any,
-                  className: 'p-3',
-                  style: { minHeight: 200 },
-                }}
-                minHeight={200} maxHeight={800}
-              />
-
-              {/* Mentions Dropdown */}
-              {mentionQuery !== null && mentionOptions.length > 0 && (
-                <div 
-                  className="absolute z-50 bg-[var(--color-card-bg)] border rounded-lg shadow-lg overflow-hidden py-1 max-h-48 overflow-y-auto"
-                  style={{ 
-                    top: mentionPosition.top + 'px', 
-                    left: mentionPosition.left + 'px',
-                    borderColor: 'var(--color-border)'
-                  }}
-                >
-                  {mentionOptions.map((opt, i) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleMentionSelect(opt)}
-                      className="w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2 border-none cursor-pointer"
-                      style={{ 
-                        backgroundColor: i === mentionIndex ? 'var(--color-hover)' : 'transparent',
-                        color: 'var(--color-text-primary)'
-                      }}
-                      onMouseEnter={() => setMentionIndex(i)}
-                    >
-                      <span>{opt.username}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <div className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: '#FDEDED', color: 'var(--color-danger)' }}>
-                {error}
-              </div>
-            )}
-
-            {isImpersonating && (
-              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>
-                <input type="checkbox" checked={useCustomTime} onChange={e => setUseCustomTime(e.target.checked)} />
-                设置自定义时间
-              </label>
-            )}
-            {isImpersonating && useCustomTime && (
-              <BCDateTimePicker
-                isoString={customTime}
-                onChange={setCustomTime}
-              />
-            )}
-
-            <div className="flex items-center justify-between mt-2">
-              <div className="overflow-hidden rounded-lg">
-                <Turnstile
-                  siteKey={SITE_KEY}
-                  onSuccess={(t) => setToken(t)}
-                  onExpire={() => setToken('')}
-                  options={{ theme: 'light' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting || !title.trim() || !content.trim() || !token}
-                className="px-6 py-2.5 rounded-lg text-sm font-medium text-white cursor-pointer border-none disabled:opacity-50 transition-colors"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                {isSubmitting ? '发布中...' : '发布'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <PostEditorDialog
+        mode="create"
+        isThread={true}
+        defaultBoardSlug={defaultBoardSlug}
+        onSave={async (data) => {
+          if (!isLoggedIn && !guest) {
+            setPendingData(data);
+            setShowGuestDialog(true);
+            throw new Error('please_login');
+          }
+          await doSubmit(data);
+        }}
+        onClose={onClose}
+      />
 
       {showGuestDialog && (
         <GuestNameDialog
-          onConfirm={handleGuestConfirm}
+          onConfirm={(name) => {
+            setShowGuestDialog(false);
+            startGuestSession(name);
+            // After setting guest name, user can click "Publish" again
+          }}
           onClose={() => setShowGuestDialog(false)}
         />
       )}

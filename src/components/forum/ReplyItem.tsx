@@ -11,9 +11,8 @@ import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import KarmaBadge from '../ui/KarmaBadge';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
-import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
-import CommentInput from './CommentInput';
+import PostEditor from './PostEditor';
 import {
   updatePost, softDeletePost, adminUpdatePost, adminSoftDeletePost,
   createPost, createGuestSession, toggleLike,
@@ -37,7 +36,6 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
-  const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const replyTime = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const [guestId, setGuestId] = useState<string | null>(null);
@@ -75,8 +73,8 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
   const avatarUrl = author?.avatar_url;
   const linkPath = post.profiles?.username ? `/u/${post.profiles.username}` : '#';
 
-  async function handleReplySubmit() {
-    if (!replyText.trim() || replying) return;
+  async function handleReplySubmit(content: string) {
+    if (!content.trim() || replying) return;
     setReplying(true);
     try {
       let gid: string | undefined;
@@ -86,13 +84,12 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
       }
       await createPost({
         threadId: post.thread_id,
-        content: replyText.trim(),
+        content: content.trim(),
         authorId: impersonating?.profileId || user?.id,
         guestId: gid,
         parentPostId: post.id,
         createdAt: impersonating ? replyTime || undefined : undefined,
       });
-      setReplyText('');
       setShowReply(false);
       onPostUpdated();
     } catch { /* ignore */ }
@@ -160,14 +157,16 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
         </div>
       </article>
       {showReply && (
-        <div className="py-2 pl-9">
-          <CommentInput
-            value={replyText}
-            onChange={setReplyText}
-            onSubmit={handleReplySubmit}
+        <div className="py-4 pl-9 pr-4 animate-in slide-in-from-top-2 duration-200">
+          <PostEditor
+            mode="reply"
+            onSave={async (data) => {
+              await handleReplySubmit(data.content);
+            }}
+            onCancel={() => setShowReply(false)}
             placeholder={`回复 ${authorUsername}...`}
-            isSubmitting={replying}
             minHeight={80}
+            autoFocus={true}
           />
         </div>
       )}

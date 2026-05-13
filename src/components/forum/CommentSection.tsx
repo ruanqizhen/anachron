@@ -7,7 +7,7 @@ import { parseMentions } from '../../lib/mentions';
 import Avatar from '../ui/Avatar';
 import ReplyTree from './ReplyTree';
 import ReplyItem from './ReplyItem';
-import CommentInput from './CommentInput';
+import PostEditor from './PostEditor';
 import BCDateTimePicker from '../ui/BCDateTimePicker';
 import { supabase } from '../../lib/supabase';
 
@@ -20,19 +20,15 @@ interface CommentSectionProps {
 
 export default function CommentSection({ threadId, isLocked, realtime }: CommentSectionProps) {
   const { user, guest, impersonating, startGuestSession } = useAuth();
-  const [replyText, setReplyText] = useState(() => localStorage.getItem(`draft_reply_thread_${threadId}`) || '');
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
-  const [replyTime, setReplyTime] = useState('');
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    localStorage.setItem(`draft_reply_thread_${threadId}`, replyText);
-  }, [replyText, threadId]);
+  // No longer need localStorage for replyText here, handled by PostEditor if needed or just removed for simplicity
 
   const POST_PAGE = 20;
   const [page, setPage] = useState(1);
@@ -105,7 +101,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     return () => { channel.unsubscribe(); };
   }, [threadId, loadPosts, realtime]);
 
-  async function doSubmitReply(overrideGuestName?: string) {
+  async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string) {
     setError('');
     let gid: string | undefined = guestId || undefined;
     const currentGuestName = overrideGuestName || guest?.username;
@@ -117,14 +113,13 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
 
     const newPost = await createPost({
       threadId,
-      content: replyText.trim(),
+      content: content.trim(),
       authorId: impersonating?.profileId || user?.id,
       guestId: gid,
-      createdAt: replyTime || undefined,
+      createdAt: createdAt || undefined,
     });
-    setReplyText('');
 
-    const mentionedUsernames = parseMentions(replyText.trim());
+    const mentionedUsernames = parseMentions(content.trim());
     for (const mentionedName of mentionedUsernames) {
       const mentionedProfile = await getProfileByUsername(mentionedName);
       if (mentionedProfile && mentionedProfile.id !== user?.id) {
@@ -140,36 +135,9 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
 
     if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
     setPosts(prev => [...prev, newPost as Post]);
-    localStorage.removeItem(`draft_reply_thread_${threadId}`);
   }
 
-  async function handleReply() {
-    if (!replyText.trim() || isSubmitting) return;
-
-    if (replyText.trim().length < 2) {
-      setError('回复内容至少需要 2 个字符');
-      return;
-    }
-
-    const rateCheck = canCreateReply(!user);
-    if (!rateCheck.ok) {
-      setError(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
-      return;
-    }
-
-    if (!user && !guest && !guestId) {
-      setShowGuestDialog(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await doSubmitReply();
-    } catch (err: unknown) {
-      setError((err as Error).message || '发送失败');
-    }
-    setIsSubmitting(false);
-  }
+  // handleReply removed, logic moved to PostEditor's onSave
 
   if (isLoading) {
     return (
@@ -213,39 +181,28 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
       )}
 
       {isLocked ? (
-        <div className="px-4 py-3 text-center text-sm mb-2 mx-4 rounded-lg" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>
-          🔒 此帖已被锁定，无法回复
+        <div className="px-4 py-3 text-center text-sm mb-4 mx-4 rounded-xl font-medium" style={{ backgroundColor: 'rgba(255, 152, 0, 0.1)', color: '#E65100' }}>
+          🔒 此帖已被锁定，目前无法回复
         </div>
       ) : (
-        <>
-          {impersonating && (
-            <BCDateTimePicker
-              isoString={replyTime}
-              onChange={setReplyTime}
-              label="回复时间"
-              className="mx-4 mt-2"
-            />
-          )}
-          <div className="flex items-start gap-3 px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-            <Avatar
-              name={impersonating ? impersonating.username : (user ? '我' : (guest?.username || '游客'))}
-              url={impersonating?.avatarUrl}
-              size={36}
-            />
-            <div className="flex-1 flex flex-col">
-              {error && (
-                <p className="text-xs m-0 mb-1 px-1" style={{ color: 'var(--color-danger)' }}>{error}</p>
-              )}
-              <CommentInput
-                value={replyText}
-                onChange={setReplyText}
-                placeholder="写回复... 至少 2 个字，支持 Markdown"
-                onSubmit={() => handleReply()}
-                isSubmitting={isSubmitting}
-              />
-            </div>
-          </div>
-        </>
+        <div className="mx-4 mb-8 p-4 rounded-2xl bg-[var(--color-card-bg)] border border-[var(--color-border)] shadow-sm">
+          <PostEditor
+            mode="reply"
+            onSave={async (data) => {
+              if (!user && !guest && !guestId) {
+                setShowGuestDialog(true);
+                throw new Error('please_login');
+              }
+              const rateCheck = canCreateReply(!user);
+              if (!rateCheck.ok) {
+                throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
+              }
+              await doSubmitReply(data.content, data.createdAt);
+            }}
+            placeholder="写下你的看法..."
+            minHeight={100}
+          />
+        </div>
       )}
 
       {showGuestDialog && (
