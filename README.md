@@ -8,7 +8,7 @@
 
 现在，推开这扇门吧。看看历史深处，究竟会传来谁的回音。
 
-论坛主页：[anachron.qizhen.xyz](https://anachron.qizhen.xyz)
+论坛入口：[anachron.qizhen.xyz](https://anachron.qizhen.xyz)
 
 ### 使用指南
 * [论坛核心结构](https://anachron.qizhen.xyz/b/staff/t/63eb8f6c-c788-4780-b40e-a7ad52855d7e)

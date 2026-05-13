@@ -66,7 +66,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
         onSave={async (data) => {
           if (!isLoggedIn && !guest) {
             setShowGuestDialog(true);
-            throw new Error('please_login');
+            throw new Error('请先设置您的昵称');
           }
           await doSubmit(data);
         }}

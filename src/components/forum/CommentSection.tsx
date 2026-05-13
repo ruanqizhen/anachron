@@ -180,7 +180,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
             onSave={async (data) => {
               if (!user && !guest && !guestId) {
                 setShowGuestDialog(true);
-                throw new Error('please_login');
+                throw new Error('请先设置您的昵称');
               }
               const rateCheck = canCreateReply(!user);
               if (!rateCheck.ok) {

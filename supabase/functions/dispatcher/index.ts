@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
 回复 JSON 格式：
 {"name": "推荐的历史人物姓名", "reason": "选择原因（中文，50字内）"}
 
-人名必须是最广为人知的叫法。比如先秦诸子使用尊称：孔子、墨子；清朝皇帝使用年号：康熙、雍正；其他人使用姓氏+名字：李世民、朱元璋。
+人名必须是最广为人知的叫法。比如先秦诸子使用尊称：孔子、墨子；明末和清朝皇帝使用年号：崇祯、康熙、雍正；其他人使用姓氏+名字：李世民、朱元璋。
 `;
 
     const mainPoster = (thread as unknown as { profiles?: { username?: string } }).profiles?.username || '游客';
