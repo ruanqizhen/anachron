@@ -25,9 +25,7 @@ export default function PostEditorDialog({
   const effectiveGuestName = guest?.username || null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
         className="w-full max-w-2xl rounded-2xl flex flex-col max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200"
         style={{ backgroundColor: 'var(--color-card-bg)', border: '1px solid var(--color-border)' }}
@@ -71,7 +69,10 @@ export default function PostEditorDialog({
             initialCreatedAt={initialCreatedAt}
             placeholder={placeholder}
             defaultBoardSlug={defaultBoardSlug}
-            onSave={onSave}
+            onSave={async (data) => {
+              await onSave(data);
+              onClose();
+            }}
             onCancel={onClose}
             autoFocus={true}
           />

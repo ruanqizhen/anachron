@@ -57,7 +57,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     }
 
     onCreated?.();
-    onClose();
   }
 
   return (
