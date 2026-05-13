@@ -8,6 +8,7 @@ import type { Board, Profile } from '../../lib/types';
 import MarkdownEditor from '../ui/MarkdownEditor';
 import Avatar from '../ui/Avatar';
 import BCDateTimePicker from '../ui/BCDateTimePicker';
+import { isAdmin } from '../../lib/admin';
 
 interface PostEditorProps {
   mode: 'create' | 'edit' | 'reply';
@@ -35,11 +36,24 @@ export default function PostEditor({
   mode, isThread, initialTitle = '', initialContent = '', initialBoardId = '', initialCreatedAt = '',
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus
 }: PostEditorProps) {
-import { isAdmin } from '../../lib/admin';
-
-// ... (inside PostEditor)
   const { user, impersonating } = useAuth();
-  // ...
+  const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent);
+  const [boardId, setBoardId] = useState(initialBoardId);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [customTime, setCustomTime] = useState(initialCreatedAt || (() => {
+    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  })());
+  const [token, setToken] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const {
+    mentionQuery, setMentionQuery, mentionPosition, mentionOptions, mentionIndex, setMentionIndex,
+    textareaRef, handleMentionChange, insertMention
+  } = useMentions();
+
   const isAdminUser = isAdmin(user?.id);
   const isImpersonating = !!impersonating;
   const showTitle = isThread || (mode === 'create' && isThread);
@@ -131,7 +145,7 @@ import { isAdmin } from '../../lib/admin';
         title: showTitle ? title.trim() : undefined,
         content: content.trim(),
         boardId: showBoardSelect ? boardId : undefined,
-        createdAt: (showAdminControls && useCustomTime) ? customTime : undefined,
+        createdAt: showAdminControls ? customTime : undefined,
         turnstileToken: showTurnstile ? token : undefined,
       });
       if (mode === 'create' || mode === 'reply') {
@@ -216,14 +230,8 @@ import { isAdmin } from '../../lib/admin';
       </div>
 
       {showAdminControls && (
-        <div className="flex flex-col gap-2 p-3 rounded-xl bg-[var(--color-page-bg)] border border-dashed border-[var(--color-border)]">
-          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer text-[var(--color-text-primary)]">
-            <input type="checkbox" className="w-4 h-4 rounded text-[var(--color-primary)]" checked={useCustomTime} onChange={e => setUseCustomTime(e.target.checked)} />
-            自定义发布时间 (管理员特权)
-          </label>
-          {useCustomTime && (
-            <BCDateTimePicker isoString={customTime} onChange={setCustomTime} />
-          )}
+        <div className="flex flex-col gap-1">
+          <BCDateTimePicker isoString={customTime} onChange={setCustomTime} />
         </div>
       )}
 

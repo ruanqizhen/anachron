@@ -7,7 +7,7 @@ interface BCDateTimePickerProps {
 
 export default function BCDateTimePicker({
   isoString, onChange,
-  label = "发布时间",
+  label,
   className = ""
 }: BCDateTimePickerProps) {
   const parsed = parseBCDate(isoString);
