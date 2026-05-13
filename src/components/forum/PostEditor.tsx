@@ -35,30 +35,17 @@ export default function PostEditor({
   mode, isThread, initialTitle = '', initialContent = '', initialBoardId = '', initialCreatedAt = '',
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus
 }: PostEditorProps) {
-  const { impersonating } = useAuth();
-  const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState(initialContent);
-  const [boardId, setBoardId] = useState(initialBoardId);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [useCustomTime, setUseCustomTime] = useState(!!initialCreatedAt);
-  const [customTime, setCustomTime] = useState(initialCreatedAt || (() => {
-    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  })());
-  const [token, setToken] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+import { isAdmin } from '../../lib/admin';
 
-  const {
-    mentionQuery, setMentionQuery, mentionPosition, mentionOptions, mentionIndex, setMentionIndex,
-    textareaRef, handleMentionChange, insertMention
-  } = useMentions();
-
+// ... (inside PostEditor)
+  const { user, impersonating } = useAuth();
+  // ...
+  const isAdminUser = isAdmin(user?.id);
   const isImpersonating = !!impersonating;
   const showTitle = isThread || (mode === 'create' && isThread);
-  const showBoardSelect = mode === 'create' && isThread;
+  const showBoardSelect = (mode === 'create' || mode === 'edit') && isThread;
   const showTurnstile = mode === 'create';
-  const showAdminControls = isImpersonating;
+  const showAdminControls = isImpersonating || isAdminUser;
 
   const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 

@@ -312,10 +312,10 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
       )}
 
       {showEdit && (
-        <EditDialog title={thread.title} content={thread.content} isThread
-          onSave={async (title, content) => {
-            await updateThread(thread.id, { title, content });
-            setThread({...thread, title: title || thread.title, content, edited_at: new Date().toISOString()});
+        <EditDialog title={thread.title} content={thread.content} boardId={thread.board_id} isThread
+          onSave={async (title, content, boardId) => {
+            await updateThread(thread.id, { title, content, boardId });
+            setThread({...thread, title: title || thread.title, content, board_id: boardId || thread.board_id, edited_at: new Date().toISOString()});
           }}
           onClose={() => setShowEdit(false)} />
       )}

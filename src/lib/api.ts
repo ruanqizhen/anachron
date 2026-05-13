@@ -310,11 +310,16 @@ export async function createPost(params: {
 }
 
 // ─── Thread Update ───
-export async function updateThread(threadId: string, updates: { title?: string; content?: string }): Promise<void> {
+export async function updateThread(threadId: string, updates: { title?: string; content?: string; boardId?: string }): Promise<void> {
   const db = requireSupabase();
   const { error } = await db
     .from('threads')
-    .update({ ...updates, edited_at: new Date().toISOString() })
+    .update({ 
+      title: updates.title,
+      content: updates.content,
+      board_id: updates.boardId,
+      edited_at: new Date().toISOString() 
+    })
     .eq('id', threadId);
   if (error) throw error;
 }

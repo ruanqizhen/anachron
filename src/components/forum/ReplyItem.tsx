@@ -171,7 +171,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
           />
         </div>
       )}
-      {showEdit && <EditDialog content={post.content} onSave={async (_title: string | undefined, c: string) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
+      {showEdit && <EditDialog content={post.content} onSave={async (_title: string | undefined, c: string, _boardId?: string) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
       {showAdminEdit && <AdminEditDialog content={post.content} createdAt={post.created_at}
         onSave={async (d: { content: string; createdAt?: string }) => { await adminUpdatePost(post.id, d.content, d.createdAt!); onPostUpdated(); }} onClose={() => setShowAdminEdit(false)} />}
     </>

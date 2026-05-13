@@ -239,10 +239,11 @@ export default function ThreadPage() {
         <EditDialog
           title={thread.title}
           content={thread.content}
+          boardId={thread.board_id}
           isThread
-          onSave={async (title, content) => {
-            await updateThread(thread.id, { title, content });
-            setThread({ ...thread, title: title || thread.title, content, edited_at: new Date().toISOString() });
+          onSave={async (title, content, boardId) => {
+            await updateThread(thread.id, { title, content, boardId });
+            setThread({ ...thread, title: title || thread.title, content, board_id: boardId || thread.board_id, edited_at: new Date().toISOString() });
           }}
           onClose={() => setShowThreadEdit(false)}
         />
