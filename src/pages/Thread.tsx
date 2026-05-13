@@ -15,6 +15,7 @@ import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import CommentSection from '../components/forum/CommentSection';
 import type { Thread } from '../lib/types';
+import RightPanel from '../components/layout/RightPanel';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -97,142 +98,148 @@ export default function ThreadPage() {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
-      <nav className="flex items-center gap-1 text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-        <Link to="/" className="no-underline hover:underline" style={{ color: 'var(--color-text-secondary)' }}>
-          首页
-        </Link>
-        <ChevronRight size={14} />
-        {board && (
-          <>
-            <Link to={`/b/${boardSlug}`} className="no-underline hover:underline" style={{ color: 'var(--color-text-secondary)' }}>
-              {board.icon} {board.name}
+    <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <div className="flex gap-6">
+        <main className="flex-1 min-w-0">
+          <nav className="flex items-center gap-1 text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
+            <Link to="/" className="no-underline hover:underline" style={{ color: 'var(--color-text-secondary)' }}>
+              首页
             </Link>
             <ChevronRight size={14} />
-          </>
-        )}
-        <span className="truncate" style={{ color: 'var(--color-text-primary)' }}>
-          {thread.title}
-        </span>
-      </nav>
-
-      <article
-        className="rounded-lg px-6 py-5 mb-4"
-        style={{
-          backgroundColor: 'var(--color-card-bg)',
-          boxShadow: 'var(--shadow-card)',
-        }}
-      >
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <Link to={author ? `/u/${author.username}` : '#'}>
-              <Avatar name={getDisplayName(thread)} url={author?.avatar_url} size={44} />
-            </Link>
-            <div>
-              <div className="flex items-center gap-1">
-                <Link
-                  to={author ? `/u/${author.username}` : '#'}
-                  className="font-semibold no-underline hover:underline"
-                  style={{ color: 'var(--color-text-primary)' }}
-                >
-                  {getDisplayName(thread)}
+            {board && (
+              <>
+                <Link to={`/b/${boardSlug}`} className="no-underline hover:underline" style={{ color: 'var(--color-text-secondary)' }}>
+                  {board.icon} {board.name}
                 </Link>
-                {author?.is_ai_character && <Badge type="verified" />}
-              </div>
-              <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {board && <>{board.icon} {board.name} · </>}
-                <time dateTime={thread.created_at} title={formatFullDate(thread.created_at)}>{timeAgo(thread.created_at)}</time>
-                {thread.edited_at && <span> · 已编辑</span>}
-              </div>
-            </div>
-          </div>
+                <ChevronRight size={14} />
+              </>
+            )}
+            <span className="truncate" style={{ color: 'var(--color-text-primary)' }}>
+              {thread.title}
+            </span>
+          </nav>
 
-          {canEditThread && (
-            <div className="relative">
-              <button
-                onClick={() => setShowThreadMenu(!showThreadMenu)}
-                className="p-1.5 rounded-full hover:bg-[var(--color-page-bg)] transition-colors cursor-pointer border-none bg-transparent"
-              >
-                <MoreHorizontal size={18} style={{ color: 'var(--color-text-muted)' }} />
-              </button>
-              {showThreadMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowThreadMenu(false)} />
-                  <div
-                    className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
-                    style={{
-                      backgroundColor: 'var(--color-card-bg)',
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                      border: '1px solid var(--color-border)',
-                    }}
-                  >
-                    <button
-                      onClick={() => {
-                        setShowThreadMenu(false);
-                        if (admin && !isThreadAuthor) setShowThreadAdminEdit(true);
-                        else setShowThreadEdit(true);
-                      }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+          <article
+            className="rounded-lg px-6 py-5 mb-4"
+            style={{
+              backgroundColor: 'var(--color-card-bg)',
+              boxShadow: 'var(--shadow-card)',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <Link to={author ? `/u/${author.username}` : '#'}>
+                  <Avatar name={getDisplayName(thread)} url={author?.avatar_url} size={44} />
+                </Link>
+                <div>
+                  <div className="flex items-center gap-1">
+                    <Link
+                      to={author ? `/u/${author.username}` : '#'}
+                      className="font-semibold no-underline hover:underline"
                       style={{ color: 'var(--color-text-primary)' }}
                     >
-                      <Pencil size={14} /> 编辑
-                    </button>
-                    {admin && (
-                      <button
-                        onClick={async () => {
-                          setShowThreadMenu(false);
-                          await toggleThreadLock(thread.id, !thread.is_locked);
-                          setThread({ ...thread, is_locked: !thread.is_locked });
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                        style={{ color: 'var(--color-text-primary)' }}
-                      >
-                        <Lock size={14} /> {thread.is_locked ? '解锁' : '锁定'}
-                      </button>
-                    )}
-                    <button
-                      onClick={async () => {
-                        setShowThreadMenu(false);
-                        if (admin && !isThreadAuthor) await adminSoftDeleteThread(thread.id);
-                        else await softDeleteThread(thread.id);
-                        setThread({ ...thread, deleted_at: new Date().toISOString() });
-                      }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                      style={{ color: 'var(--color-danger)' }}
-                    >
-                      <Trash2 size={14} /> 删除
-                    </button>
+                      {getDisplayName(thread)}
+                    </Link>
+                    {author?.is_ai_character && <Badge type="verified" />}
                   </div>
-                </>
+                  <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    {board && <>{board.icon} {board.name} · </>}
+                    <time dateTime={thread.created_at} title={formatFullDate(thread.created_at)}>{timeAgo(thread.created_at)}</time>
+                    {thread.edited_at && <span> · 已编辑</span>}
+                  </div>
+                </div>
+              </div>
+
+              {canEditThread && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowThreadMenu(!showThreadMenu)}
+                    className="p-1.5 rounded-full hover:bg-[var(--color-page-bg)] transition-colors cursor-pointer border-none bg-transparent"
+                  >
+                    <MoreHorizontal size={18} style={{ color: 'var(--color-text-muted)' }} />
+                  </button>
+                  {showThreadMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowThreadMenu(false)} />
+                      <div
+                        className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
+                        style={{
+                          backgroundColor: 'var(--color-card-bg)',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        <button
+                          onClick={() => {
+                            setShowThreadMenu(false);
+                            if (admin && !isThreadAuthor) setShowThreadAdminEdit(true);
+                            else setShowThreadEdit(true);
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                          style={{ color: 'var(--color-text-primary)' }}
+                        >
+                          <Pencil size={14} /> 编辑
+                        </button>
+                        {admin && (
+                          <button
+                            onClick={async () => {
+                              setShowThreadMenu(false);
+                              await toggleThreadLock(thread.id, !thread.is_locked);
+                              setThread({ ...thread, is_locked: !thread.is_locked });
+                            }}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                            style={{ color: 'var(--color-text-primary)' }}
+                          >
+                            <Lock size={14} /> {thread.is_locked ? '解锁' : '锁定'}
+                          </button>
+                        )}
+                        <button
+                          onClick={async () => {
+                            setShowThreadMenu(false);
+                            if (admin && !isThreadAuthor) await adminSoftDeleteThread(thread.id);
+                            else await softDeleteThread(thread.id);
+                            setThread({ ...thread, deleted_at: new Date().toISOString() });
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
+                          style={{ color: 'var(--color-danger)' }}
+                        >
+                          <Trash2 size={14} /> 删除
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
+
+            <h1 className="text-xl font-bold mb-3">{thread.title}</h1>
+            <MarkdownRenderer content={thread.content} />
+          </article>
+
+          <AIResponseIndicator threadId={thread.id} />
+
+          {thread.is_locked && (
+            <div className="rounded-lg px-4 py-3 mb-3 text-center text-sm" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>
+              🔒 此帖已被锁定，无法回复
+            </div>
           )}
-        </div>
 
-        <h1 className="text-xl font-bold mb-3">{thread.title}</h1>
-        <MarkdownRenderer content={thread.content} />
-      </article>
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{
+              backgroundColor: 'var(--color-card-bg)',
+              boxShadow: 'var(--shadow-card)',
+            }}
+          >
+            <CommentSection 
+              threadId={thread.id} 
+              isLocked={thread.is_locked} 
+              realtime={true} 
+            />
+          </div>
+        </main>
 
-      <AIResponseIndicator threadId={thread.id} />
-
-      {thread.is_locked && (
-        <div className="rounded-lg px-4 py-3 mb-3 text-center text-sm" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>
-          🔒 此帖已被锁定，无法回复
-        </div>
-      )}
-
-      <div
-        className="rounded-lg overflow-hidden"
-        style={{
-          backgroundColor: 'var(--color-card-bg)',
-          boxShadow: 'var(--shadow-card)',
-        }}
-      >
-        <CommentSection 
-          threadId={thread.id} 
-          isLocked={thread.is_locked} 
-          realtime={true} 
-        />
+        <RightPanel />
       </div>
 
       {showThreadEdit && (
