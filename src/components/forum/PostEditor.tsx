@@ -196,7 +196,7 @@ export default function PostEditor({
           value={content}
           onChange={(v) => { setContent(v); handleMentionChange(v, textareaRef.current?.selectionStart || 0); }}
           minHeight={minHeight}
-          maxHeight={800}
+          maxHeight={1200}
           showToolbar={true}
           hideLabel={true}
           textareaProps={{

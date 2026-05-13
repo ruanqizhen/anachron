@@ -27,7 +27,7 @@ export default function PostEditorDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
-        className="w-full max-w-2xl rounded-2xl flex flex-col max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200"
+        className="w-[95%] max-w-4xl rounded-2xl flex flex-col max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200"
         style={{ backgroundColor: 'var(--color-card-bg)', border: '1px solid var(--color-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -74,6 +74,7 @@ export default function PostEditorDialog({
               onClose();
             }}
             onCancel={onClose}
+            minHeight={400}
             autoFocus={true}
           />
         </div>
