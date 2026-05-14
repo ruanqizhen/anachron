@@ -269,9 +269,9 @@ export default function PostEditor({
       )}
 
       <div className="flex items-center justify-between gap-4 mt-2 shrink-0">
-        <div className="flex-1 max-w-[300px]">
+        <div className="flex-1 min-w-0 max-w-[200px] sm:max-w-[300px] overflow-hidden">
           {showTurnstile && (
-            <div className="transform scale-90 origin-left">
+            <div className="transform scale-[0.55] sm:scale-90 origin-left -my-4">
               <Turnstile
                 siteKey={SITE_KEY}
                 onSuccess={(t) => setToken(t)}

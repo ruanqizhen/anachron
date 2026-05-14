@@ -9,19 +9,21 @@ function requireSupabase() {
 
 // ─── Rate Limiting ───
 const lastAction: Record<string, number> = {};
-function checkRateLimit(key: string, intervalMs: number): number {
+function getRateLimitWait(key: string, intervalMs: number): number {
   const now = Date.now();
   const elapsed = now - (lastAction[key] || 0);
   if (elapsed < intervalMs) return Math.ceil((intervalMs - elapsed) / 1000);
-  lastAction[key] = now;
   return 0;
 }
+function recordActionSuccess(key: string) {
+  lastAction[key] = Date.now();
+}
 export function canCreateThread(isGuest: boolean): { ok: boolean; wait?: number } {
-  const wait = checkRateLimit('thread', isGuest ? 5 * 60 * 1000 : 60 * 1000);
+  const wait = getRateLimitWait('thread', isGuest ? 5 * 60 * 1000 : 60 * 1000);
   return { ok: wait === 0, wait: wait || undefined };
 }
 export function canCreateReply(isGuest: boolean): { ok: boolean; wait?: number } {
-  const wait = checkRateLimit('reply', isGuest ? 60 * 1000 : 6 * 1000);
+  const wait = getRateLimitWait('reply', isGuest ? 60 * 1000 : 6 * 1000);
   return { ok: wait === 0, wait: wait || undefined };
 }
 
@@ -250,7 +252,10 @@ export async function createThread(params: {
       turnstile_token: params.turnstileToken || '',
       created_at: params.createdAt || undefined,
     });
-    if (result?.thread) return result.thread as Thread;
+    if (result?.thread) {
+      recordActionSuccess('thread');
+      return result.thread as Thread;
+    }
   }
 
   // Fallback: use RPC function (SECURITY DEFINER, bypasses RLS)
@@ -266,6 +271,7 @@ export async function createThread(params: {
   if (error) throw error;
   const threads = data as Thread[];
   if (!threads || threads.length === 0) throw new Error('创建失败');
+  recordActionSuccess('thread');
   return threads[0];
 }
 
@@ -291,7 +297,10 @@ export async function createPost(params: {
       turnstile_token: params.turnstileToken || '',
       created_at: params.createdAt || undefined,
     });
-    if (result?.post) return result.post as Post;
+    if (result?.post) {
+      recordActionSuccess('reply');
+      return result.post as Post;
+    }
   }
 
   // Fallback: use RPC function (SECURITY DEFINER, bypasses RLS)
@@ -306,7 +315,8 @@ export async function createPost(params: {
 
   if (error) throw error;
   const posts = data as Post[];
-  if (!posts || posts.length === 0) throw new Error('创建失败');
+  if (!posts || posts.length === 0) throw new Error('评论失败');
+  recordActionSuccess('reply');
   return posts[0];
 }
 
