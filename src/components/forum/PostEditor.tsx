@@ -191,8 +191,7 @@ export default function PostEditor({
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       {showBoardSelect && (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">发布板块</label>
+        <div className="flex flex-col">
           <select
             value={boardId}
             onChange={(e) => setBoardId(e.target.value)}
@@ -207,8 +206,7 @@ export default function PostEditor({
       )}
 
       {showTitle && (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">标题</label>
+        <div className="flex flex-col">
           <input
             type="text"
             value={title}
@@ -221,7 +219,6 @@ export default function PostEditor({
       )}
 
       <div className="relative flex-1 flex flex-col">
-        <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1 mb-1">正文</label>
         <MarkdownEditor
           value={content}
           onChange={(v) => { setContent(v); handleMentionChange(v, textareaRef.current?.selectionStart || 0); }}

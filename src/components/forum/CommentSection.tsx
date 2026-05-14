@@ -198,10 +198,16 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
           <PostEditor
             mode="reply"
             onSave={async (data) => {
-              if (!user && !guest && !guestId) {
+              // Check for user or existing guest session (state or localStorage)
+              const hasGuestSession = guest || guestId || localStorage.getItem('anachron_guest_name');
+              
+              if (!user && !hasGuestSession) {
                 setShowGuestDialog(true);
-                throw new Error('请先设置您的昵称');
+                // We don't throw an error here to avoid showing a scary red message 
+                // when we're just asking for a name
+                return;
               }
+              
               const rateCheck = canCreateReply(!user);
               if (!rateCheck.ok) {
                 throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
