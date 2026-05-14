@@ -190,6 +190,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
             }}
             placeholder="写下你的看法..."
             minHeight={100}
+            draftKey={`draft_reply_thread_${threadId}`}
           />
         </div>
       )}

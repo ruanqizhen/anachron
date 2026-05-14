@@ -71,6 +71,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
           await doSubmit(data);
         }}
         onClose={onClose}
+        draftKey={`draft_create_thread_${defaultBoardSlug || 'all'}`}
       />
 
       {showGuestDialog && (

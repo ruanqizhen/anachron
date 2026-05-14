@@ -30,11 +30,12 @@ interface PostEditorProps {
   className?: string;
   minHeight?: number;
   autoFocus?: boolean;
+  draftKey?: string;
 }
 
 export default function PostEditor({
   mode, isThread, initialTitle = '', initialContent = '', initialBoardId = '', initialCreatedAt = '',
-  placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus
+  placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey
 }: PostEditorProps) {
   const { user, impersonating } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -48,6 +49,31 @@ export default function PostEditor({
   const [token, setToken] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (draftKey && !initialContent && !initialTitle) {
+      try {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.title) setTitle(parsed.title);
+          if (parsed.content) setContent(parsed.content);
+        }
+      } catch (e) { /* ignore */ }
+    }
+  }, [draftKey, initialContent, initialTitle]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    const timer = setTimeout(() => {
+      if (title || content) {
+        localStorage.setItem(draftKey, JSON.stringify({ title, content }));
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [draftKey, title, content]);
 
   const {
     mentionQuery, setMentionQuery, mentionPosition, mentionOptions, mentionIndex, setMentionIndex,
@@ -151,6 +177,7 @@ export default function PostEditor({
       if (mode === 'create' || mode === 'reply') {
         setContent('');
         setTitle('');
+        if (draftKey) localStorage.removeItem(draftKey);
       }
     } catch (err: any) {
       setError(err.message || '操作失败');

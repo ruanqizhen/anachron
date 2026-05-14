@@ -172,6 +172,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
             placeholder={`回复 ${authorUsername}...`}
             minHeight={80}
             autoFocus={true}
+            draftKey={`draft_reply_post_${post.id}`}
           />
         </div>
       )}

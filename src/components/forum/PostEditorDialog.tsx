@@ -15,11 +15,12 @@ interface PostEditorDialogProps {
   onSave: (data: any) => Promise<void>;
   onClose: () => void;
   title?: string;
+  draftKey?: string;
 }
 
 export default function PostEditorDialog({
   mode, isThread, initialTitle, initialContent, initialBoardId, initialCreatedAt,
-  placeholder, defaultBoardSlug, onSave, onClose, title: dialogTitle
+  placeholder, defaultBoardSlug, onSave, onClose, title: dialogTitle, draftKey
 }: PostEditorDialogProps) {
   const { impersonating, guest } = useAuth();
   const effectiveGuestName = guest?.username || null;
@@ -76,6 +77,7 @@ export default function PostEditorDialog({
             onCancel={onClose}
             minHeight={400}
             autoFocus={true}
+            draftKey={draftKey}
           />
         </div>
       </div>
