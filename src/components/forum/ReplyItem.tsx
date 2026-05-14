@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ThumbsUp, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ThumbsUp, MoreHorizontal, Pencil, Trash2, Link as LinkIcon } from 'lucide-react';
 import type { Post } from '../../lib/types';
 import { getDisplayName } from '../../lib/types';
 import { useAuth } from '../../lib/auth';
@@ -18,6 +18,7 @@ import {
   updatePost, softDeletePost, adminUpdatePost, adminSoftDeletePost,
   createPost, createGuestSession, toggleLike,
 } from '../../lib/api';
+import { toast } from '../../lib/toast';
 
 interface ReplyItemProps {
   post: Post;
@@ -101,9 +102,17 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
     setReplying(false);
   }
 
+  function copyLink() {
+    const url = new URL(window.location.href);
+    url.hash = `post-${post.id}`;
+    navigator.clipboard.writeText(url.toString());
+    toast.success('链接已复制，去分享吧！');
+    window.history.replaceState(null, '', url.toString());
+  }
+
   return (
     <>
-      <article className="flex gap-3 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <article id={`post-${post.id}`} className="flex gap-3 px-4 py-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
         <Link to={linkPath} className="shrink-0">
           <Avatar name={authorUsername} url={avatarUrl} size={36} />
         </Link>
@@ -121,6 +130,9 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
               {post.edited_at && (
                 <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>· 已编辑</span>
               )}
+              <button onClick={copyLink} className="p-1 rounded hover:bg-[var(--color-page-bg)] cursor-pointer border-none bg-transparent ml-1 flex items-center justify-center" title="复制链接">
+                <LinkIcon size={12} style={{ color: 'var(--color-text-muted)' }} />
+              </button>
             </div>
             {canEdit && (
               <div className="relative">

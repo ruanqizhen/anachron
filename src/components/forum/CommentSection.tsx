@@ -73,6 +73,24 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
   }, [threadId, user]);
 
   useEffect(() => {
+    if (!isLoading && posts.length > 0 && window.location.hash) {
+      const id = window.location.hash.slice(1);
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const originalBg = el.style.backgroundColor;
+          el.style.transition = 'background-color 0.5s ease';
+          el.style.backgroundColor = 'rgba(var(--color-primary-rgb, 0, 122, 255), 0.1)';
+          setTimeout(() => {
+            el.style.backgroundColor = originalBg;
+          }, 2000);
+        }
+      }, 100);
+    }
+  }, [isLoading, posts.length]);
+
+  useEffect(() => {
     // Real-time subscription
     if (!realtime || !threadId || !supabase) return;
 
