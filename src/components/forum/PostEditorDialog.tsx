@@ -60,7 +60,7 @@ export default function PostEditorDialog({
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden p-6">
+        <div className="flex-1 flex flex-col overflow-y-auto p-6">
           <PostEditor
             mode={mode}
             isThread={isThread}
@@ -75,7 +75,7 @@ export default function PostEditorDialog({
               onClose();
             }}
             onCancel={onClose}
-            minHeight={300}
+            minHeight={200}
             autoFocus={true}
             draftKey={draftKey}
             className="flex-1"

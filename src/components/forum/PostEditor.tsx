@@ -271,7 +271,7 @@ export default function PostEditor({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4 mt-2">
+      <div className="flex items-center justify-between gap-4 mt-2 shrink-0">
         <div className="flex-1 max-w-[300px]">
           {showTurnstile && (
             <div className="transform scale-90 origin-left">
