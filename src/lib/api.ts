@@ -373,6 +373,19 @@ export async function createNotification(params: {
     });
   if (error) throw error;
 }
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('recipient_id', userId)
+    .eq('is_read', false);
+  if (error) {
+    console.error('Error fetching unread notification count:', error);
+    return 0;
+  }
+  return count || 0;
+}
 
 export async function getNotifications(userId: string) {
   if (!supabase) return [];

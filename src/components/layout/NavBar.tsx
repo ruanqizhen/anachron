@@ -1,16 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, Menu, X, LogIn, LogOut, User as UserIcon, Settings as SettingsIcon, Shield } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
+import { getUnreadNotificationCount } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 
 export default function NavBar() {
   const { user, profile, isLoading, logout, impersonating, stopImpersonation } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user || !supabase) return;
+
+    let isMounted = true;
+    getUnreadNotificationCount(user.id).then(c => {
+      if (isMounted) setUnreadCount(c);
+    });
+
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: `recipient_id=eq.${user.id}`,
+      }, () => {
+        getUnreadNotificationCount(user.id).then(c => {
+          if (isMounted) setUnreadCount(c);
+        });
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      channel.unsubscribe();
+    };
+  }, [user]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -74,6 +103,14 @@ export default function NavBar() {
                 aria-label="通知"
               >
                 <Bell size={20} style={{ color: 'var(--color-text-secondary)' }} />
+                {unreadCount > 0 && (
+                  <span 
+                    className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1" 
+                    style={{ backgroundColor: 'var(--color-danger)', minWidth: 16, height: 16 }}
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
 
               <div className="relative">
