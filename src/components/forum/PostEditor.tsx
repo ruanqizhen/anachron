@@ -31,11 +31,13 @@ interface PostEditorProps {
   minHeight?: number;
   autoFocus?: boolean;
   draftKey?: string;
+  showResize?: boolean;
 }
 
 export default function PostEditor({
   mode, isThread, initialTitle = '', initialContent = '', initialBoardId = '', initialCreatedAt = '',
-  placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey
+  placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey,
+  showResize = true
 }: PostEditorProps) {
   const { user, impersonating } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -226,6 +228,7 @@ export default function PostEditor({
           minHeight={minHeight}
           maxHeight={1200}
           showToolbar={true}
+          showResize={showResize}
           hideLabel={true}
           textareaProps={{
             ref: textareaRef,

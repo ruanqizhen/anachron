@@ -106,8 +106,13 @@ export default function MarkdownEditor({
           value={value}
           onChange={e => onChange(e.target.value)}
           className="w-full flex-1 px-3 py-2.5 outline-none text-sm bg-transparent"
-          style={{ color: 'var(--color-text-primary)', resize: 'none', minHeight }}
           {...textareaProps}
+          style={{ 
+            ...textareaProps?.style,
+            color: 'var(--color-text-primary)', 
+            resize: 'none', 
+            minHeight 
+          }}
         />
         {children}
         {showResize && (

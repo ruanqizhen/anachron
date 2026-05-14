@@ -28,7 +28,7 @@ export default function PostEditorDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
-        className="w-[95%] max-w-4xl rounded-2xl flex flex-col max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200"
+        className="w-[95%] max-w-4xl rounded-2xl flex flex-col h-[85vh] max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200"
         style={{ backgroundColor: 'var(--color-card-bg)', border: '1px solid var(--color-border)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -60,7 +60,7 @@ export default function PostEditorDialog({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 flex flex-col overflow-hidden p-6">
           <PostEditor
             mode={mode}
             isThread={isThread}
@@ -75,9 +75,11 @@ export default function PostEditorDialog({
               onClose();
             }}
             onCancel={onClose}
-            minHeight={400}
+            minHeight={300}
             autoFocus={true}
             draftKey={draftKey}
+            className="flex-1"
+            showResize={false}
           />
         </div>
       </div>
