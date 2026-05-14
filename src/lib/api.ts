@@ -35,16 +35,17 @@ async function callPostHandler(payload: Record<string, unknown>) {
       body: payload,
     });
     if (error) {
-      const msg = (error as Error).message || '';
-      if (msg.includes('频繁')) throw new Error(msg); // Rate limit → show to user
-      throw new Error(msg || '服务器错误');
+      console.error('[EDGE-FUNCTION-ERROR]', error);
+      const msg = (error as any).message || '';
+      if (msg && (msg.includes('频繁') || msg.includes('rate limit'))) {
+        throw new Error(msg);
+      }
+      return null;
     }
     return data;
   } catch (err: unknown) {
-    // Rate limit errors → propagate to UI
     if ((err as Error).message?.includes('频繁')) throw err;
-    // All other errors → silent fallback to RPC
-    console.warn('Edge Function failed, falling back to RPC:', (err as Error).message);
+    console.warn('[FALLBACK] Edge Function 失败，正在回退到 RPC 模式以确保发帖成功。错误详情:', err);
     return null;
   }
 }
