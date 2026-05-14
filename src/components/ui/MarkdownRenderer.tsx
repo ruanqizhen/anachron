@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
 interface MarkdownRendererProps {
@@ -11,37 +12,13 @@ interface MarkdownRendererProps {
 function preprocessMarkdown(text: string): string {
   if (!text) return '';
 
-  // 1. Normalize line endings and handle multiple empty lines with ZWSP
-  const rawLines = text.split(/\r?\n/);
-  const processedLines: string[] = [];
+  // 1. Linkify mentions
+  let processed = text.replace(/@([一-鿿\w]{2,30})/g, (_, name) => `[@${name}](/u/${encodeURIComponent(name)})`);
   
-  for (let i = 0; i < rawLines.length; i++) {
-    const line = rawLines[i];
-    const nextLine = rawLines[i + 1];
-    
-    processedLines.push(line);
-    
-    // If there's a next line and it's not an empty line break
-    if (nextLine !== undefined) {
-      if (line.trim() === '' && nextLine.trim() === '') {
-        // Handle consecutive empty lines by inserting ZWSP
-        processedLines.push('\u200B');
-      } else if (line.trim() !== '' && nextLine.trim() !== '') {
-        // Single newline case: check if we should "paragraph-ize" it
-        const isSpecial = (l: string) => l.trim().match(/^(\s*[*+-]|\s*\d+\.|\s*#|\s*>|\s*```)/);
-        if (!isSpecial(line) && !isSpecial(nextLine)) {
-          // Both are normal text lines -> force a paragraph break
-          processedLines.push('');
-        }
-      }
-    }
-  }
-  
-  let processed = processedLines.join('\n');
-  
-  // 2. Linkify mentions
-  processed = processed.replace(/@([一-鿿\w]{2,30})/g, (_, name) => `[@${name}](/u/${encodeURIComponent(name)})`);
-  
+  // 2. Handle multiple consecutive empty lines to ensure they are rendered
+  // (Standard Markdown collapses multiple empty lines)
+  processed = processed.replace(/\n(\s*\n){2,}/g, '\n\n\u200B\n');
+
   return processed;
 }
 
@@ -57,7 +34,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
   return (
     <div className={`markdown-content ${className}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
         components={{
           a: ({ href, ...props }) => (
