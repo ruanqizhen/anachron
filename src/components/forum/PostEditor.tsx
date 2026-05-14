@@ -44,10 +44,8 @@ export default function PostEditor({
   const [content, setContent] = useState(initialContent);
   const [boardId, setBoardId] = useState(initialBoardId);
   const [boards, setBoards] = useState<Board[]>([]);
-  const [customTime, setCustomTime] = useState(initialCreatedAt || (() => {
-    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  })());
+  const [customTime, setCustomTime] = useState(initialCreatedAt || "");
+  const [isTimeModified, setIsTimeModified] = useState(false);
   const [token, setToken] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -173,7 +171,7 @@ export default function PostEditor({
         title: showTitle ? title.trim() : undefined,
         content: content.trim(),
         boardId: showBoardSelect ? boardId : undefined,
-        createdAt: showAdminControls ? customTime : undefined,
+        createdAt: (showAdminControls && isTimeModified) ? customTime : undefined,
         turnstileToken: showTurnstile ? token : undefined,
       });
       if (mode === 'create' || mode === 'reply') {
@@ -258,7 +256,13 @@ export default function PostEditor({
 
       {showAdminControls && (
         <div className="flex flex-col gap-1">
-          <BCDateTimePicker isoString={customTime} onChange={setCustomTime} />
+          <BCDateTimePicker 
+            isoString={customTime} 
+            onChange={(val) => {
+              setCustomTime(val);
+              setIsTimeModified(true);
+            }} 
+          />
         </div>
       )}
 

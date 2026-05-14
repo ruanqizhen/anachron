@@ -5,10 +5,19 @@ export function formatBCDate(year: string, monthDayTime: string): string | undef
   const paddedYear = absoluteYear.padStart(4, '0');
   const parts = monthDayTime.split('T');
   if (parts.length < 2) return undefined;
+  
   const dateParts = parts[0].split('-');
   const monthDay = dateParts.length > 2 ? `${dateParts[1]}-${dateParts[2]}` : dateParts.join('-');
-  // Ensure time is only HH:mm
   const time = parts[1].slice(0, 5);
+
+  if (!isBC) {
+    // For AD dates, convert the local components to a proper UTC ISO string
+    const localDate = new Date(`${paddedYear}-${monthDay}T${time}`);
+    if (!isNaN(localDate.getTime())) {
+      return localDate.toISOString();
+    }
+  }
+
   return `${paddedYear}-${monthDay} ${time}:00${isBC ? ' BC' : ''}`;
 }
 
@@ -16,9 +25,23 @@ export function parseBCDate(isoString: string | null | undefined): { year: strin
   if (!isoString) {
     const now = new Date();
     const year = now.getFullYear().toString();
-    const monthDayTime = now.toLocaleString('sv-SE').replace(' ', 'T').slice(0, 16);
+    // Use a stable local format YYYY-MM-DDTHH:mm
+    const monthDayTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     return { year, monthDayTime };
   }
+
+  const isBC = isoString.includes(' BC') || isoString.startsWith('-');
+  
+  // For modern AD dates that are proper ISO strings, convert to local components
+  if (!isBC && isoString.includes('T') && (isoString.endsWith('Z') || isoString.includes('+'))) {
+    const date = new Date(isoString);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear().toString();
+      const monthDayTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      return { year, monthDayTime };
+    }
+  }
+
   let yearStr: string;
   let rest: string;
   if (isoString.startsWith('-')) {
@@ -36,8 +59,6 @@ export function parseBCDate(isoString: string | null | undefined): { year: strin
     rest = isoString.slice(firstHyphenIndex);
   }
   const normalizedRest = rest.replace(' ', 'T');
-  // Datetime-local strictly needs YYYY-MM-DDTHH:mm (16 chars including year)
-  // Our "rest" starts with hyphen, so it's -MM-DDTHH:mm (12 chars)
   const monthDayTime = "2000" + normalizedRest.slice(0, 12);
   return { year: yearStr, monthDayTime };
 }
