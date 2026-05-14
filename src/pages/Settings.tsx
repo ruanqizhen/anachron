@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { User, Lock, FileText, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
+import { toast } from '../lib/toast';
 import AvatarUpload from '../components/ui/AvatarUpload';
 
 export default function Settings() {
@@ -80,7 +81,8 @@ export default function Settings() {
       setUsernameMsg(error.message.includes('unique') || error.message.includes('duplicate')
         ? '该用户名已被占用' : '保存失败: ' + error.message);
     } else {
-      setUsernameMsg('用户名已更新');
+      setUsernameMsg('');
+      toast.success('用户名已更新');
     }
   }
 
@@ -101,12 +103,13 @@ export default function Settings() {
       setPwSaving(false);
       return;
     }
-    const { error } = await supabase!.auth.updateUser({ password: newPw });
+    const { error: updateErr } = await supabase!.auth.updateUser({ password: newPw });
     setPwSaving(false);
-    if (error) {
-      setPwMsg('修改失败: ' + error.message);
+    if (updateErr) {
+      setPwMsg('密码修改失败: ' + updateErr.message);
     } else {
-      setPwMsg('密码已更新');
+      setPwMsg('');
+      toast.success('密码已成功修改');
       setCurrentPw('');
       setNewPw('');
       setNewPw2('');

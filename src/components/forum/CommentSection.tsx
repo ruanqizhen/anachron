@@ -7,6 +7,7 @@ import { parseMentions } from '../../lib/mentions';
 import ReplyTree from './ReplyTree';
 import ReplyItem from './ReplyItem';
 import PostEditor from './PostEditor';
+import { toast } from '../../lib/toast';
 import { supabase } from '../../lib/supabase';
 
 interface CommentSectionProps {
@@ -124,6 +125,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
 
     if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
     setPosts(prev => [...prev, newPost as Post]);
+    toast.success('回复成功！');
   }
 
   // handleReply removed, logic moved to PostEditor's onSave

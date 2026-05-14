@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/auth';
 import { parseMentions } from '../../lib/mentions';
 import GuestNameDialog from './GuestNameDialog';
 import PostEditorDialog from './PostEditorDialog';
+import { toast } from '../../lib/toast';
 
 interface CreatePostFormProps {
   onClose: () => void;
@@ -54,6 +55,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
       }
     }
 
+    toast.success('发布成功！');
     onCreated?.();
   }
 

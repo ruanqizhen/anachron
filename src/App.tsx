@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NavBar from './components/layout/NavBar';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 import AdminLayout from './components/layout/AdminLayout';
+import Toaster from './components/ui/Toaster';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -35,6 +36,7 @@ const LoadingFallback = () => (
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           {/* Login page has its own layout (no NavBar) */}
