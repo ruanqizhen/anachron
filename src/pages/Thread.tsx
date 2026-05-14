@@ -8,7 +8,7 @@ import { useAuth } from '../lib/auth';
 import { isAdmin } from '../lib/admin';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
-import { formatFullDate } from '../components/ui/BCDateTimePicker';
+import { formatFullDate } from '../lib/dateUtils';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import EditDialog from '../components/forum/EditDialog';
 import AdminEditDialog from '../components/forum/AdminEditDialog';
@@ -39,19 +39,12 @@ export default function ThreadPage() {
   const [showThreadAdminEdit, setShowThreadAdminEdit] = useState(false);
   const [showThreadMenu, setShowThreadMenu] = useState(false);
 
-  async function loadThread() {
-    if (!threadId) return;
-    const fetchedThread = await getThreadById(threadId);
-    setThread(fetchedThread);
-  }
-
-  // Post loading is now handled by CommentSection
-
   useEffect(() => {
     async function loadData() {
       if (!threadId) return;
       setIsLoading(true);
-      await loadThread();
+      const fetchedThread = await getThreadById(threadId);
+      setThread(fetchedThread);
       setIsLoading(false);
       if (supabase) {
         (supabase.rpc('increment_view_count', { p_thread_id: threadId }) as unknown as Promise<void>).then(() => {}).catch((e: unknown) => console.warn('view count:', e));

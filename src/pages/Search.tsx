@@ -62,7 +62,7 @@ export default function Search() {
       performSearch(query.trim(), 0);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, performSearch]);
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">

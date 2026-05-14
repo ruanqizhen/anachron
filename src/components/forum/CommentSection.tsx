@@ -49,7 +49,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
         setLikedIds(prev => new Set([...Array.from(prev), ...Array.from(newLikes)]));
       });
     }
-  }, [threadId, user]);
+  }, [threadId, user, posts.length]);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,7 +89,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [threadId, loadPosts, realtime]);
+  }, [threadId, realtime]);
 
   async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string) {
     let gid: string | undefined = guestId || undefined;

@@ -48,8 +48,8 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
   try {
-    if (req.body) await req.json().catch(() => { });
-  } catch { }
+    if (req.body) await req.json().catch(() => { /* ignore */ });
+  } catch { /* ignore */ }
 
   console.log('[DISPATCHER] started');
   try {

@@ -26,9 +26,16 @@ export default function Settings() {
   useEffect(() => {
     if (!user) return;
     const name = username.trim();
-    if (!name || name === (profile?.username || '')) { setUsernameAvailable(null); return; }
-    if (name.length < 2) { setUsernameAvailable(null); return; }
-    setUsernameChecking(true);
+    
+    if (!name || name === (profile?.username || '') || name.length < 2) { 
+      const t = setTimeout(() => {
+        setUsernameAvailable(null);
+        setUsernameChecking(false);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    
+    const checkTimer = setTimeout(() => setUsernameChecking(true), 0);
     const timer = setTimeout(async () => {
       const { data } = await supabase!
         .from('profiles')
@@ -38,7 +45,7 @@ export default function Settings() {
       setUsernameAvailable(!data);
       setUsernameChecking(false);
     }, 500);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); clearTimeout(checkTimer); };
   }, [username, profile?.username, user]);
 
   if (!user) {

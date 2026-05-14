@@ -14,10 +14,23 @@ export default function Board() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    if (!boardSlug) return;
+  const [prevSlug, setPrevSlug] = useState(boardSlug);
+
+  if (boardSlug !== prevSlug) {
+    setPrevSlug(boardSlug);
     setIsLoading(true);
-    getBoardBySlug(boardSlug).then(b => { setBoard(b); setIsLoading(false); });
+  }
+
+  useEffect(() => {
+    let active = true;
+    if (!boardSlug) return;
+    getBoardBySlug(boardSlug).then(b => { 
+      if (active) {
+        setBoard(b); 
+        setIsLoading(false); 
+      }
+    });
+    return () => { active = false; };
   }, [boardSlug]);
 
   const fetchThreads = useCallback((limit: number, offset: number) => {

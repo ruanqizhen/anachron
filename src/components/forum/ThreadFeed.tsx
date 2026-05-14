@@ -18,15 +18,20 @@ export default function ThreadFeed({ fetchThreads, refreshKey, emptyMessage = 'æ
   const [hasMore, setHasMore] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  const loadFirst = useCallback(async () => {
-    setIsLoading(true);
-    const items = await fetchThreads(PAGE_SIZE, 0);
-    setThreads(items);
-    setHasMore(items.length >= PAGE_SIZE);
-    setIsLoading(false);
-  }, [fetchThreads]);
-
-  useEffect(() => { loadFirst(); }, [loadFirst, refreshKey]);
+  useEffect(() => {
+    let active = true;
+    const fetchFirst = async () => {
+      setIsLoading(true);
+      const items = await fetchThreads(PAGE_SIZE, 0);
+      if (active) {
+        setThreads(items);
+        setHasMore(items.length >= PAGE_SIZE);
+        setIsLoading(false);
+      }
+    };
+    fetchFirst();
+    return () => { active = false; };
+  }, [fetchThreads, refreshKey]);
 
   const loadMore = useCallback(async () => {
     const more = await fetchThreads(PAGE_SIZE, threads.length);

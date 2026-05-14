@@ -14,7 +14,7 @@ import CommentSection from './CommentSection';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import ReportDialog from '../ui/ReportDialog';
-import { formatDisplayDate, formatFullDate } from '../ui/BCDateTimePicker';
+import { formatDisplayDate, formatFullDate } from '../../lib/dateUtils';
 import { updateThread, softDeleteThread, adminUpdateThread, adminSoftDeleteThread, setPinLevel, toggleFeatured, toggleThreadLike, getThreadLikes } from '../../lib/api';
 
 interface PostCardProps {

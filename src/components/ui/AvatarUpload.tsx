@@ -13,12 +13,16 @@ interface AvatarUploadProps {
 
 export default function AvatarUpload({ currentUrl, name, userId, adminMode, onUrlChange }: AvatarUploadProps) {
   const [url, setUrl] = useState(currentUrl || '');
+  const [prevCurrentUrl, setPrevCurrentUrl] = useState(currentUrl);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  useEffect(() => { setUrl(currentUrl || ''); }, [currentUrl]);
+  if (currentUrl !== prevCurrentUrl) {
+    setPrevCurrentUrl(currentUrl);
+    setUrl(currentUrl || '');
+  }
 
-  async function uploadBlob(blob: Blob) {
+  const uploadBlob = useCallback(async (blob: Blob) => {
     setUploading(true);
     setMsg('');
     try {
@@ -34,11 +38,11 @@ export default function AvatarUpload({ currentUrl, name, userId, adminMode, onUr
       setUrl(publicUrl);
       onUrlChange?.(publicUrl);
       setMsg('头像已更新');
-    } catch (err: any) { setMsg('上传失败: ' + err.message); }
+    } catch (err: unknown) { setMsg('上传失败: ' + (err instanceof Error ? err.message : String(err))); }
     setUploading(false);
-  }
+  }, [userId, adminMode, onUrlChange]);
 
-  async function processFile(file: File) {
+  const processFile = useCallback(async (file: File) => {
     const img = new Image();
     img.src = URL.createObjectURL(file);
     await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(); });
@@ -49,7 +53,7 @@ export default function AvatarUpload({ currentUrl, name, userId, adminMode, onUr
     canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.8));
     await uploadBlob(blob);
-  }
+  }, [uploadBlob]);
 
   const handlePaste = useCallback((e: ClipboardEvent) => {
     const items = e.clipboardData?.items;
@@ -61,7 +65,7 @@ export default function AvatarUpload({ currentUrl, name, userId, adminMode, onUr
         return;
       }
     }
-  }, [userId]);
+  }, [processFile]);
 
   useEffect(() => {
     document.addEventListener('paste', handlePaste);
