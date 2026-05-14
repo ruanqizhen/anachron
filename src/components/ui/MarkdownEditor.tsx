@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode, type TextareaHTMLAttributes, type Ref } from 'react';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Bold, Italic, Heading, Quote, Code, Link as LinkIcon, List, ListOrdered } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useImageUpload } from '../../lib/useImageUpload';
 
@@ -46,14 +46,56 @@ export default function MarkdownEditor({
     return () => document.removeEventListener('paste', handlePaste);
   }, [handlePaste]);
 
+  const insertFormat = (prefix: string, suffix: string = '', defaultText: string = '') => {
+    const ta = containerRef.current?.querySelector('textarea');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = value.slice(start, end) || defaultText;
+    const replacement = prefix + selected + suffix;
+    const newValue = value.slice(0, start) + replacement + value.slice(end);
+    onChange(newValue);
+    
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+    }, 0);
+  };
+  
+  const TOOLBAR_ITEMS = [
+    { icon: Bold, label: '加粗', onClick: () => insertFormat('**', '**', '粗体文本') },
+    { icon: Italic, label: '斜体', onClick: () => insertFormat('*', '*', '斜体文本') },
+    { icon: Heading, label: '标题', onClick: () => insertFormat('### ', '', '标题文本') },
+    { icon: Quote, label: '引用', onClick: () => insertFormat('> ', '', '引用内容') },
+    { icon: Code, label: '代码', onClick: () => insertFormat('```\n', '\n```', '代码片段') },
+    { icon: LinkIcon, label: '链接', onClick: () => insertFormat('[', '](https://)', '链接文本') },
+    { icon: List, label: '无序列表', onClick: () => insertFormat('- ', '', '列表项') },
+    { icon: ListOrdered, label: '有序列表', onClick: () => insertFormat('1. ', '', '列表项') },
+  ];
+
   return (
     <div className={`flex-1 flex flex-col ${className}`}>
       {showToolbar && (
-        <div className="flex items-center justify-between mb-1.5 px-1">
-          {!hideLabel && <label className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)]">正文 (Markdown)</label>}
-          <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white cursor-pointer transition-all hover:brightness-110 active:scale-95 shadow-sm"
+        <div className="flex items-center justify-between mb-1.5 px-1 flex-wrap gap-2">
+          <div className="flex items-center gap-1">
+            {!hideLabel && <label className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mr-2 hidden sm:block">正文 (Markdown)</label>}
+            <div className="flex items-center gap-0.5 bg-[var(--color-page-bg)] p-0.5 rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>
+              {TOOLBAR_ITEMS.map((item, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  title={item.label}
+                  onClick={item.onClick}
+                  className="p-1.5 flex items-center justify-center rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-card-bg)] transition-colors cursor-pointer border-none bg-transparent"
+                >
+                  <item.icon size={15} strokeWidth={2.5} />
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white cursor-pointer transition-all hover:brightness-110 active:scale-95 shadow-sm shrink-0"
             style={{ backgroundColor: 'var(--color-primary)' }}>
-            <ImagePlus size={14} /> 贴图
+            <ImagePlus size={14} /> <span className="hidden sm:inline">贴图</span>
             <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           </label>
         </div>
