@@ -191,12 +191,16 @@ export default function Login() {
             e.preventDefault();
             setError(''); setMsg('');
             if (!email.trim()) { setError('请输入邮箱'); return; }
-            setIsSubmitting(true);
             const { error: resetErr } = await supabase!.auth.resetPasswordForEmail(email.trim(), {
               redirectTo: `${window.location.origin}/login`,
             });
             setIsSubmitting(false);
-            if (resetErr) { setError(resetErr.message); }
+            if (resetErr) { 
+              const m = resetErr.message;
+              if (m.includes('rate limit')) setError('请求过于频繁，请稍后再试');
+              else if (m.includes('not found')) setError('未找到该用户');
+              else setError('重置请求失败: ' + m);
+            }
             else { setResetSent(true); setShowReset(false); setError(''); }
           }} className="flex flex-col gap-4">
             <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>

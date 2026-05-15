@@ -133,7 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
         return { error: '该邮箱已被注册，请直接登录或使用其他邮箱' };
       }
-      return { error: error.message };
+      if (error.message?.includes('Password should be at least 6 characters')) {
+        return { error: '密码至少 6 位' };
+      }
+      return { error: '注册失败: ' + error.message };
     }
     // Supabase returns user=null for unconfirmed duplicate emails
     // But for confirmed accounts, user is non-null and session is null

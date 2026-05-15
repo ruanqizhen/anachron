@@ -40,7 +40,7 @@ export default function AdminUsers() {
       await adminUpdateUser(id, editName.trim(), editBio.trim());
       setEditing(null);
       load();
-    } catch (err: unknown) { setMsg((err as Error).message); }
+    } catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
   }
 
   async function handleDelete(id: string, name: string) {
@@ -74,7 +74,7 @@ export default function AdminUsers() {
               setMsg('');
               if (!newName.trim()) { setMsg('请输入用户名'); return; }
               try { await adminCreateVirtualUser(newName.trim(), newBio.trim()); setNewName(''); setNewBio(''); setShowCreate(false); load(); }
-              catch (err: unknown) { setMsg((err as Error).message); }
+              catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
             }} className="px-4 py-1.5 rounded text-sm font-medium text-white bg-[var(--color-success)] border-none cursor-pointer shrink-0">创建</button>
             {msg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{msg}</span>}
           </div>

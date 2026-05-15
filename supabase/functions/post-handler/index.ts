@@ -380,7 +380,7 @@ Deno.serve(async (req: Request) => {
       return ok({ ok: true, post: data, status });
     }
 
-    return err('unknown action', 400);
+    return err('未知操作', 400);
   } catch (e) {
     console.error('post-handler error:', e);
     return err(String(e), 500);

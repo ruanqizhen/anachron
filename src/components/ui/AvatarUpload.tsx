@@ -38,7 +38,12 @@ export default function AvatarUpload({ currentUrl, name, userId, adminMode, onUr
       setUrl(publicUrl);
       onUrlChange?.(publicUrl);
       setMsg('头像已更新');
-    } catch (err: unknown) { setMsg('上传失败: ' + (err instanceof Error ? err.message : String(err))); }
+    } catch (err: unknown) { 
+      const m = err instanceof Error ? err.message : String(err);
+      if (m.includes('size')) setMsg('上传失败: 图片过大');
+      else if (m.includes('type')) setMsg('上传失败: 不支持的格式');
+      else setMsg('上传失败: ' + m);
+    }
     setUploading(false);
   }, [userId, adminMode, onUrlChange]);
 

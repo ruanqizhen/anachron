@@ -106,7 +106,7 @@ export default function Settings() {
     const { error: updateErr } = await supabase!.auth.updateUser({ password: newPw });
     setPwSaving(false);
     if (updateErr) {
-      setPwMsg('密码修改失败: ' + updateErr.message);
+      setPwMsg('密码修改失败: ' + (updateErr.message.includes('same as') ? '新密码不能与旧密码相同' : updateErr.message));
     } else {
       setPwMsg('');
       toast.success('密码已成功修改');
@@ -190,7 +190,7 @@ export default function Settings() {
           setBioSaving(true);
           const { error } = await supabase!.from('profiles').update({ bio: bio.trim() }).eq('id', uid);
           setBioSaving(false);
-          if (error) setBioMsg('保存失败: ' + error.message);
+          if (error) setBioMsg('保存失败: ' + (error.message.includes('long') ? '简介太长了' : error.message));
           else setBioMsg('已更新');
         }} className="flex flex-col gap-3">
           <div>

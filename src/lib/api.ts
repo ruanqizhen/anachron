@@ -38,15 +38,20 @@ async function callPostHandler(payload: Record<string, unknown>) {
     });
     if (error) {
       console.error('[EDGE-FUNCTION-ERROR]', error);
-      const msg = (error as any).message || '';
-      if (msg && (msg.includes('频繁') || msg.includes('rate limit'))) {
-        throw new Error(msg);
+      let msg = (error as any).message || '';
+      if (msg.includes('rate limit') || msg.includes('频繁')) {
+        msg = '发言过于频繁，请稍后再试';
+      } else if (msg.includes('Turnstile') || msg.includes('验证')) {
+        msg = '人机验证失败，请刷新页面重试';
+      } else if (msg.includes('content') || msg.includes('审核')) {
+        msg = '内容未通过初步审核，请修改后再发';
       }
+      if (msg) throw new Error(msg);
       return null;
     }
     return data;
   } catch (err: unknown) {
-    if ((err as Error).message?.includes('频繁')) throw err;
+    if ((err as Error).message?.includes('频繁') || (err as Error).message?.includes('验证') || (err as Error).message?.includes('审核')) throw err;
     console.warn('[FALLBACK] Edge Function 失败，正在回退到 RPC 模式以确保发帖成功。错误详情:', err);
     return null;
   }

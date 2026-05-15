@@ -76,7 +76,7 @@ export default function AdminCharacters() {
                   setShowCreate(false);
                   setNewChar({ username: '', era: '', birth_year: '', death_year: '', tags: '', personality: '', comedy: '', style: '' });
                   const list = await adminGetAllCharacters(); setCharacters(list);
-                } catch (err: unknown) { setCreateMsg((err as Error).message); }
+                } catch (err: unknown) { setCreateMsg('添加失败: ' + (err instanceof Error ? err.message : String(err))); }
               }} className="px-4 py-1.5 rounded text-xs font-medium text-white bg-[var(--color-primary)] border-none cursor-pointer">创建</button>
               {createMsg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{createMsg}</span>}
             </div>
