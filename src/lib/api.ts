@@ -716,6 +716,21 @@ export async function adminGetUsers() {
   return (data || []) as { id: string; username: string; bio: string; avatar_url: string; created_at: string }[];
 }
 
+export async function adminGetRegisteredUsers() {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_registered_users');
+  if (error) throw error;
+  return (data || []) as { id: string; username: string; bio: string; avatar_url: string; created_at: string }[];
+}
+
+export async function adminGetVirtualUsers() {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_get_virtual_users');
+  if (error) throw error;
+  return (data || []) as { id: string; username: string; bio: string; avatar_url: string; created_at: string }[];
+}
+
+
 export async function adminUpdateUser(id: string, username: string, bio: string): Promise<void> {
   const db = requireSupabase();
   const { error } = await db.rpc('admin_update_user', { p_id: id, p_username: username, p_bio: bio });

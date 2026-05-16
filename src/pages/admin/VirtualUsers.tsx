@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Pencil, Trash2, UserCheck } from 'lucide-react';
-import { adminGetRegisteredUsers, adminUpdateUser, adminDeleteUser } from '../../lib/api';
+import { Pencil, Trash2, UserCheck, PlusCircle } from 'lucide-react';
+import { adminGetVirtualUsers, adminUpdateUser, adminDeleteUser, adminCreateVirtualUser } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
 import Avatar from '../../components/ui/Avatar';
@@ -13,7 +13,7 @@ interface AdminUser {
   created_at: string;
 }
 
-export default function AdminUsers() {
+export default function AdminVirtualUsers() {
   const { startImpersonation } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,11 +21,14 @@ export default function AdminUsers() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [msg, setMsg] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newBio, setNewBio] = useState('');
 
   async function load() {
     setIsLoading(true);
     try {
-      const data = await adminGetRegisteredUsers();
+      const data = await adminGetVirtualUsers();
       setUsers(data);
     } catch (err: unknown) {
       setMsg('加载失败: ' + (err instanceof Error ? err.message : String(err)));
@@ -45,7 +48,7 @@ export default function AdminUsers() {
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`确定删除用户「${name}」？`)) return;
+    if (!confirm(`确定删除虚拟用户「${name}」？`)) return;
     try {
       await adminDeleteUser(id);
       load();
@@ -61,9 +64,27 @@ export default function AdminUsers() {
     <AdminGuard>
       <div className="max-w-[900px] mx-auto px-4 pt-[72px] pb-8">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-xl font-bold">注册用户管理</h1>
+          <h1 className="text-xl font-bold">虚拟用户管理</h1>
+          <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white cursor-pointer border-none" style={{ backgroundColor: 'var(--color-primary)' }}>
+            <PlusCircle size={14} /> 新建虚拟用户
+          </button>
         </div>
-        <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>{users.length} 个注册用户</p>
+        <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>{users.length} 个虚拟用户</p>
+
+        {showCreate && (
+          <div className="rounded-lg p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
+            <span className="text-sm font-medium shrink-0" style={{ color: 'var(--color-text-primary)' }}>新建虚拟用户</span>
+            <input placeholder="用户名" value={newName} onChange={e => setNewName(e.target.value)} className="px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            <input placeholder="简介（可选）" value={newBio} onChange={e => setNewBio(e.target.value)} className="flex-1 px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            <button onClick={async () => {
+              setMsg('');
+              if (!newName.trim()) { setMsg('请输入用户名'); return; }
+              try { await adminCreateVirtualUser(newName.trim(), newBio.trim()); setNewName(''); setNewBio(''); setShowCreate(false); load(); }
+              catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
+            }} className="px-4 py-1.5 rounded text-sm font-medium text-white bg-[var(--color-success)] border-none cursor-pointer shrink-0">创建</button>
+            {msg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{msg}</span>}
+          </div>
+        )}
 
         {msg && <p className="text-xs mb-3" style={{ color: 'var(--color-danger)' }}>{msg}</p>}
 

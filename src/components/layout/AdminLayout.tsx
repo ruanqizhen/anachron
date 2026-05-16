@@ -1,9 +1,10 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import AdminGuard from './AdminGuard';
-import { Shield, Users, MessageSquare, Globe, ListTodo, BarChart3, Bot, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { Shield, Users, UserPlus, MessageSquare, Globe, ListTodo, BarChart3, Bot, ArrowLeft, LayoutGrid } from 'lucide-react';
 
 const links = [
   { to: '/admin/characters', icon: Bot, label: 'AI 角色' },
+  { to: '/admin/virtual-users', icon: UserPlus, label: '虚拟用户' },
   { to: '/admin/users', icon: Users, label: '注册用户' },
   { to: '/admin/moderation', icon: MessageSquare, label: '内容审核' },
   { to: '/admin/reports', icon: Shield, label: '举报处理' },

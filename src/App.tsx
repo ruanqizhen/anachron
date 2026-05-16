@@ -25,6 +25,7 @@ const AdminCharacterEdit = lazy(() => import('./pages/admin/CharacterEdit'));
 const AdminTasks = lazy(() => import('./pages/admin/Tasks'));
 const AdminStats = lazy(() => import('./pages/admin/Stats'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
+const AdminVirtualUsers = lazy(() => import('./pages/admin/VirtualUsers'));
 const AdminBoards = lazy(() => import('./pages/admin/Boards'));
 const Reports = lazy(() => import('./pages/admin/Reports'));
 
@@ -66,6 +67,7 @@ export default function App() {
                       <Route path="characters/:id" element={<AdminCharacterEdit />} />
                       <Route path="tasks" element={<AdminTasks />} />
                       <Route path="stats" element={<AdminStats />} />
+                      <Route path="virtual-users" element={<AdminVirtualUsers />} />
                       <Route path="users" element={<AdminUsers />} />
                       <Route path="boards" element={<AdminBoards />} />
                       <Route path="reports" element={<Reports />} />
