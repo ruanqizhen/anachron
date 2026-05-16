@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getBoards, getFeaturedThreads } from '../../lib/api';
 import type { Board, Thread } from '../../lib/types';
 
@@ -7,6 +7,8 @@ export default function RightPanel() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [hotThreads, setHotThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [topOffset, setTopOffset] = useState(72);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -22,9 +24,36 @@ export default function RightPanel() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const checkHeight = () => {
+      if (panelRef.current) {
+        const height = panelRef.current.offsetHeight;
+        const viewportHeight = window.innerHeight;
+        // Formula: stick to top (72px) if short, 
+        // or stick to bottom (viewport - height - 24px) if long.
+        // We take the minimum to ensure it never goes lower than 72px unless necessary to show the bottom.
+        const calculatedTop = Math.min(72, viewportHeight - height - 24);
+        setTopOffset(calculatedTop);
+      }
+    };
+    
+    checkHeight();
+    window.addEventListener('resize', checkHeight);
+    const timer = setTimeout(checkHeight, 100);
+    
+    return () => {
+      window.removeEventListener('resize', checkHeight);
+      clearTimeout(timer);
+    };
+  }, [boards, hotThreads, isLoading]);
+
   return (
     <aside className="hidden lg:block w-[280px] shrink-0">
-      <div className="sticky top-[72px] flex flex-col gap-4">
+      <div 
+        ref={panelRef}
+        className="sticky flex flex-col gap-4"
+        style={{ top: `${topOffset}px` }}
+      >
         {/* Board navigation */}
         <div
           className="rounded-lg overflow-hidden"
