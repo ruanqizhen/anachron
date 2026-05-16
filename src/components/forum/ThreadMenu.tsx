@@ -149,17 +149,24 @@ export default function ThreadMenu({ thread, onUpdate }: ThreadMenuProps) {
               </button>
             )}
 
-            {/* Pin controls (Owner or Admin) */}
+            {/* Pin controls */}
             {(isOwn || admin) && (
               <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                {thread.pin_level !== 1 && (
+                {thread.pin_level === 0 && (
                   <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 1); handleUpdate({ pin_level: 1 }); }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors" 
                     style={{ color: 'var(--color-text-primary)' }}>
                     📌 博客置顶
                   </button>
                 )}
-                {thread.pin_level >= 1 && (
+                {thread.pin_level === 1 && (
+                  <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 0); handleUpdate({ pin_level: 0 }); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors" 
+                    style={{ color: 'var(--color-text-muted)' }}>
+                    取消置顶
+                  </button>
+                )}
+                {admin && thread.pin_level >= 2 && (
                   <button onClick={async () => { setShowMenu(false); await setPinLevel(thread.id, 0); handleUpdate({ pin_level: 0 }); }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors" 
                     style={{ color: 'var(--color-text-muted)' }}>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Post } from '../../lib/types';
 import { getPostsByThread, createPost, getProfileByUsername, createNotification, createGuestSession, getUserLikes, canCreateReply } from '../../lib/api';
 import GuestNameDialog from './GuestNameDialog';
@@ -29,11 +29,13 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
 
   const POST_PAGE = 20;
   const [hasMore, setHasMore] = useState(false);
+  const postsCountRef = useRef(0);
+
+  // Keep ref in sync with posts state
+  useEffect(() => { postsCountRef.current = posts.length; }, [posts.length]);
 
   const loadPosts = useCallback(async (isMore = false) => {
-    // We use a local calculation for pagination since we don't strictly need the 'page' state for display
-    const currentCount = posts.length;
-    const offset = isMore ? currentCount : 0;
+    const offset = isMore ? postsCountRef.current : 0;
 
     const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, offset);
     
@@ -50,7 +52,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
         setLikedIds(prev => new Set([...Array.from(prev), ...Array.from(newLikes)]));
       });
     }
-  }, [threadId, user, posts.length]);
+  }, [threadId, user]);
 
   useEffect(() => {
     let isMounted = true;

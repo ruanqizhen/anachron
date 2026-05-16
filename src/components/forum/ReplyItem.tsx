@@ -99,7 +99,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
       });
       setShowReply(false);
       onPostUpdated();
-    } catch { /* ignore */ }
+    } catch { toast.error('回复失败，请稍后再试'); }
     setReplying(false);
   }
 
@@ -150,7 +150,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
                         <Pencil size={12} /> 编辑
                       </button>
                       <button onClick={async () => { setShowMenu(false); if (isDeleting) return; setIsDeleting(true);
-                        try { if (admin && !isOwn) await adminSoftDeletePost(post.id); else await softDeletePost(post.id); onPostUpdated(); } catch { /* ignore */ }
+                        try { if (admin && !isOwn) await adminSoftDeletePost(post.id); else await softDeletePost(post.id); onPostUpdated(); } catch { toast.error('删除失败'); }
                         setIsDeleting(false); }}
                         className="flex items-center gap-2 w-full px-3 py-2 text-xs border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-danger)' }}>
                         <Trash2 size={12} /> {isDeleting ? '删除中...' : '删除'}
@@ -164,7 +164,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
           <MarkdownRenderer content={post.content} className="text-sm" />
           <div className="flex items-center gap-3 mt-2">
             <button onClick={async () => { setLiked(!liked); setLikes(l => l + (liked ? -1 : 1));
-              try { const result = await toggleLike(post.id, user?.id || null); setLiked(result); setLikes(post.likes + (result ? 1 : 0)); } catch { /* ignore */ } }}
+              try { const result = await toggleLike(post.id, user?.id || null); setLiked(result); setLikes(post.likes + (result ? 1 : 0)); } catch { toast.error('操作失败'); } }}
               className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none"
               style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
               <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} /> {likes}
