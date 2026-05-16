@@ -962,3 +962,50 @@ export async function adminResolveReport(reportId: string, status: 'resolved' | 
   const { error } = await db.rpc('admin_resolve_report', { p_report_id: reportId, p_status: status });
   if (error) throw error;
 }
+
+// ─── Follows ───
+export async function toggleThreadFollow(threadId: string): Promise<boolean> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('toggle_thread_follow', { p_thread_id: threadId });
+  if (error) throw error;
+  return data as boolean;
+}
+
+export async function isFollowingThread(threadId: string, userId: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { data, error } = await supabase
+    .from('thread_follows')
+    .select('id')
+    .eq('thread_id', threadId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function toggleAccountFollow(followingId: string): Promise<boolean> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('toggle_account_follow', { p_following_id: followingId });
+  if (error) throw error;
+  return data as boolean;
+}
+
+export async function isFollowingAccount(followingId: string, followerId: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { data, error } = await supabase
+    .from('account_follows')
+    .select('id')
+    .eq('following_id', followingId)
+    .eq('follower_id', followerId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function getFollowerCount(userId: string): Promise<number> {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from('account_follows')
+    .select('*', { count: 'exact', head: true })
+    .eq('following_id', userId);
+  return count || 0;
+}
+

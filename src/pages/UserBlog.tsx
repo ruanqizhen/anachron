@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import RightPanel from '../components/layout/RightPanel';
-import { PenSquare } from 'lucide-react';
+import { PenSquare, UserPlus, UserMinus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import {
   getProfileByUsername,
@@ -8,6 +8,9 @@ import {
   getAICharacterByProfileId,
   getPostCountByAuthor,
   getThreadsByReplies,
+  toggleAccountFollow,
+  isFollowingAccount,
+  getFollowerCount
 } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import Avatar from '../components/ui/Avatar';
@@ -35,6 +38,8 @@ export default function UserBlog() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [repliedThreads, setRepliedThreads] = useState<Thread[]>([]);
   const [postCount, setPostCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -57,11 +62,13 @@ export default function UserBlog() {
       const p = await getProfileByUsername(username);
       if (p) {
         setProfile(p);
-        const [t, rt, pc, ch] = await Promise.all([
+        const [t, rt, pc, ch, fc, isF] = await Promise.all([
           getThreadsByAuthor(p.id),
           getThreadsByReplies(p.id),
           getPostCountByAuthor(p.id),
           p.is_ai_character ? getAICharacterByProfileId(p.id) : Promise.resolve(null),
+          getFollowerCount(p.id),
+          user ? isFollowingAccount(p.id, user.id) : Promise.resolve(false)
         ]);
         
         const filteredReplied = rt.filter(rt => !t.find(th => th.id === rt.id));
@@ -70,6 +77,8 @@ export default function UserBlog() {
         setRepliedThreads(filteredReplied);
         setPostCount(pc);
         setCharacter(ch);
+        setFollowerCount(fc);
+        setIsFollowing(isF);
         
         // Update cache
         blogCache[username] = {
@@ -83,7 +92,7 @@ export default function UserBlog() {
       setIsLoading(false);
     }
     load();
-  }, [username]);
+  }, [username, user]);
 
   if (isLoading) {
     return (
@@ -104,6 +113,17 @@ export default function UserBlog() {
 
   const isOwn = user?.id === profile.id;
   const totalDiscussions = postCount + threads.length;
+
+  const handleFollow = async () => {
+    if (!user || !profile) return;
+    try {
+      const result = await toggleAccountFollow(profile.id);
+      setIsFollowing(result);
+      setFollowerCount(prev => prev + (result ? 1 : -1));
+    } catch (err) {
+      console.error('Follow error:', err);
+    }
+  };
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
@@ -133,9 +153,22 @@ export default function UserBlog() {
               </p>
             )}
             <div className="text-xs mt-2" style={{ color: 'var(--color-text-muted)' }}>
-              共发表 {threads.length} 篇文章 · 参与 {totalDiscussions} 次讨论 · 获得 {profile.karma} 点声望
+              {followerCount} 人关注 · 共发表 {threads.length} 篇文章 · 参与 {totalDiscussions} 次讨论 · 获得 {profile.karma} 点声望
             </div>
           </div>
+          {!isOwn && user && (
+            <button
+              onClick={handleFollow}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors"
+              style={{ 
+                backgroundColor: isFollowing ? 'var(--color-page-bg)' : 'var(--color-primary)',
+                color: isFollowing ? 'var(--color-text-secondary)' : 'white'
+              }}
+            >
+              {isFollowing ? <UserMinus size={16} /> : <UserPlus size={16} />}
+              {isFollowing ? '取消关注' : '关注'}
+            </button>
+          )}
           {isOwn && (
             <button
               onClick={() => setShowCreate(true)}

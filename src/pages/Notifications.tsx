@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, AtSign, MessageCircle, ThumbsUp } from 'lucide-react';
+import { Bell, AtSign, MessageCircle, ThumbsUp, FileText } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { getNotifications, markNotificationRead } from '../lib/api';
 import Avatar from '../components/ui/Avatar';
@@ -22,12 +22,16 @@ const TYPE_ICONS: Record<string, typeof AtSign> = {
   mention: AtSign,
   reply: MessageCircle,
   like: ThumbsUp,
+  thread_update: Bell,
+  new_thread: FileText,
 };
 
 const TYPE_LABELS: Record<string, string> = {
   mention: '提到了你',
   reply: '回复了你',
   like: '赞了你的帖子',
+  thread_update: '关注的帖子有了新动态',
+  new_thread: '关注的博主发布了新文章',
 };
 
 export default function Notifications() {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MoreHorizontal, Pencil, Trash2, Lock, Unlock, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MoreHorizontal, Pencil, Trash2, Lock, Unlock, AlertTriangle, Bell, BellOff } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
 import type { Thread } from '../../lib/types';
@@ -10,7 +10,9 @@ import {
   adminSoftDeleteThread, 
   setPinLevel, 
   toggleFeatured,
-  toggleThreadLock
+  toggleThreadLock,
+  toggleThreadFollow,
+  isFollowingThread
 } from '../../lib/api';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
@@ -28,6 +30,23 @@ export default function ThreadMenu({ thread, onUpdate }: ThreadMenuProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      isFollowingThread(thread.id, user.id).then(setIsFollowing);
+    }
+  }, [user, thread.id]);
+
+  const handleFollow = async () => {
+    setShowMenu(false);
+    try {
+      const result = await toggleThreadFollow(thread.id);
+      setIsFollowing(result);
+    } catch (err) {
+      console.error('Follow error:', err);
+    }
+  };
 
   const author = thread.profiles;
   const isOwn = user && author && user.id === author.id && !author.is_ai_character;
@@ -88,6 +107,18 @@ export default function ThreadMenu({ thread, onUpdate }: ThreadMenuProps) {
                   <Trash2 size={14} /> 删除
                 </button>
               </>
+            )}
+
+            {/* Follow/Unfollow (Registered users) */}
+            {user && (
+              <button 
+                onClick={handleFollow}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors" 
+                style={{ color: 'var(--color-text-primary)' }}
+              >
+                {isFollowing ? <BellOff size={14} /> : <Bell size={14} />}
+                {isFollowing ? '取消关注' : '关注帖子'}
+              </button>
             )}
 
             {/* Lock/Unlock (Owner or Admin) */}
