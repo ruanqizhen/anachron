@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { getThreadById } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
-import { isAdmin } from '../lib/admin';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import { formatFullDate } from '../lib/dateUtils';
@@ -30,8 +28,6 @@ function timeAgo(dateStr: string): string {
 
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
-  const { user } = useAuth();
-  const admin = isAdmin(user?.id);
   const [thread, setThread] = useState<Thread | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,8 +66,6 @@ export default function ThreadPage() {
 
   const author = thread.profiles;
   const board = thread.boards;
-  const isThreadAuthor = user && author && user.id === author.id && !author.is_ai_character;
-  const canEditThread = isThreadAuthor || admin;
 
   if (thread.deleted_at) {
     return (

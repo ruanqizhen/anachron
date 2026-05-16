@@ -29,7 +29,7 @@ interface ReplyItemProps {
 }
 
 export default function ReplyItem({ post, likedIds, showEditDelete = true, onPostUpdated }: ReplyItemProps) {
-  const { user, impersonating, guest: authGuest, startGuestSession } = useAuth();
+  const { user, guest: authGuest, startGuestSession } = useAuth();
   const admin = isAdmin(user?.id);
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [liked, setLiked] = useState(likedIds.has(post.id));
@@ -45,7 +45,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replying, setReplying] = useState(false);
-  const [replyTime] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+
   const [guestId, setGuestId] = useState<string | null>(null);
   const author = post.profiles;
   const authorUsername = getDisplayName(post);
@@ -93,10 +93,9 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
       await createPost({
         threadId: post.thread_id,
         content: content.trim(),
-        authorId: impersonating?.profileId || user?.id,
+        authorId: user?.id,
         guestId: gid,
         parentPostId: post.id,
-        createdAt: impersonating ? replyTime || undefined : undefined,
       });
       setShowReply(false);
       onPostUpdated();

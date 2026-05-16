@@ -1,6 +1,5 @@
 import { X } from 'lucide-react';
 import PostEditor from './PostEditor';
-import Avatar from '../ui/Avatar';
 import { useAuth } from '../../lib/auth';
 
 interface PostEditorDialogProps {
@@ -22,7 +21,7 @@ export default function PostEditorDialog({
   mode, isThread, initialTitle, initialContent, initialBoardId, initialCreatedAt,
   placeholder, defaultBoardSlug, onSave, onClose, title: dialogTitle, draftKey
 }: PostEditorDialogProps) {
-  const { impersonating, guest } = useAuth();
+  const { guest } = useAuth();
   const effectiveGuestName = guest?.username || null;
 
   return (
@@ -38,14 +37,7 @@ export default function PostEditorDialog({
               {dialogTitle || (mode === 'edit' ? `编辑${isThread ? '帖子' : '内容'}` : (isThread ? '发布新帖子' : '发表回复'))}
             </h2>
             <div className="flex items-center gap-2 mt-1">
-              {impersonating ? (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
-                  <Avatar name={impersonating.username} url={impersonating.avatarUrl} size={16} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-success)' }}>
-                    以「{impersonating.username}」身份
-                  </span>
-                </div>
-              ) : effectiveGuestName && (
+              {effectiveGuestName && (
                 <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
                   以「{effectiveGuestName}」身份发布
                 </span>

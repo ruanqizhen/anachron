@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -38,7 +38,7 @@ export default function Search() {
       <h1 className="text-xl font-bold mb-1">搜索结果</h1>
       {query && (
         <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
-          「{query}」— {results.length} 条结果
+          「{query}」
         </p>
       )}
 
@@ -56,7 +56,7 @@ export default function Search() {
           emptyMessage="未找到相关内容，换个关键词试试？" 
           cacheKey={`search-${query}`}
         />
-      ) }}
+      ) }
     </div>
   );
 }

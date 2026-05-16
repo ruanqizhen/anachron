@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
-import { isAdmin } from '../../lib/admin';
 import type { Thread } from '../../lib/types';
 import { getDisplayName } from '../../lib/types';
 import Avatar from '../ui/Avatar';

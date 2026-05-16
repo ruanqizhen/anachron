@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, UserCheck, PlusCircle, Trash2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import { adminGetAllCharacters, adminCreateCharacter, adminDeleteCharacter } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
@@ -9,7 +9,7 @@ import Badge from '../../components/ui/Badge';
 import type { AICharacter } from '../../lib/types';
 
 export default function AdminCharacters() {
-  const { startImpersonation } = useAuth();
+  const { } = useAuth();
   const [characters, setCharacters] = useState<AICharacter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -112,17 +112,6 @@ export default function AdminCharacters() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => startImpersonation({
-                        profileId: c.id,
-                        username: (c as unknown as { username?: string }).username || '',
-                        avatarUrl: (c as unknown as { avatar_url?: string }).avatar_url || null,
-                      })}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-none transition-colors"
-                      style={{ backgroundColor: 'var(--color-success)', color: '#fff' }}
-                    >
-                      <UserCheck size={12} /> 以此身份发言
-                    </button>
                     <Link
                       to={`/admin/characters/${c.id}`}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white no-underline transition-colors"

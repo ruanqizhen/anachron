@@ -18,7 +18,7 @@ interface CommentSectionProps {
 
 
 export default function CommentSection({ threadId, isLocked, realtime }: CommentSectionProps) {
-  const { user, guest, impersonating, startGuestSession } = useAuth();
+  const { user, guest, startGuestSession } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showGuestDialog, setShowGuestDialog] = useState(false);
@@ -122,7 +122,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     const newPost = await createPost({
       threadId,
       content: content.trim(),
-      authorId: authorId || impersonating?.profileId || user?.id,
+      authorId: authorId || user?.id,
       guestId: gid,
       createdAt: createdAt || undefined,
     });

@@ -464,13 +464,13 @@ export async function markNotificationRead(notificationId: string): Promise<void
 // ─── User Lookup ───
 export async function getProfileByUsername(username: string): Promise<import('./types').Profile | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase
+  const { data, error: _error } = await supabase
     .from('profiles')
     .select('*')
     .eq('username', username)
     .single();
 
-  if (error) return null;
+  if (_error) return null;
   return data as import('./types').Profile;
 }
 
@@ -928,7 +928,7 @@ export async function getUserLikes(userId: string | null, postIds: string[]): Pr
   const guestLikeId = getGuestLikeId();
   if (!supabase || postIds.length === 0) return new Set();
   if (userId) {
-    const { data } = await supabase
+    const { data, error: _error } = await supabase
       .from('likes')
       .select('post_id')
       .eq('user_id', userId)
@@ -991,7 +991,7 @@ export async function toggleThreadFollow(threadId: string): Promise<boolean> {
 
 export async function isFollowingThread(threadId: string, userId: string): Promise<boolean> {
   if (!supabase) return false;
-  const { data, error } = await supabase
+  const { data, error: _error } = await supabase
     .from('thread_follows')
     .select('id')
     .eq('thread_id', threadId)
@@ -1009,7 +1009,7 @@ export async function toggleAccountFollow(followingId: string): Promise<boolean>
 
 export async function isFollowingAccount(followingId: string, followerId: string): Promise<boolean> {
   if (!supabase) return false;
-  const { data, error } = await supabase
+  const { data, error: _error } = await supabase
     .from('account_follows')
     .select('id')
     .eq('following_id', followingId)
@@ -1020,7 +1020,7 @@ export async function isFollowingAccount(followingId: string, followerId: string
 
 export async function getFollowerCount(userId: string): Promise<number> {
   if (!supabase) return 0;
-  const { count, error } = await supabase
+  const { count, error: _error } = await supabase
     .from('account_follows')
     .select('*', { count: 'exact', head: true })
     .eq('following_id', userId);

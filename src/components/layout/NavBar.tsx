@@ -8,7 +8,7 @@ import { getUnreadNotificationCount } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
 export default function NavBar() {
-  const { user, profile, isLoading, logout, impersonating, stopImpersonation } = useAuth();
+  const { user, profile, isLoading, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -256,25 +256,6 @@ export default function NavBar() {
       )}
     </header>
 
-    {/* Impersonation banner */}
-    {impersonating && (
-      <div
-        className="fixed top-14 left-0 right-0 z-40 flex items-center justify-center gap-3 px-4 py-2 text-sm"
-        style={{ backgroundColor: 'var(--color-success)', color: '#fff' }}
-      >
-        🎭 正在以 <strong className="mx-1">{impersonating.username}</strong> 的身份发言
-        <button
-          onClick={stopImpersonation}
-          className="px-3 py-0.5 rounded-full text-xs font-medium cursor-pointer border border-white/40 transition-colors hover:bg-white/20"
-          style={{ backgroundColor: 'transparent', color: '#fff' }}
-        >
-          退出
-        </button>
-      </div>
-    )}
-
-    {/* Push content down when impersonation banner is active */}
-    {impersonating && <div style={{ height: 40 }} />}
     </>
   );
 }

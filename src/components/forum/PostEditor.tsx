@@ -41,7 +41,7 @@ export default function PostEditor({
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey,
   showResize = true, onFocusInterceptor
 }: PostEditorProps) {
-  const { user, impersonating } = useAuth();
+  const { user, profile } = useAuth();
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [boardId, setBoardId] = useState(initialBoardId);
@@ -84,12 +84,11 @@ export default function PostEditor({
     textareaRef, handleMentionChange, insertMention
   } = useMentions();
 
-  const isAdminUser = isAdmin(user?.id);
-  const isImpersonating = !!impersonating;
+  const isAdminUser = profile?.is_admin || isAdmin(user?.id);
   const showTitle = isThread || (mode === 'create' && isThread);
   const showBoardSelect = (mode === 'create' || mode === 'edit') && isThread;
   const showTurnstile = mode === 'create';
-  const showAdminControls = isImpersonating || isAdminUser;
+  const showAdminControls = isAdminUser;
 
   const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 

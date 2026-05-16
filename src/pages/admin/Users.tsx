@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Pencil, Trash2, UserCheck } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { adminGetRegisteredUsers, adminUpdateUser, adminDeleteUser } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
@@ -15,7 +15,7 @@ interface AdminUser {
 }
 
 export default function AdminUsers() {
-  const { startImpersonation } = useAuth();
+  const { } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
@@ -106,13 +106,6 @@ export default function AdminUsers() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => startImpersonation({ profileId: u.id, username: u.username, avatarUrl: u.avatar_url })}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border-none cursor-pointer"
-                    style={{ color: '#fff', backgroundColor: 'var(--color-success)' }}
-                  >
-                    <UserCheck size={11} /> 以此身份发言
-                  </button>
                   <button
                     onClick={() => { setEditing(u.id); setEditName(u.username); setEditBio(u.bio || ''); setEditAvatar(u.avatar_url || ''); }}
                     className="p-1.5 rounded cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]"
