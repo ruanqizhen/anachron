@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
-import { ChevronRight, MoreHorizontal, Pencil, Trash2, Lock } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getThreadById, updateThread, softDeleteThread, toggleThreadLock, adminUpdateThread, adminSoftDeleteThread } from '../lib/api';
+import { getThreadById } from '../lib/api';
 import { getDisplayName } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -10,10 +10,9 @@ import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import { formatFullDate } from '../lib/dateUtils';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
-import EditDialog from '../components/forum/EditDialog';
-import AdminEditDialog from '../components/forum/AdminEditDialog';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import CommentSection from '../components/forum/CommentSection';
+import ThreadMenu from '../components/forum/ThreadMenu';
 import type { Thread } from '../lib/types';
 import RightPanel from '../components/layout/RightPanel';
 
@@ -35,9 +34,6 @@ export default function ThreadPage() {
   const admin = isAdmin(user?.id);
   const [thread, setThread] = useState<Thread | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showThreadEdit, setShowThreadEdit] = useState(false);
-  const [showThreadAdminEdit, setShowThreadAdminEdit] = useState(false);
-  const [showThreadMenu, setShowThreadMenu] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -143,65 +139,8 @@ export default function ThreadPage() {
                 </div>
               </div>
 
-              {canEditThread && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowThreadMenu(!showThreadMenu)}
-                    className="p-1.5 rounded-full hover:bg-[var(--color-page-bg)] transition-colors cursor-pointer border-none bg-transparent"
-                  >
-                    <MoreHorizontal size={18} style={{ color: 'var(--color-text-muted)' }} />
-                  </button>
-                  {showThreadMenu && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowThreadMenu(false)} />
-                      <div
-                        className="absolute right-0 top-full mt-1 w-28 rounded-lg z-20 overflow-hidden"
-                        style={{
-                          backgroundColor: 'var(--color-card-bg)',
-                          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                          border: '1px solid var(--color-border)',
-                        }}
-                      >
-                        <button
-                          onClick={() => {
-                            setShowThreadMenu(false);
-                            if (admin && !isThreadAuthor) setShowThreadAdminEdit(true);
-                            else setShowThreadEdit(true);
-                          }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                          style={{ color: 'var(--color-text-primary)' }}
-                        >
-                          <Pencil size={14} /> 编辑
-                        </button>
-                        {admin && (
-                          <button
-                            onClick={async () => {
-                              setShowThreadMenu(false);
-                              await toggleThreadLock(thread.id, !thread.is_locked);
-                              setThread({ ...thread, is_locked: !thread.is_locked });
-                            }}
-                            className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                            style={{ color: 'var(--color-text-primary)' }}
-                          >
-                            <Lock size={14} /> {thread.is_locked ? '解锁' : '锁定'}
-                          </button>
-                        )}
-                        <button
-                          onClick={async () => {
-                            setShowThreadMenu(false);
-                            if (admin && !isThreadAuthor) await adminSoftDeleteThread(thread.id);
-                            else await softDeleteThread(thread.id);
-                            setThread({ ...thread, deleted_at: new Date().toISOString() });
-                          }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)] transition-colors"
-                          style={{ color: 'var(--color-danger)' }}
-                        >
-                          <Trash2 size={14} /> 删除
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+              {thread && (
+                <ThreadMenu thread={thread} onUpdate={(t) => setThread(t)} />
               )}
             </div>
 
@@ -234,41 +173,6 @@ export default function ThreadPage() {
 
         <RightPanel />
       </div>
-
-      {showThreadEdit && (
-        <EditDialog
-          title={thread.title}
-          content={thread.content}
-          boardId={thread.board_id}
-          isThread
-          onSave={async (title, content, boardId) => {
-            await updateThread(thread.id, { title, content, boardId });
-            setThread({ ...thread, title: title || thread.title, content, board_id: boardId || thread.board_id, edited_at: new Date().toISOString() });
-          }}
-          onClose={() => setShowThreadEdit(false)}
-        />
-      )}
-
-      {showThreadAdminEdit && (
-        <AdminEditDialog
-          title={thread.title}
-          content={thread.content}
-          createdAt={thread.created_at}
-          boardId={thread.board_id}
-          isThread
-          onSave={async (data) => {
-            await adminUpdateThread(thread.id, {
-              title: data.title || thread.title,
-              content: data.content,
-              boardId: data.boardId || thread.board_id,
-              createdAt: data.createdAt || thread.created_at,
-            });
-            setThread({ ...thread, title: data.title || thread.title, content: data.content, edited_at: new Date().toISOString() });
-            setShowThreadAdminEdit(false);
-          }}
-          onClose={() => setShowThreadAdminEdit(false)}
-        />
-      )}
 
       {/* Guest dialog is now handled by CommentSection */}
     </div>
