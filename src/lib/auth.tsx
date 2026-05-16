@@ -9,13 +9,10 @@ interface AuthState {
   guest: GuestSession | null;
   isLoading: boolean;
   isGuest: boolean;
-  impersonating: null;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   register: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   startGuestSession: (username: string) => void;
-  startImpersonation: (char: any) => void;
-  stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -166,13 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       guest,
       isLoading,
       isGuest: !!guest,
-      impersonating: null,
       login,
       register,
       logout,
       startGuestSession,
-      startImpersonation: () => {},
-      stopImpersonation: () => {},
     }}>
       {children}
     </AuthContext.Provider>

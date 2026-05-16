@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Pencil, Trash2 } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 
@@ -71,14 +72,14 @@ export default function AdminListItem({
           </button>
         )}
         {editLink && (
-          <a
-            href={editLink}
+          <Link
+            to={editLink}
             className="p-2 rounded-lg cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)] transition-colors no-underline flex items-center justify-center"
             style={{ color: 'var(--color-text-secondary)' }}
             title="编辑"
           >
             <Pencil size={16} />
-          </a>
+          </Link>
         )}
         {onDelete && (
           <button
