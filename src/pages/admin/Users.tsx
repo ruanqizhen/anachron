@@ -4,6 +4,7 @@ import { adminGetRegisteredUsers, adminUpdateUser, adminDeleteUser } from '../..
 import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
 import Avatar from '../../components/ui/Avatar';
+import AvatarUpload from '../../components/ui/AvatarUpload';
 
 interface AdminUser {
   id: string;
@@ -20,6 +21,7 @@ export default function AdminUsers() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
   const [msg, setMsg] = useState('');
 
   async function load() {
@@ -38,7 +40,7 @@ export default function AdminUsers() {
   async function handleSave(id: string) {
     setMsg('');
     try {
-      await adminUpdateUser(id, editName.trim(), editBio.trim());
+      await adminUpdateUser(id, editName.trim(), editBio.trim(), editAvatar.trim());
       setEditing(null);
       load();
     } catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
@@ -76,11 +78,20 @@ export default function AdminUsers() {
                 <Avatar name={u.username} url={u.avatar_url} size={36} />
                 <div className="flex-1 min-w-0">
                   {editing === u.id ? (
-                    <div className="flex items-center gap-2">
-                      <input value={editName} onChange={e => setEditName(e.target.value)} style={FIELD_STYLE} />
-                      <input value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="简介" style={FIELD_STYLE} />
-                      <button onClick={() => handleSave(u.id)} className="px-3 py-1 rounded text-xs font-medium text-white bg-[var(--color-success)] border-none cursor-pointer">保存</button>
-                      <button onClick={() => setEditing(null)} className="px-3 py-1 rounded text-xs font-medium border-none cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>取消</button>
+                    <div className="flex flex-col gap-3 p-1">
+                      <AvatarUpload
+                        currentUrl={u.avatar_url}
+                        name={u.username}
+                        userId={u.id}
+                        adminMode
+                        onUrlChange={setEditAvatar}
+                      />
+                      <div className="flex gap-2">
+                        <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="用户名" style={{ ...FIELD_STYLE, flex: 1 }} />
+                        <input value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="简介" style={{ ...FIELD_STYLE, flex: 1 }} />
+                        <button onClick={() => handleSave(u.id)} className="px-4 py-1.5 rounded text-xs font-medium text-white bg-[var(--color-success)] border-none cursor-pointer">保存</button>
+                        <button onClick={() => setEditing(null)} className="px-4 py-1.5 rounded text-xs font-medium border-none cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>取消</button>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -103,7 +114,7 @@ export default function AdminUsers() {
                     <UserCheck size={11} /> 以此身份发言
                   </button>
                   <button
-                    onClick={() => { setEditing(u.id); setEditName(u.username); setEditBio(u.bio || ''); }}
+                    onClick={() => { setEditing(u.id); setEditName(u.username); setEditBio(u.bio || ''); setEditAvatar(u.avatar_url || ''); }}
                     className="p-1.5 rounded cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]"
                     style={{ color: 'var(--color-text-secondary)' }}
                   >

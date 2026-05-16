@@ -731,20 +731,23 @@ export async function adminGetVirtualUsers() {
 }
 
 
-export async function adminUpdateUser(id: string, username: string, bio: string): Promise<void> {
+export async function adminUpdateUser(id: string, username: string, bio: string, avatarUrl?: string): Promise<void> {
   const db = requireSupabase();
-  const { error } = await db.rpc('admin_update_user', { p_id: id, p_username: username, p_bio: bio });
+  const { error } = await db.rpc('admin_update_user', { 
+    p_id: id, p_username: username, p_bio: bio, p_avatar_url: avatarUrl 
+  });
   if (error) throw error;
 }
 
-export async function adminCreateVirtualUser(username: string, bio: string): Promise<string> {
+export async function adminCreateVirtualUser(username: string, bio: string, avatarUrl?: string): Promise<string> {
   const db = requireSupabase();
   const { data, error } = await db.rpc('admin_create_virtual_user', {
-    p_username: username, p_bio: bio,
+    p_username: username, p_bio: bio, p_avatar_url: avatarUrl
   });
   if (error) throw error;
   return data as string;
 }
+
 
 export async function adminDeleteUser(id: string): Promise<void> {
   const db = requireSupabase();

@@ -4,6 +4,7 @@ import { adminGetVirtualUsers, adminUpdateUser, adminDeleteUser, adminCreateVirt
 import { useAuth } from '../../lib/auth';
 import AdminGuard from '../../components/layout/AdminGuard';
 import Avatar from '../../components/ui/Avatar';
+import AvatarUpload from '../../components/ui/AvatarUpload';
 
 interface AdminUser {
   id: string;
@@ -20,10 +21,12 @@ export default function AdminVirtualUsers() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
   const [msg, setMsg] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newBio, setNewBio] = useState('');
+  const [newAvatar, setNewAvatar] = useState('');
 
   async function load() {
     setIsLoading(true);
@@ -41,7 +44,7 @@ export default function AdminVirtualUsers() {
   async function handleSave(id: string) {
     setMsg('');
     try {
-      await adminUpdateUser(id, editName.trim(), editBio.trim());
+      await adminUpdateUser(id, editName.trim(), editBio.trim(), editAvatar.trim());
       setEditing(null);
       load();
     } catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
@@ -72,17 +75,27 @@ export default function AdminVirtualUsers() {
         <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>{users.length} 个虚拟用户</p>
 
         {showCreate && (
-          <div className="rounded-lg p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
-            <span className="text-sm font-medium shrink-0" style={{ color: 'var(--color-text-primary)' }}>新建虚拟用户</span>
-            <input placeholder="用户名" value={newName} onChange={e => setNewName(e.target.value)} className="px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-            <input placeholder="简介（可选）" value={newBio} onChange={e => setNewBio(e.target.value)} className="flex-1 px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-            <button onClick={async () => {
-              setMsg('');
-              if (!newName.trim()) { setMsg('请输入用户名'); return; }
-              try { await adminCreateVirtualUser(newName.trim(), newBio.trim()); setNewName(''); setNewBio(''); setShowCreate(false); load(); }
-              catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
-            }} className="px-4 py-1.5 rounded text-sm font-medium text-white bg-[var(--color-success)] border-none cursor-pointer shrink-0">创建</button>
-            {msg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{msg}</span>}
+          <div className="rounded-lg p-4 mb-4 flex flex-col gap-3" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>新建虚拟用户</span>
+              {msg && <span className="text-xs" style={{ color: 'var(--color-danger)' }}>{msg}</span>}
+            </div>
+            <div className="flex gap-2">
+              <input placeholder="用户名" value={newName} onChange={e => setNewName(e.target.value)} className="flex-1 px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+              <input placeholder="头像 URL (可选)" value={newAvatar} onChange={e => setNewAvatar(e.target.value)} className="flex-1 px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            </div>
+            <div className="flex gap-2">
+              <input placeholder="简介 (可选)" value={newBio} onChange={e => setNewBio(e.target.value)} className="flex-1 px-2 py-1.5 rounded text-sm border outline-none bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+              <button onClick={async () => {
+                setMsg('');
+                if (!newName.trim()) { setMsg('请输入用户名'); return; }
+                try { 
+                  await adminCreateVirtualUser(newName.trim(), newBio.trim(), newAvatar.trim()); 
+                  setNewName(''); setNewBio(''); setNewAvatar(''); setShowCreate(false); load(); 
+                }
+                catch (err: unknown) { setMsg('操作失败: ' + (err instanceof Error ? err.message : String(err))); }
+              }} className="px-6 py-1.5 rounded text-sm font-medium text-white bg-[var(--color-success)] border-none cursor-pointer shrink-0">创建</button>
+            </div>
           </div>
         )}
 
@@ -97,11 +110,20 @@ export default function AdminVirtualUsers() {
                 <Avatar name={u.username} url={u.avatar_url} size={36} />
                 <div className="flex-1 min-w-0">
                   {editing === u.id ? (
-                    <div className="flex items-center gap-2">
-                      <input value={editName} onChange={e => setEditName(e.target.value)} style={FIELD_STYLE} />
-                      <input value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="简介" style={FIELD_STYLE} />
-                      <button onClick={() => handleSave(u.id)} className="px-3 py-1 rounded text-xs font-medium text-white bg-[var(--color-success)] border-none cursor-pointer">保存</button>
-                      <button onClick={() => setEditing(null)} className="px-3 py-1 rounded text-xs font-medium border-none cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>取消</button>
+                    <div className="flex flex-col gap-3 p-1">
+                      <AvatarUpload
+                        currentUrl={u.avatar_url}
+                        name={u.username}
+                        userId={u.id}
+                        adminMode
+                        onUrlChange={setEditAvatar}
+                      />
+                      <div className="flex gap-2">
+                        <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="用户名" style={{ ...FIELD_STYLE, flex: 1 }} />
+                        <input value={editBio} onChange={e => setEditBio(e.target.value)} placeholder="简介" style={{ ...FIELD_STYLE, flex: 1 }} />
+                        <button onClick={() => handleSave(u.id)} className="px-4 py-1.5 rounded text-xs font-medium text-white bg-[var(--color-success)] border-none cursor-pointer">保存</button>
+                        <button onClick={() => setEditing(null)} className="px-4 py-1.5 rounded text-xs font-medium border-none cursor-pointer" style={{ color: 'var(--color-text-muted)' }}>取消</button>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -124,7 +146,7 @@ export default function AdminVirtualUsers() {
                     <UserCheck size={11} /> 以此身份发言
                   </button>
                   <button
-                    onClick={() => { setEditing(u.id); setEditName(u.username); setEditBio(u.bio || ''); }}
+                    onClick={() => { setEditing(u.id); setEditName(u.username); setEditBio(u.bio || ''); setEditAvatar(u.avatar_url || ''); }}
                     className="p-1.5 rounded cursor-pointer border-none bg-transparent hover:bg-[var(--color-page-bg)]"
                     style={{ color: 'var(--color-text-secondary)' }}
                   >
