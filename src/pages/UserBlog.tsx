@@ -18,6 +18,15 @@ import PostCard from '../components/forum/PostCard';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import type { Profile, Thread, AICharacter } from '../lib/types';
 
+// Cache for user blog data to persist across navigation
+const blogCache: Record<string, {
+  profile: Profile;
+  threads: Thread[];
+  repliedThreads: Thread[];
+  postCount: number;
+  character: AICharacter | null;
+}> = {};
+
 export default function UserBlog() {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
@@ -32,21 +41,44 @@ export default function UserBlog() {
   useEffect(() => {
     async function load() {
       if (!username) return;
-      setIsLoading(true);
-      const p = await getProfileByUsername(username);
-      setProfile(p);
+      
+      const cached = blogCache[username];
+      if (cached) {
+        setProfile(cached.profile);
+        setThreads(cached.threads);
+        setRepliedThreads(cached.repliedThreads);
+        setPostCount(cached.postCount);
+        setCharacter(cached.character);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
 
+      const p = await getProfileByUsername(username);
       if (p) {
+        setProfile(p);
         const [t, rt, pc, ch] = await Promise.all([
           getThreadsByAuthor(p.id),
           getThreadsByReplies(p.id),
           getPostCountByAuthor(p.id),
           p.is_ai_character ? getAICharacterByProfileId(p.id) : Promise.resolve(null),
         ]);
+        
+        const filteredReplied = rt.filter(rt => !t.find(th => th.id === rt.id));
+        
         setThreads(t);
-        setRepliedThreads(rt.filter(rt => !t.find(th => th.id === rt.id)));
+        setRepliedThreads(filteredReplied);
         setPostCount(pc);
         setCharacter(ch);
+        
+        // Update cache
+        blogCache[username] = {
+          profile: p,
+          threads: t,
+          repliedThreads: filteredReplied,
+          postCount: pc,
+          character: ch
+        };
       }
       setIsLoading(false);
     }

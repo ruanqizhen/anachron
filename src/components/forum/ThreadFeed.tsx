@@ -2,46 +2,77 @@ import React, { useState, useEffect, useRef, useCallback, type ReactNode } from 
 import PostCard from './PostCard';
 import type { Thread } from '../../lib/types';
 
+// Simple global cache to persist feeds across navigation
+const feedCache: Record<string, { threads: Thread[]; hasMore: boolean }> = {};
+
 interface ThreadFeedProps {
   fetchThreads: (limit: number, offset: number) => Promise<Thread[]>;
   refreshKey?: number;
   emptyMessage?: string;
   renderCard?: (thread: Thread) => ReactNode;
+  cacheKey?: string;
 }
 
 const PAGE_SIZE = 20;
 
-export default function ThreadFeed({ fetchThreads, refreshKey, emptyMessage = '暂无内容', renderCard }: ThreadFeedProps) {
+export default function ThreadFeed({ 
+  fetchThreads, 
+  refreshKey, 
+  emptyMessage = '暂无内容', 
+  renderCard,
+  cacheKey
+}: ThreadFeedProps) {
   const render = renderCard || ((t: Thread) => <PostCard thread={t} />);
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
+  
+  // Initialize from cache if available
+  const initialData = cacheKey ? feedCache[cacheKey] : null;
+  
+  const [threads, setThreads] = useState<Thread[]>(initialData?.threads || []);
+  const [isLoading, setIsLoading] = useState(!initialData);
+  const [hasMore, setHasMore] = useState(initialData?.hasMore || false);
   const loaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
     const fetchFirst = async () => {
-      setIsLoading(true);
+      // If we have cached data, we can still refresh in background if it's the first mount
+      // but to avoid flickering we only set isLoading if cache is empty
+      if (threads.length === 0) setIsLoading(true);
+      
       const items = await fetchThreads(PAGE_SIZE, 0);
       if (active) {
         setThreads(items);
         setHasMore(items.length >= PAGE_SIZE);
         setIsLoading(false);
+        
+        // Update cache
+        if (cacheKey) {
+          feedCache[cacheKey] = { threads: items, hasMore: items.length >= PAGE_SIZE };
+        }
       }
     };
     fetchFirst();
     return () => { active = false; };
-  }, [fetchThreads, refreshKey]);
+  }, [fetchThreads, refreshKey, cacheKey]);
 
   const loadMore = useCallback(async () => {
     const more = await fetchThreads(PAGE_SIZE, threads.length);
     if (more.length > 0) {
-      setThreads(prev => [...prev, ...more]);
+      const newThreads = [...threads, ...more];
+      setThreads(newThreads);
       setHasMore(more.length >= PAGE_SIZE);
+      
+      // Update cache
+      if (cacheKey) {
+        feedCache[cacheKey] = { threads: newThreads, hasMore: more.length >= PAGE_SIZE };
+      }
     } else {
       setHasMore(false);
+      if (cacheKey && feedCache[cacheKey]) {
+        feedCache[cacheKey].hasMore = false;
+      }
     }
-  }, [fetchThreads, threads.length]);
+  }, [fetchThreads, threads, cacheKey]);
 
   useEffect(() => {
     const el = loaderRef.current;

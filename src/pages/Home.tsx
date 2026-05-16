@@ -71,7 +71,7 @@ export default function Home() {
           </div>
 
           {/* Thread feed */}
-          <ThreadFeed fetchThreads={fetchThreads} refreshKey={refreshKey} emptyMessage="暂无帖子" />
+          <ThreadFeed fetchThreads={fetchThreads} refreshKey={refreshKey} emptyMessage="暂无帖子" cacheKey="home" />
         </main>
 
         {/* Right panel - desktop only */}

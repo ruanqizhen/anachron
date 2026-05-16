@@ -81,7 +81,7 @@ export default function Board() {
           </div>
 
           <ThreadFeed fetchThreads={fetchThreads} refreshKey={refreshKey}
-            emptyMessage="暂无帖子，成为第一个发帖的人吧！" />
+            emptyMessage="暂无帖子，成为第一个发帖的人吧！" cacheKey={`board-${boardSlug}`} />
         </main>
 
         <RightPanel />
