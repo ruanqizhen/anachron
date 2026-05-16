@@ -95,18 +95,6 @@ export default function Board() {
         />
       )}
 
-      {/* Mobile FAB */}
-      <button
-        onClick={() => setIsCreateModalOpen(true)}
-        className="fixed bottom-6 right-6 z-30 sm:hidden flex items-center justify-center w-14 h-14 rounded-full text-white border-none cursor-pointer transition-transform active:scale-95"
-        style={{
-          backgroundColor: 'var(--color-primary)',
-          boxShadow: '0 4px 16px rgba(24, 119, 242, 0.4)',
-        }}
-        aria-label="发帖"
-      >
-        <PenSquare size={22} />
-      </button>
     </div>
   );
 }
