@@ -795,11 +795,16 @@ export async function getFeaturedThreads(): Promise<Thread[]> {
     .eq('is_featured', true)
     .is('deleted_at', null)
     .eq('status', 'published')
-    .order('last_post_at', { ascending: false })
-    .limit(20);
+    .limit(100);
 
-  if (error) return [];
-  return data as Thread[];
+  if (error) {
+    console.error('Error fetching featured threads:', error);
+    return [];
+  }
+
+  // Shuffle and take 20
+  const shuffled = (data as Thread[]).sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 20);
 }
 
 // ─── Admin: Stats ───
