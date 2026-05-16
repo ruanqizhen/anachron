@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import RightPanel from '../components/layout/RightPanel';
 import { PenSquare } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import {
@@ -73,8 +74,10 @@ export default function UserBlog() {
   const totalDiscussions = postCount + threads.length;
 
   return (
-    <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
-      {/* Profile header — same for all users */}
+    <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <div className="flex gap-6">
+        <main className="flex-1 min-w-0">
+          {/* Profile header — same for all users */}
       <div
         className="rounded-lg p-6 mb-6"
         style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}
@@ -147,6 +150,11 @@ export default function UserBlog() {
           </div>
         </>
       )}
+
+        </main>
+
+        <RightPanel />
+      </div>
 
       {showCreate && (
         <CreatePostForm
