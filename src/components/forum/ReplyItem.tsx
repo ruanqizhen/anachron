@@ -181,7 +181,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
               await handleReplySubmit(data.content);
             }}
             onCancel={() => setShowReply(false)}
-            placeholder={`回复 ${authorUsername}...`}
+            placeholder={`回复 ${authorUsername} (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...`}
             minHeight={80}
             autoFocus={true}
             draftKey={`draft_reply_post_${post.id}`}

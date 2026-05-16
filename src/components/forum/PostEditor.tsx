@@ -152,14 +152,18 @@ export default function PostEditor({
     if (isSubmitting) return;
     setError('');
 
-    if (showTitle && !title.trim()) {
-      setError('请输入标题');
-      return;
+    if (showTitle) {
+      const t = title.trim();
+      if (!t) { setError('请输入标题'); return; }
+      if (t.length < 2) { setError('标题至少 2 个字符'); return; }
+      if (t.length > 100) { setError('标题最多 100 个字符'); return; }
     }
-    if (!content.trim()) {
-      setError('请输入内容');
-      return;
-    }
+    
+    const c = content.trim();
+    if (!c) { setError('请输入内容'); return; }
+    if (c.length < 10) { setError('内容至少 10 个字符'); return; }
+    if (c.length > 10000) { setError('内容最多 10000 个字符'); return; }
+
     if (showTurnstile && !token) {
       setError('请完成验证');
       return;
@@ -209,7 +213,8 @@ export default function PostEditor({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="为你的帖子起个吸引人的标题..."
+            placeholder="为你的帖子起个吸引人的标题 (2-100字)..."
+            maxLength={100}
             className="w-full px-4 py-2.5 rounded-xl border outline-none text-base font-semibold bg-[var(--color-page-bg)] transition-all focus:ring-2 focus:ring-[var(--color-primary)]/20"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
           />
@@ -227,7 +232,8 @@ export default function PostEditor({
           hideLabel={true}
           textareaProps={{
             ref: textareaRef,
-            placeholder: placeholder || (isThread ? '分享你的见解...' : '写下你的回复...'),
+            placeholder: placeholder || (isThread ? '分享你的见解 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...' : '写下你的回复 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...'),
+            maxLength: 10000,
             onKeyDown: handleKeyDown,
             style: { padding: '12px' }
           }}

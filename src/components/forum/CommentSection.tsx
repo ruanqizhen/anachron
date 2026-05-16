@@ -214,7 +214,6 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
               }
               await doSubmitReply(data.content, data.createdAt);
             }}
-            placeholder="写下你的看法..."
             minHeight={100}
             draftKey={`draft_reply_thread_${threadId}`}
           />
