@@ -25,19 +25,20 @@ interface PostEditorProps {
     boardId?: string;
     createdAt?: string;
     turnstileToken?: string;
-  }) => Promise<void>;
+  }) => Promise<void | boolean>;
   onCancel?: () => void;
   className?: string;
   minHeight?: number;
   autoFocus?: boolean;
   draftKey?: string;
   showResize?: boolean;
+  onFocusInterceptor?: (e: React.FocusEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
 }
 
 export default function PostEditor({
   mode, isThread, initialTitle = '', initialContent = '', initialBoardId = '', initialCreatedAt = '',
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey,
-  showResize = true
+  showResize = true, onFocusInterceptor
 }: PostEditorProps) {
   const { user, impersonating } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -49,6 +50,7 @@ export default function PostEditor({
   const [token, setToken] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   useEffect(() => {
     if (draftKey && !initialContent && !initialTitle) {
@@ -171,20 +173,25 @@ export default function PostEditor({
 
     setIsSubmitting(true);
     try {
-      await onSave({
+      const result = await onSave({
         title: showTitle ? title.trim() : undefined,
         content: content.trim(),
         boardId: showBoardSelect ? boardId : undefined,
         createdAt: (showAdminControls && isTimeModified) ? customTime : undefined,
         turnstileToken: showTurnstile ? token : undefined,
       });
+      if (result === false) return;
       if (mode === 'create' || mode === 'reply') {
         setContent('');
         setTitle('');
         if (draftKey) localStorage.removeItem(draftKey);
       }
+      setToken('');
+      setTurnstileKey(prev => prev + 1);
     } catch (err: any) {
       setError(err.message || '操作失败');
+      setToken(''); // Clear token on error
+      setTurnstileKey(prev => prev + 1); // Force Turnstile reset
     } finally {
       setIsSubmitting(false);
     }
@@ -215,6 +222,7 @@ export default function PostEditor({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="为你的帖子起个吸引人的标题 (2-100字)..."
             maxLength={100}
+            onFocus={onFocusInterceptor}
             className="w-full px-4 py-2.5 rounded-xl border outline-none text-base font-semibold bg-[var(--color-page-bg)] transition-all focus:ring-2 focus:ring-[var(--color-primary)]/20"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
           />
@@ -235,6 +243,7 @@ export default function PostEditor({
             placeholder: placeholder || (isThread ? '分享你的见解 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...' : '写下你的回复 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...'),
             maxLength: 10000,
             onKeyDown: handleKeyDown,
+            onFocus: onFocusInterceptor,
             style: { padding: '12px' }
           }}
         >
@@ -281,8 +290,9 @@ export default function PostEditor({
       <div className="flex items-center justify-between gap-4 mt-2 shrink-0">
         <div className="flex-1 min-w-0 max-w-[200px] sm:max-w-[300px] overflow-hidden">
           {showTurnstile && (
-            <div className="transform scale-[0.55] sm:scale-90 origin-left -my-4">
+            <div className="transform scale-[0.55] sm:scale-90 origin-left -my-4 h-[70px] flex items-center">
               <Turnstile
+                key={turnstileKey}
                 siteKey={SITE_KEY}
                 onSuccess={(t) => setToken(t)}
                 onExpire={() => setToken('')}

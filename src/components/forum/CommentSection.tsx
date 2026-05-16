@@ -197,17 +197,13 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
         <div className="mx-4 mb-8 p-4 rounded-2xl bg-[var(--color-card-bg)] border border-[var(--color-border)] shadow-sm">
           <PostEditor
             mode="reply"
-            onSave={async (data) => {
-              // Check for user or existing guest session (state or localStorage)
-              const hasGuestSession = guest || guestId || localStorage.getItem('anachron_guest_name');
-              
-              if (!user && !hasGuestSession) {
+            onFocusInterceptor={(e) => {
+              if (!user && !guest && !guestId) {
+                e.currentTarget.blur();
                 setShowGuestDialog(true);
-                // We don't throw an error here to avoid showing a scary red message 
-                // when we're just asking for a name
-                return;
               }
-              
+            }}
+            onSave={async (data) => {
               const rateCheck = canCreateReply(!user);
               if (!rateCheck.ok) {
                 throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);

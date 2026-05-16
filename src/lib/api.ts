@@ -36,23 +36,53 @@ async function callPostHandler(payload: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke('post-handler', {
       body: payload,
     });
+
     if (error) {
-      console.error('[EDGE-FUNCTION-ERROR]', error);
-      let msg = (error as any).message || '';
-      if (msg.includes('rate limit') || msg.includes('频繁')) {
-        msg = '发言过于频繁，请稍后再试';
-      } else if (msg.includes('Turnstile') || msg.includes('验证')) {
-        msg = '人机验证失败，请刷新页面重试';
-      } else if (msg.includes('content') || msg.includes('审核')) {
-        msg = '内容未通过初步审核，请修改后再发';
+      // If it's an HTTP error from our own logic, we should NOT fall back.
+      // supabase-js returns error as a FunctionsHttpError if the status is non-2xx.
+      // We can try to parse the error body if available.
+      let msg = '';
+      try {
+        // FunctionsHttpError might have the response text
+        const body = await (error as any).response?.json();
+        msg = body?.error || error.message;
+      } catch {
+        msg = error.message;
       }
-      if (msg) throw new Error(msg);
+
+      console.error('[EDGE-FUNCTION-ERROR]', msg, error);
+
+      if (msg.includes('rate limit') || msg.includes('频繁') || msg.includes('429')) {
+        throw new Error('发言过于频繁，请稍后再试');
+      } else if (msg.includes('Turnstile') || msg.includes('验证') || msg.includes('403')) {
+        throw new Error('人机验证失败，请刷新页面重试');
+      } else if (msg.includes('content') || msg.includes('审核')) {
+        throw new Error('内容未通过初步审核，请修改后再发');
+      }
+      
+      // If it's a 4xx error, it's a business/security error, don't fall back, just throw.
+      if ((error as any).status >= 400 && (error as any).status < 500) {
+        throw new Error(msg || '请求被拒绝');
+      }
+
+      // For 5xx or other types, we might want to fall back.
+      console.warn('[POST-HANDLER-FAIL] Status:', (error as any).status, 'falling back to RPC');
       return null;
     }
     return data;
   } catch (err: unknown) {
-    if ((err as Error).message?.includes('频繁') || (err as Error).message?.includes('验证') || (err as Error).message?.includes('审核')) throw err;
-    console.warn('[FALLBACK] Edge Function 失败，正在回退到 RPC 模式以确保发帖成功。错误详情:', err);
+    // Re-throw errors that we explicitly threw above
+    if (err instanceof Error && (
+      err.message.includes('频繁') || 
+      err.message.includes('验证') || 
+      err.message.includes('审核') || 
+      err.message.includes('拒绝')
+    )) {
+      throw err;
+    }
+    
+    // Only fall back if it looks like a network error or the function is missing
+    console.warn('[FALLBACK] Edge Function 无法访问，回退到 RPC 模式。', err);
     return null;
   }
 }

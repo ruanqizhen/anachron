@@ -27,7 +27,7 @@ export default function AdminEditDialog({
       initialCreatedAt={createdAt}
       initialBoardId={boardId}
       onSave={async (data) => {
-        await onSave({
+        return await onSave({
           title: data.title,
           content: data.content,
           createdAt: data.createdAt,

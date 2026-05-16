@@ -14,6 +14,7 @@ import MarkdownRenderer from '../ui/MarkdownRenderer';
 import EditDialog from './EditDialog';
 import AdminEditDialog from './AdminEditDialog';
 import PostEditor from './PostEditor';
+import GuestNameDialog from './GuestNameDialog';
 import {
   updatePost, softDeletePost, adminUpdatePost, adminSoftDeletePost,
   createPost, createGuestSession, toggleLike,
@@ -28,8 +29,9 @@ interface ReplyItemProps {
 }
 
 export default function ReplyItem({ post, likedIds, showEditDelete = true, onPostUpdated }: ReplyItemProps) {
-  const { user, impersonating, guest: authGuest } = useAuth();
+  const { user, impersonating, guest: authGuest, startGuestSession } = useAuth();
   const admin = isAdmin(user?.id);
+  const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
@@ -177,6 +179,12 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
         <div className="py-4 pl-9 pr-4 animate-in slide-in-from-top-2 duration-200">
           <PostEditor
             mode="reply"
+            onFocusInterceptor={(e) => {
+              if (!user && !authGuest) {
+                e.currentTarget.blur();
+                setShowGuestDialog(true);
+              }
+            }}
             onSave={async (data) => {
               await handleReplySubmit(data.content);
             }}
@@ -191,6 +199,18 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
       {showEdit && <EditDialog content={post.content} onSave={async (_title: string | undefined, c: string) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
       {showAdminEdit && <AdminEditDialog content={post.content} createdAt={post.created_at}
         onSave={async (d: { content: string; createdAt?: string }) => { await adminUpdatePost(post.id, d.content, d.createdAt!); onPostUpdated(); }} onClose={() => setShowAdminEdit(false)} />}
+      
+      {showGuestDialog && (
+        <GuestNameDialog
+          onConfirm={async (name) => {
+            setShowGuestDialog(false);
+            startGuestSession(name);
+            const gid = await createGuestSession(name);
+            setGuestId(gid);
+          }}
+          onClose={() => setShowGuestDialog(false)}
+        />
+      )}
     </>
   );
 }

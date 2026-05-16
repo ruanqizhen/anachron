@@ -12,7 +12,7 @@ interface PostEditorDialogProps {
   initialCreatedAt?: string;
   placeholder?: string;
   defaultBoardSlug?: string;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: any) => Promise<void | boolean>;
   onClose: () => void;
   title?: string;
   draftKey?: string;
@@ -71,8 +71,9 @@ export default function PostEditorDialog({
             placeholder={placeholder}
             defaultBoardSlug={defaultBoardSlug}
             onSave={async (data) => {
-              await onSave(data);
-              onClose();
+              const result = await onSave(data);
+              if (result !== false) onClose();
+              return result;
             }}
             onCancel={onClose}
             minHeight={200}

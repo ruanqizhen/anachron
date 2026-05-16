@@ -14,7 +14,7 @@ interface CreatePostFormProps {
 
 export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }: CreatePostFormProps) {
   const { user, guest, startGuestSession, impersonating } = useAuth();
-  const [showGuestDialog, setShowGuestDialog] = useState(false);
+  const [showGuestDialog, setShowGuestDialog] = useState(!user && !guest);
   const isLoggedIn = !!user;
 
   async function doSubmit(data: any) {
@@ -61,29 +61,26 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
 
   return (
     <>
-      <PostEditorDialog
-        mode="create"
-        isThread={true}
-        defaultBoardSlug={defaultBoardSlug}
-        onSave={async (data) => {
-          if (!isLoggedIn && !guest) {
-            setShowGuestDialog(true);
-            throw new Error('请先设置您的昵称');
-          }
-          await doSubmit(data);
-        }}
-        onClose={onClose}
-        draftKey={`draft_create_thread_${defaultBoardSlug || 'all'}`}
-      />
+      {!showGuestDialog && (
+        <PostEditorDialog
+          mode="create"
+          isThread={true}
+          defaultBoardSlug={defaultBoardSlug}
+          onSave={async (data) => {
+            await doSubmit(data);
+          }}
+          onClose={onClose}
+          draftKey={`draft_create_thread_${defaultBoardSlug || 'all'}`}
+        />
+      )}
 
       {showGuestDialog && (
         <GuestNameDialog
           onConfirm={(name) => {
             setShowGuestDialog(false);
             startGuestSession(name);
-            // After setting guest name, user can click "Publish" again
           }}
-          onClose={() => setShowGuestDialog(false)}
+          onClose={onClose}
         />
       )}
     </>

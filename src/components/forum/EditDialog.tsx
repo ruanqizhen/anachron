@@ -18,7 +18,7 @@ export default function EditDialog({ title, content, boardId, isThread, onSave, 
       initialContent={content}
       initialBoardId={boardId}
       onSave={async (data) => {
-        await onSave(data.title, data.content, data.boardId);
+        return await onSave(data.title, data.content, data.boardId);
       }}
       onClose={onClose}
     />

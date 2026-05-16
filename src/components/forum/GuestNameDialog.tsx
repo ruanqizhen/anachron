@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, User } from 'lucide-react';
+import { X, User, LogIn, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface GuestNameDialogProps {
   onConfirm: (username: string) => void;
@@ -8,6 +9,7 @@ interface GuestNameDialogProps {
 
 export default function GuestNameDialog({ onConfirm, onClose }: GuestNameDialogProps) {
   const [name, setName] = useState('');
+  const navigate = useNavigate();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,8 +39,8 @@ export default function GuestNameDialog({ onConfirm, onClose }: GuestNameDialogP
           </button>
         </div>
 
-        <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-          请填写一个显示名（2-20个字符，支持中文）
+        <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          可以不登陆就发贴，但是请先设置一个昵称，这是显示在帖子中的作者名（2-20个字符）。
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -71,6 +73,28 @@ export default function GuestNameDialog({ onConfirm, onClose }: GuestNameDialogP
             确认
           </button>
         </form>
+
+        <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <p className="text-xs text-center mb-3" style={{ color: 'var(--color-text-muted)' }}>
+            或者使用完整账号功能
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => { onClose(); navigate('/login'); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+            >
+              <LogIn size={16} /> 登录
+            </button>
+            <button
+              onClick={() => { onClose(); navigate('/login?tab=register'); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+            >
+              <UserPlus size={16} /> 注册
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
