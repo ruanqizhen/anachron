@@ -35,7 +35,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
       boardId: data.boardId,
       title: data.title,
       content: data.content,
-      authorId: impersonating?.profileId || user?.id,
+      authorId: data.authorId || impersonating?.profileId || user?.id,
       guestId,
       turnstileToken: data.turnstileToken,
       createdAt: data.createdAt,

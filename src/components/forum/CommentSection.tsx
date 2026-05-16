@@ -110,7 +110,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     return () => { channel.unsubscribe(); };
   }, [threadId, realtime]);
 
-  async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string) {
+  async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string, authorId?: string) {
     let gid: string | undefined = guestId || undefined;
     const currentGuestName = overrideGuestName || guest?.username;
 
@@ -122,7 +122,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     const newPost = await createPost({
       threadId,
       content: content.trim(),
-      authorId: impersonating?.profileId || user?.id,
+      authorId: authorId || impersonating?.profileId || user?.id,
       guestId: gid,
       createdAt: createdAt || undefined,
     });
@@ -208,7 +208,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
               if (!rateCheck.ok) {
                 throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
               }
-              await doSubmitReply(data.content, data.createdAt);
+              await doSubmitReply(data.content, data.createdAt, undefined, data.authorId);
             }}
             minHeight={100}
             draftKey={`draft_reply_thread_${threadId}`}

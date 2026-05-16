@@ -3,7 +3,7 @@ import { Send } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth } from '../../lib/auth';
 import { useMentions } from '../../hooks/useMentions';
-import { getBoards } from '../../lib/api';
+import { getBoards, getProfileByUsername } from '../../lib/api';
 import type { Board, Profile } from '../../lib/types';
 import MarkdownEditor from '../ui/MarkdownEditor';
 import Avatar from '../ui/Avatar';
@@ -24,6 +24,7 @@ interface PostEditorProps {
     content: string;
     boardId?: string;
     createdAt?: string;
+    authorId?: string;
     turnstileToken?: string;
   }) => Promise<void | boolean>;
   onCancel?: () => void;
@@ -47,6 +48,7 @@ export default function PostEditor({
   const [boards, setBoards] = useState<Board[]>([]);
   const [customTime, setCustomTime] = useState(initialCreatedAt || "");
   const [isTimeModified, setIsTimeModified] = useState(false);
+  const [authorName, setAuthorName] = useState('');
   const [token, setToken] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -172,12 +174,31 @@ export default function PostEditor({
     }
 
     setIsSubmitting(true);
+    let resolvedAuthorId: string | undefined;
+
+    if (showAdminControls && authorName.trim()) {
+      try {
+        const profile = await getProfileByUsername(authorName.trim());
+        if (!profile) {
+          setError(`找不到用户: ${authorName}`);
+          setIsSubmitting(false);
+          return;
+        }
+        resolvedAuthorId = profile.id;
+      } catch (err) {
+        setError('用户查询失败');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const result = await onSave({
         title: showTitle ? title.trim() : undefined,
         content: content.trim(),
         boardId: showBoardSelect ? boardId : undefined,
         createdAt: (showAdminControls && isTimeModified) ? customTime : undefined,
+        authorId: resolvedAuthorId,
         turnstileToken: showTurnstile ? token : undefined,
       });
       if (result === false) return;
@@ -270,14 +291,26 @@ export default function PostEditor({
       </div>
 
       {showAdminControls && (
-        <div className="flex flex-col gap-1">
-          <BCDateTimePicker 
-            isoString={customTime} 
-            onChange={(val) => {
-              setCustomTime(val);
-              setIsTimeModified(true);
-            }} 
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <BCDateTimePicker 
+              isoString={customTime} 
+              onChange={(val) => {
+                setCustomTime(val);
+                setIsTimeModified(true);
+              }} 
+            />
+          </div>
+          <div className="flex-1">
+            <input
+              type="text"
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+              placeholder="发帖人 (留空为自己)..."
+              className="w-full px-3 py-2 rounded-xl border outline-none text-sm bg-[var(--color-page-bg)] transition-all focus:ring-2 focus:ring-[var(--color-primary)]/20"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+            />
+          </div>
         </div>
       )}
 
