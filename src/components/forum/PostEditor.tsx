@@ -8,6 +8,7 @@ import type { Board, Profile } from '../../lib/types';
 import MarkdownEditor from '../ui/MarkdownEditor';
 import Avatar from '../ui/Avatar';
 import BCDateTimePicker from '../ui/BCDateTimePicker';
+import { isAdmin } from '../../lib/admin';
 
 
 interface PostEditorProps {
@@ -41,7 +42,7 @@ export default function PostEditor({
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey,
   showResize = true, onFocusInterceptor
 }: PostEditorProps) {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [boardId, setBoardId] = useState(initialBoardId);
@@ -84,7 +85,7 @@ export default function PostEditor({
     textareaRef, handleMentionChange, insertMention
   } = useMentions();
 
-  const isAdminUser = !!profile?.is_admin;
+  const isAdminUser = !!profile?.is_admin || isAdmin(user?.id);
   const showTitle = isThread || (mode === 'create' && isThread);
   const showBoardSelect = (mode === 'create' || mode === 'edit') && isThread;
   const showTurnstile = mode === 'create';
