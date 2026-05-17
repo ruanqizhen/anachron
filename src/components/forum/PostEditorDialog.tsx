@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import PostEditor from './PostEditor';
 import { useAuth } from '../../lib/auth';
 
@@ -24,7 +25,7 @@ export default function PostEditorDialog({
   const { guest } = useAuth();
   const effectiveGuestName = guest?.username || null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
         className="w-[95%] max-w-4xl rounded-2xl flex flex-col h-[85vh] max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200"
@@ -76,6 +77,7 @@ export default function PostEditorDialog({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

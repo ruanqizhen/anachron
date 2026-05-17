@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import { createReport } from '../../lib/api';
 
@@ -49,7 +50,7 @@ export default function ReportDialog({ targetType, targetId, reporterId, onClose
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-md rounded-xl p-6" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex items-center justify-between mb-4">
@@ -131,6 +132,7 @@ export default function ReportDialog({ targetType, targetId, reporterId, onClose
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

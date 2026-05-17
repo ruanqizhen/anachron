@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, User, LogIn, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,7 +19,7 @@ export default function GuestNameDialog({ onConfirm, onClose }: GuestNameDialogP
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
         className="w-full max-w-sm rounded-xl p-6"
@@ -96,6 +97,7 @@ export default function GuestNameDialog({ onConfirm, onClose }: GuestNameDialogP
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
