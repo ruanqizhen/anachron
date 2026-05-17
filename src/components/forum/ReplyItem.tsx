@@ -81,7 +81,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
   const avatarUrl = author?.avatar_url;
   const linkPath = post.profiles?.username ? `/u/${post.profiles.username}` : '#';
 
-  async function handleReplySubmit(content: string) {
+  async function handleReplySubmit(content: string, createdAt?: string, authorId?: string) {
     if (!content.trim() || replying) return;
     setReplying(true);
     try {
@@ -93,9 +93,10 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
       await createPost({
         threadId: post.thread_id,
         content: content.trim(),
-        authorId: user?.id,
+        authorId: authorId || user?.id,
         guestId: gid,
         parentPostId: post.id,
+        createdAt: createdAt || undefined,
       });
       setShowReply(false);
       onPostUpdated();
@@ -185,7 +186,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
               }
             }}
             onSave={async (data) => {
-              await handleReplySubmit(data.content);
+              await handleReplySubmit(data.content, data.createdAt, data.authorId);
             }}
             onCancel={() => setShowReply(false)}
             placeholder={`回复 ${authorUsername} (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...`}
