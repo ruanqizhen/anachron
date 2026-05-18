@@ -87,7 +87,7 @@ Deno.serve(async (req: Request) => {
     // 4. Get thread context
     const { data: contextPosts } = await supabase
       .from('posts')
-      .select('*, profiles(username)')
+      .select('*, profiles(username), guest_sessions(username)')
       .eq('thread_id', task.thread_id)
       .is('deleted_at', null)
       .eq('status', 'published')
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: triggerPost } = await supabase
       .from('posts')
-      .select('*, profiles(username)')
+      .select('*, profiles(username), guest_sessions(username)')
       .eq('id', task.trigger_post_id)
       .single();
 
@@ -139,11 +139,17 @@ ${sysStyle}
 - 回复末尾无需署名`;
 
     const contextText = (contextPosts || [])
-      .map((p: Record<string, unknown>) => `[${(p.profiles as { username?: string })?.username || '游客'}]：${p.content || ''}`)
+      .map((p: Record<string, unknown>) => {
+        const name = (p.profiles as { username?: string })?.username
+          || (p.guest_sessions as { username?: string })?.username || '游客';
+        return `[${name}]：${p.content || ''}`;
+      })
       .join('\n\n');
 
     // Determine the trigger: can be a reply (triggerPost) or the thread itself
-    const triggerAuthor = triggerPost?.profiles?.username || (thread as any)?.profiles?.username || '游客';
+    const triggerAuthor = triggerPost?.profiles?.username
+      || (triggerPost?.guest_sessions as { username?: string })?.username
+      || (thread as any)?.profiles?.username || '游客';
     const triggerContent = triggerPost?.content || thread?.content || '';
     const triggerLabel = triggerPost ? '最新一条需要你回应的帖子' : '主贴（请对整篇帖子发表看法）';
 
