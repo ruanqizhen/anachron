@@ -112,11 +112,11 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     return () => { channel.unsubscribe(); };
   }, [threadId, realtime]);
 
-  async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string, authorId?: string) {
-    let gid: string | undefined = guestId || undefined;
+  async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string, authorId?: string, resolvedGuestId?: string) {
+    let gid: string | undefined = resolvedGuestId || guestId || undefined;
     const currentGuestName = overrideGuestName || guest?.username;
 
-    if (!user && !gid && currentGuestName) {
+    if (!resolvedGuestId && !user && !gid && currentGuestName) {
       gid = await createGuestSession(currentGuestName);
       setGuestId(gid);
     }
@@ -124,7 +124,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     const newPost = await createPost({
       threadId,
       content: content.trim(),
-      authorId: authorId || user?.id,
+      authorId: authorId || (resolvedGuestId ? undefined : user?.id),
       guestId: gid,
       createdAt: createdAt || undefined,
     });
@@ -210,7 +210,7 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
               if (!rateCheck.ok) {
                 throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
               }
-              await doSubmitReply(data.content, data.createdAt, undefined, data.authorId);
+              await doSubmitReply(data.content, data.createdAt, undefined, data.authorId, data.guestId);
             }}
             minHeight={100}
             draftKey={`draft_reply_thread_${threadId}`}

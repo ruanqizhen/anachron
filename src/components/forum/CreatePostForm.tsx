@@ -26,8 +26,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     }
 
     // Create guest session in DB if posting as guest
-    let guestId: string | undefined;
-    if (!user && effectiveGuestName) {
+    let guestId: string | undefined = data.guestId;
+    if (!guestId && !user && effectiveGuestName) {
       guestId = await createGuestSession(effectiveGuestName);
     }
 
@@ -35,7 +35,7 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
       boardId: data.boardId,
       title: data.title,
       content: data.content,
-      authorId: data.authorId || user?.id,
+      authorId: data.authorId || (data.guestId ? undefined : user?.id),
       guestId,
       turnstileToken: data.turnstileToken,
       createdAt: data.createdAt,

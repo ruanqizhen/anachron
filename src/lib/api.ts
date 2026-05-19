@@ -484,6 +484,20 @@ export async function getProfileByUsername(username: string): Promise<Profile | 
   return data as Profile;
 }
 
+export async function adminCheckAuthorType(username: string): Promise<{ is_ai: boolean; is_virtual: boolean; profile_id: string } | null> {
+  const db = requireSupabase();
+  const { data, error } = await db.rpc('admin_check_author_type', {
+    p_username: username,
+  });
+  if (error) {
+    console.error('Error checking author type:', error);
+    return null;
+  }
+  if (!data || data.length === 0) return null;
+  return data[0] as { is_ai: boolean; is_virtual: boolean; profile_id: string };
+}
+
+
 // ─── User Blog ───
 export async function getThreadsByAuthor(authorId: string): Promise<Thread[]> {
   if (!supabase) return [];

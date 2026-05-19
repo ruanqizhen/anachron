@@ -3,7 +3,7 @@ import { Send } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth } from '../../lib/auth';
 import { useMentions } from '../../hooks/useMentions';
-import { getBoards, getProfileByUsername } from '../../lib/api';
+import { getBoards, adminCheckAuthorType, createGuestSession } from '../../lib/api';
 import type { Board, Profile } from '../../lib/types';
 import MarkdownEditor from '../ui/MarkdownEditor';
 import Avatar from '../ui/Avatar';
@@ -26,6 +26,7 @@ interface PostEditorProps {
     boardId?: string;
     createdAt?: string;
     authorId?: string;
+    guestId?: string;
     turnstileToken?: string;
   }) => Promise<void | boolean>;
   onCancel?: () => void;
@@ -175,18 +176,21 @@ export default function PostEditor({
 
     setIsSubmitting(true);
     let resolvedAuthorId: string | undefined;
+    let resolvedGuestId: string | undefined;
 
     if (showAdminControls && authorName.trim()) {
       try {
-        const profile = await getProfileByUsername(authorName.trim());
-        if (!profile) {
-          setError(`找不到用户: ${authorName}`);
-          setIsSubmitting(false);
-          return;
+        const checkResult = await adminCheckAuthorType(authorName.trim());
+        if (checkResult && (checkResult.is_ai || checkResult.is_virtual)) {
+          resolvedAuthorId = checkResult.profile_id;
+        } else {
+          // If the profile does not exist OR is a real user, we post as an anonymous guest.
+          // Create guest session dynamically for the custom author name.
+          const guestSessionId = await createGuestSession(authorName.trim());
+          resolvedGuestId = guestSessionId;
         }
-        resolvedAuthorId = profile.id;
       } catch (err) {
-        setError('用户查询失败');
+        setError('作者身份验证/创建失败');
         setIsSubmitting(false);
         return;
       }
@@ -199,6 +203,7 @@ export default function PostEditor({
         boardId: showBoardSelect ? boardId : undefined,
         createdAt: (showAdminControls && isTimeModified) ? customTime : undefined,
         authorId: resolvedAuthorId,
+        guestId: resolvedGuestId,
         turnstileToken: showTurnstile ? token : undefined,
       });
       if (result === false) return;

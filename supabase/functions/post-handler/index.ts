@@ -211,31 +211,124 @@ Deno.serve(async (req: Request) => {
     const isGuest = !payload.author_id;
     console.log('[POST-HANDLER] action:', payload.action, 'isGuest:', isGuest, 'title:', (payload.title || '').slice(0, 40));
 
-    // AI character posts skip all checks — just insert directly
+    // Authenticate calling user using Authorization header
+    const authHeader = req.headers.get('Authorization');
+    let isCallerAdmin = false;
+    let callerUserId: string | null = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+        if (user) {
+          callerUserId = user.id;
+          const { data: profile } = await supabase
+            .from('profiles').select('is_admin').eq('id', user.id).single();
+          if (profile?.is_admin) {
+            isCallerAdmin = true;
+          }
+        }
+      } catch (e) {
+        console.warn('[POST-HANDLER] Auth verification failed:', e);
+      }
+    }
+
+    // Impersonation security check: only admins can post on behalf of other profiles
+    if (payload.author_id && payload.author_id !== callerUserId && !isCallerAdmin) {
+      console.log('[POST-HANDLER] Blocked impersonation attempt. payload.author_id:', payload.author_id, 'callerUserId:', callerUserId);
+      return err('未授权的操作', 403);
+    }
+
+    // Check if author is an AI character
+    let isAiCharacter = false;
     if (payload.author_id) {
       const { data: authorProfile } = await supabase
         .from('profiles').select('is_ai_character').eq('id', payload.author_id).single();
-      if (authorProfile?.is_ai_character) {
-        if (payload.action === 'create_thread') {
-          const { data, error } = await supabase.from('threads').insert({
-            board_id: payload.board_id, title: payload.title,
-            content: payload.content, author_id: payload.author_id,
-            status: 'published', created_at: payload.created_at || undefined,
-          }).select('*').single();
-          if (error) throw new Error(error.message);
-          return ok({ ok: true, thread: data, status: 'published' });
+      isAiCharacter = authorProfile?.is_ai_character || false;
+    }
+
+    // Admins and AI characters bypass all standard checks (Turnstile, rate limiting, and risk review)
+    const skipChecks = isCallerAdmin || isAiCharacter;
+
+    if (skipChecks) {
+      const status = 'published';
+      console.log('[POST-HANDLER] Skip checks enabled. status: published');
+
+      if (payload.action === 'create_thread') {
+        const { data, error } = await supabase.from('threads').insert({
+          board_id: payload.board_id,
+          title: payload.title,
+          content: payload.content,
+          author_id: payload.author_id || null,
+          guest_id: payload.guest_id || null,
+          status,
+          created_at: payload.created_at || undefined,
+        }).select('*').single();
+        if (error) throw new Error(error.message);
+        console.log('[POST-HANDLER] Admin/AI thread inserted:', data.id);
+
+        // Trigger dispatcher
+        try {
+          const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
+            thread_id: data.id,
+            trigger_post_id: null,
+            priority: 'normal',
+            execute_after: new Date().toISOString(),
+          }).select('id').single();
+
+          if (!taskInsertErr && taskData) {
+            console.log('[POST-HANDLER] invoking dispatcher for thread:', data.id);
+            supabase.functions.invoke('dispatcher', { body: {} })
+              .catch(e => console.error('[POST-HANDLER] dispatcher trigger error:', e));
+          }
+        } catch (e) {
+          console.error(e);
         }
-        if (payload.action === 'create_post') {
-          const { data, error } = await supabase.from('posts').insert({
-            thread_id: payload.thread_id, content: payload.content,
-            author_id: payload.author_id, guest_id: payload.guest_id || null,
-            parent_post_id: payload.parent_post_id || null,
-            status: 'published', is_ai_post: true,
-            created_at: payload.created_at || undefined,
-          }).select('*').single();
-          if (error) throw new Error(error.message);
-          return ok({ ok: true, post: data, status: 'published' });
+
+        return ok({ ok: true, thread: data, status });
+      }
+
+      if (payload.action === 'create_post') {
+        const { data, error } = await supabase.from('posts').insert({
+          thread_id: payload.thread_id,
+          content: payload.content,
+          author_id: payload.author_id || null,
+          guest_id: payload.guest_id || null,
+          parent_post_id: payload.parent_post_id || null,
+          status,
+          is_ai_post: isAiCharacter,
+          created_at: payload.created_at || undefined,
+        }).select('*').single();
+        if (error) throw new Error(error.message);
+        console.log('[POST-HANDLER] Admin/AI post inserted:', data.id);
+
+        // Trigger dispatcher
+        try {
+          const mentions = parseMentions(payload.content);
+          const hasMentions = mentions.length > 0;
+          const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
+            trigger_post_id: data.id,
+            thread_id: payload.thread_id,
+            priority: hasMentions ? 'high' : 'normal',
+            mentioned_character_ids: hasMentions ? mentions : [],
+            execute_after: new Date().toISOString(),
+          }).select('id').single();
+
+          if (!taskInsertErr && taskData) {
+            console.log('[POST-HANDLER] invoking dispatcher for post:', data.id);
+            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({}),
+            }).catch(e => console.error('[POST-HANDLER] dispatcher trigger error:', e));
+          }
+        } catch (e) {
+          console.error(e);
         }
+
+        return ok({ ok: true, post: data, status });
       }
     }
 
@@ -296,12 +389,11 @@ Deno.serve(async (req: Request) => {
       console.log('[POST-HANDLER] thread inserted:', data.id, 'status:', status);
 
       // Trigger AI dispatcher for the new thread.
-      // trigger_post_id is NULL for thread-level tasks (migration 023 made the column nullable).
       if (!highRisk && status === 'published') {
         try {
           const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
             thread_id: data.id,
-            trigger_post_id: null,  // Intentionally null: this is a thread-level task, not a reply
+            trigger_post_id: null,
             priority: 'normal',
             execute_after: new Date().toISOString(),
           }).select('id').single();
