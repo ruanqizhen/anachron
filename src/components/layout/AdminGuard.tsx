@@ -4,7 +4,7 @@ import { useAuth } from '../../lib/auth';
 import { isAdmin } from '../../lib/admin';
 
 export default function AdminGuard({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, profile, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -14,7 +14,7 @@ export default function AdminGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user || !isAdmin(user.id)) {
+  if (!user || !isAdmin(profile)) {
     return (
       <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
         <h1 className="text-2xl font-bold mb-2">无权限访问</h1>

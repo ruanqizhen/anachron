@@ -42,7 +42,7 @@ export default function PostEditor({
   placeholder, defaultBoardSlug, onSave, onCancel, className = '', minHeight = 120, autoFocus, draftKey,
   showResize = true, onFocusInterceptor
 }: PostEditorProps) {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [boardId, setBoardId] = useState(initialBoardId);
@@ -85,7 +85,7 @@ export default function PostEditor({
     textareaRef, handleMentionChange, insertMention
   } = useMentions();
 
-  const isAdminUser = !!profile?.is_admin || isAdmin(user?.id);
+  const isAdminUser = isAdmin(profile);
   const showTitle = isThread || (mode === 'create' && isThread);
   const showBoardSelect = (mode === 'create' || mode === 'edit') && isThread;
   const showTurnstile = mode === 'create';

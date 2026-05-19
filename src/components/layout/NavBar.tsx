@@ -161,7 +161,7 @@ export default function NavBar() {
                         <SettingsIcon size={14} />
                         设置
                       </Link>
-                      {isAdmin(user?.id) && (
+                      {isAdmin(profile) && (
                         <Link
                           to="/admin"
                           onClick={() => setUserMenuOpen(false)}

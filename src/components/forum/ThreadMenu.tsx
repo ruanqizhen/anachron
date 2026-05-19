@@ -24,8 +24,8 @@ interface ThreadMenuProps {
 }
 
 export default function ThreadMenu({ thread, onUpdate }: ThreadMenuProps) {
-  const { user } = useAuth();
-  const admin = isAdmin(user?.id);
+  const { user, profile } = useAuth();
+  const admin = isAdmin(profile);
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showAdminEdit, setShowAdminEdit] = useState(false);

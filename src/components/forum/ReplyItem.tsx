@@ -29,8 +29,8 @@ interface ReplyItemProps {
 }
 
 export default function ReplyItem({ post, likedIds, showEditDelete = true, onPostUpdated }: ReplyItemProps) {
-  const { user, guest: authGuest, startGuestSession } = useAuth();
-  const admin = isAdmin(user?.id);
+  const { user, profile, guest: authGuest, startGuestSession } = useAuth();
+  const admin = isAdmin(profile);
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);

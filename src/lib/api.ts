@@ -293,6 +293,11 @@ export async function createThread(params: {
     }
   }
 
+  // Fallback: ONLY allow in local development
+  if (import.meta.env.PROD) {
+    throw new Error('网络异常或服务暂时不可用，请稍后再试');
+  }
+
   // Fallback: use RPC function (SECURITY DEFINER, bypasses RLS)
   const db = requireSupabase();
   const { data, error } = await db.rpc('create_thread_rpc', {
@@ -336,6 +341,11 @@ export async function createPost(params: {
       recordActionSuccess('reply');
       return result.post as Post;
     }
+  }
+
+  // Fallback: ONLY allow in local development
+  if (import.meta.env.PROD) {
+    throw new Error('网络异常或服务暂时不可用，请稍后再试');
   }
 
   // Fallback: use RPC function (SECURITY DEFINER, bypasses RLS)
