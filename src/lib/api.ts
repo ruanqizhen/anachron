@@ -750,12 +750,6 @@ export async function adminDeleteCharacter(id: string): Promise<void> {
 }
 
 // ─── Admin: User Management ───
-export async function adminGetUsers() {
-  const db = requireSupabase();
-  const { data, error } = await db.rpc('admin_get_users');
-  if (error) throw error;
-  return (data || []) as { id: string; username: string; bio: string; avatar_url: string; created_at: string }[];
-}
 
 export async function adminGetRegisteredUsers() {
   const db = requireSupabase();
@@ -868,7 +862,7 @@ export async function getFeaturedThreads(): Promise<Thread[]> {
 
 // ─── Admin: Stats ───
 // ─── Likes ───
-export function getGuestLikeId(): string {
+function getGuestLikeId(): string {
   let id = localStorage.getItem('anachron_like_id');
   if (!id) {
     id = crypto.randomUUID();
