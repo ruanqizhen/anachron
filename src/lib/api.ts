@@ -42,9 +42,11 @@ async function callPostHandler(payload: Record<string, unknown>) {
       // supabase-js returns error as a FunctionsHttpError if the status is non-2xx.
       // We can try to parse the error body if available.
       let msg = '';
+      let statusCode: number | undefined;
+      
       try {
-        // FunctionsHttpError might have the response text
         const httpError = error as { response?: Response; status?: number };
+        statusCode = httpError.status || httpError.response?.status;
         const body = (await httpError.response?.json()) as { error?: string } | undefined;
         msg = body?.error || error.message;
       } catch {
@@ -61,14 +63,13 @@ async function callPostHandler(payload: Record<string, unknown>) {
         throw new Error('内容未通过初步审核，请修改后再发');
       }
       
-      const httpError = error as { response?: Response; status?: number };
       // If it's a 4xx error, it's a business/security error, don't fall back, just throw.
-      if (httpError.status && httpError.status >= 400 && httpError.status < 500) {
+      if (statusCode && statusCode >= 400 && statusCode < 500) {
         throw new Error(msg || '请求被拒绝');
       }
 
       // For 5xx or other types, we might want to fall back.
-      console.warn('[POST-HANDLER-FAIL] Status:', httpError.status, 'falling back to RPC');
+      console.warn('[POST-HANDLER-FAIL] Status:', statusCode, 'falling back to RPC');
       return null;
     }
     return data;

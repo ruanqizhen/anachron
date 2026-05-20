@@ -218,13 +218,46 @@ Deno.serve(async (req: Request) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.substring(7);
-        const { data: { user } } = await supabase.auth.getUser(token);
-        if (user) {
-          callerUserId = user.id;
+        
+        // 1. Try local JWT parsing (extremely fast, offline and robust)
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = atob(base64);
+            const jwtPayload = JSON.parse(jsonPayload);
+            if (jwtPayload && jwtPayload.sub) {
+              callerUserId = jwtPayload.sub;
+              console.log('[POST-HANDLER] Authenticated user from local JWT payload:', callerUserId);
+            }
+          }
+        } catch (jwtErr) {
+          console.warn('[POST-HANDLER] Local JWT decoding failed:', jwtErr);
+        }
+
+        // 2. Fallback to Supabase GoTrue API if local decoding was inconclusive
+        if (!callerUserId) {
+          const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+          if (authErr) {
+            console.warn('[POST-HANDLER] Auth getUser returned error:', authErr);
+          }
+          if (user) {
+            callerUserId = user.id;
+            console.log('[POST-HANDLER] Authenticated user from GoTrue API:', callerUserId);
+          }
+        }
+
+        // 3. Query DB to determine if caller is admin
+        if (callerUserId) {
           const { data: profile } = await supabase
-            .from('profiles').select('is_admin').eq('id', user.id).single();
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', callerUserId)
+            .maybeSingle();
           if (profile?.is_admin) {
             isCallerAdmin = true;
+            console.log('[POST-HANDLER] Caller has admin privileges');
           }
         }
       } catch (e) {
