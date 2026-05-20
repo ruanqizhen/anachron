@@ -39,17 +39,34 @@ function err(message: string, status: number) {
 // ─── Turnstile ───
 async function verifyTurnstile(token: string, clientIp: string): Promise<boolean> {
   const secret = Deno.env.get('TURNSTILE_SECRET_KEY');
-  if (!secret) { console.warn('TURNSTILE_SECRET_KEY not set, skip'); return true; }
+  if (!secret) {
+    console.warn('[TURNSTILE] TURNSTILE_SECRET_KEY not set, skipping verification');
+    return true;
+  }
+  console.log(
+    '[TURNSTILE] Verifying token. Secret key prefix:',
+    secret.substring(0, 6) + '...',
+    'Token prefix:',
+    (token || '').substring(0, 15) + '...',
+    'Client IP:',
+    clientIp
+  );
   const formData = new FormData();
   formData.append('secret', secret);
   formData.append('response', token);
   formData.append('remoteip', clientIp);
-  const resp = await fetch(
-    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-    { method: 'POST', body: formData }
-  );
-  const { success } = await resp.json();
-  return success === true;
+  try {
+    const resp = await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      { method: 'POST', body: formData }
+    );
+    const result = await resp.json();
+    console.log('[TURNSTILE] Cloudflare siteverify response:', JSON.stringify(result));
+    return result.success === true;
+  } catch (e) {
+    console.error('[TURNSTILE] Verification exception:', e);
+    return false;
+  }
 }
 
 // ─── IP Risk ───

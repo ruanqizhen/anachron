@@ -45,10 +45,15 @@ async function callPostHandler(payload: Record<string, unknown>) {
       let statusCode: number | undefined;
       
       try {
-        const httpError = error as { response?: Response; status?: number };
-        statusCode = httpError.status || httpError.response?.status;
-        const body = (await httpError.response?.json()) as { error?: string } | undefined;
-        msg = body?.error || error.message;
+        const httpError = error as { context?: Response; response?: Response; status?: number };
+        statusCode = httpError.status || httpError.context?.status || httpError.response?.status;
+        const responseObj = httpError.context || httpError.response;
+        if (responseObj) {
+          const body = (await responseObj.json()) as { error?: string } | undefined;
+          msg = body?.error || error.message;
+        } else {
+          msg = error.message;
+        }
       } catch {
         msg = error.message;
       }
