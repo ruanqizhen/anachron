@@ -454,6 +454,32 @@ export async function markNotificationRead(notificationId: string): Promise<void
     .eq('id', notificationId);
 }
 
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('recipient_id', userId)
+    .eq('is_read', false);
+  if (error) {
+    console.error('Error marking all notifications as read:', error);
+  }
+}
+
+export async function deleteAllNotifications(userId: string): Promise<void> {
+  const db = requireSupabase();
+  const { error } = await db
+    .from('notifications')
+    .delete()
+    .eq('recipient_id', userId);
+  if (error) {
+    console.error('Error deleting all notifications:', error);
+    throw error;
+  }
+}
+
+
+
 // ─── User Lookup ───
 export async function getProfileByUsername(username: string): Promise<Profile | null> {
   if (!supabase) return null;

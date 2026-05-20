@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, AtSign, MessageCircle, ThumbsUp, FileText } from 'lucide-react';
+import { Bell, AtSign, MessageCircle, ThumbsUp, FileText, Trash2 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
-import { getNotifications, markNotificationRead } from '../lib/api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteAllNotifications } from '../lib/api';
 import Avatar from '../components/ui/Avatar';
 import type { Notification } from '../lib/types';
 
@@ -38,6 +38,23 @@ export default function Notifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
+
+  async function handleClearAll() {
+    if (!user || isClearing) return;
+    if (!window.confirm('确定要清除所有通知吗？此操作不可撤销。')) return;
+
+    setIsClearing(true);
+    try {
+      await deleteAllNotifications(user.id);
+      setNotifications([]);
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+      alert('清除通知失败，请稍后重试');
+    } finally {
+      setIsClearing(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -48,6 +65,13 @@ export default function Notifications() {
       const data = await getNotifications(user.id);
       setNotifications(data as Notification[]);
       setIsLoading(false);
+
+      // Automatically mark all notifications as read when opening the page
+      try {
+        await markAllNotificationsRead(user.id);
+      } catch (err) {
+        console.error('Failed to mark notifications as read:', err);
+      }
     }
     load();
   }, [user]);
@@ -70,7 +94,34 @@ export default function Notifications() {
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
-      <h1 className="text-xl font-bold mb-4">通知</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold">通知</h1>
+        {notifications.length > 0 && (
+          <button
+            onClick={handleClearAll}
+            disabled={isClearing}
+            className="flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full transition-all border bg-transparent cursor-pointer disabled:opacity-50"
+            style={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-secondary)',
+            }}
+            onMouseEnter={(e) => {
+              if (isClearing) return;
+              e.currentTarget.style.backgroundColor = 'var(--color-page-bg)';
+              e.currentTarget.style.color = 'var(--color-danger)';
+              e.currentTarget.style.borderColor = 'var(--color-danger)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-secondary)';
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+            }}
+          >
+            <Trash2 size={13} />
+            清除全部
+          </button>
+        )}
+      </div>
 
       <div
         className="rounded-lg overflow-hidden"
