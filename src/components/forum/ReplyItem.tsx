@@ -81,18 +81,18 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
   const avatarUrl = author?.avatar_url;
   const linkPath = post.profiles?.username ? `/u/${post.profiles.username}` : '#';
 
-  async function handleReplySubmit(content: string, createdAt?: string, authorId?: string) {
+  async function handleReplySubmit(content: string, createdAt?: string, authorId?: string, resolvedGuestId?: string) {
     if (!content.trim() || replying) return;
     setReplying(true);
     try {
-      let gid: string | undefined;
-      if (!user && authGuest) {
+      let gid: string | undefined = resolvedGuestId;
+      if (!resolvedGuestId && !user && authGuest) {
         gid = guestId || authGuest.id;
       }
       await createPost({
         threadId: post.thread_id,
         content: content.trim(),
-        authorId: authorId || user?.id,
+        authorId: authorId || (resolvedGuestId ? undefined : user?.id),
         guestId: gid,
         parentPostId: post.id,
         createdAt: createdAt || undefined,
@@ -185,7 +185,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
               }
             }}
             onSave={async (data) => {
-              await handleReplySubmit(data.content, data.createdAt, data.authorId);
+              await handleReplySubmit(data.content, data.createdAt, data.authorId, data.guestId);
             }}
             onCancel={() => setShowReply(false)}
             placeholder={`回复 ${authorUsername} (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...`}
