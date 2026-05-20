@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Post } from '../../lib/types';
-import { getPostsByThread, createPost, getProfileByUsername, createNotification, createGuestSession, getUserLikes, canCreateReply } from '../../lib/api';
+import { getPostsByThread, createPost, getUserLikes, canCreateReply } from '../../lib/api';
 import GuestNameDialog from './GuestNameDialog';
 import { useAuth } from '../../lib/auth';
-import { parseMentions } from '../../lib/mentions';
 import ReplyTree from './ReplyTree';
 import ReplyItem from './ReplyItem';
 import PostEditor from './PostEditor';
@@ -113,11 +112,12 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
   }, [threadId, realtime]);
 
   async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string, authorId?: string, resolvedGuestId?: string) {
-    let gid: string | undefined = resolvedGuestId || guestId || undefined;
+    let gid: string | undefined = resolvedGuestId || guestId || guest?.id || undefined;
     const currentGuestName = overrideGuestName || guest?.username;
 
     if (!resolvedGuestId && !user && !gid && currentGuestName) {
-      gid = await createGuestSession(currentGuestName);
+      const session = await startGuestSession(currentGuestName);
+      gid = session.id;
       setGuestId(gid);
     }
 
@@ -128,20 +128,6 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
       guestId: gid,
       createdAt: createdAt || undefined,
     });
-
-    const mentionedUsernames = parseMentions(content.trim());
-    for (const mentionedName of mentionedUsernames) {
-      const mentionedProfile = await getProfileByUsername(mentionedName);
-      if (mentionedProfile && mentionedProfile.id !== user?.id) {
-        await createNotification({
-          recipientId: mentionedProfile.id,
-          type: 'mention',
-          actorId: user?.id,
-          threadId,
-          postId: newPost.id,
-        }).catch((e: unknown) => console.warn(e));
-      }
-    }
 
     if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
     setPosts(prev => [...prev, newPost as Post]);
@@ -222,9 +208,8 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
         <GuestNameDialog
           onConfirm={async (name) => {
             setShowGuestDialog(false);
-            startGuestSession(name);
-            const gid = await createGuestSession(name);
-            setGuestId(gid);
+            const session = await startGuestSession(name);
+            setGuestId(session.id);
             // After getting guest name, the user will have to click submit again
           }}
           onClose={() => setShowGuestDialog(false)}

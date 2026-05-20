@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase } from './supabase';
 import type { Profile, GuestSession } from './types';
+import { createGuestSession } from './api';
 
 interface AuthState {
   user: { id: string; email: string } | null;
@@ -12,7 +13,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<{ error?: string }>;
   register: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
-  startGuestSession: (username: string) => void;
+  startGuestSession: (username: string) => Promise<GuestSession>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -148,15 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }
 
-  function startGuestSession(username: string) {
-    const session: GuestSession = {
-      id: crypto.randomUUID(),
-      username,
-      session_token: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-    };
+  async function startGuestSession(username: string): Promise<GuestSession> {
+    const session = await createGuestSession(username);
     saveGuestSession(session);
     setGuest(session);
+    return session;
   }
 
 

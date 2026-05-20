@@ -17,7 +17,7 @@ import PostEditor from './PostEditor';
 import GuestNameDialog from './GuestNameDialog';
 import {
   updatePost, softDeletePost, adminUpdatePost, adminSoftDeletePost,
-  createPost, createGuestSession, toggleLike,
+  createPost, toggleLike,
 } from '../../lib/api';
 import { toast } from '../../lib/toast';
 
@@ -87,8 +87,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
     try {
       let gid: string | undefined;
       if (!user && authGuest) {
-        gid = guestId || await createGuestSession(authGuest.username);
-        if (!guestId) setGuestId(gid);
+        gid = guestId || authGuest.id;
       }
       await createPost({
         threadId: post.thread_id,
@@ -204,9 +203,8 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
         <GuestNameDialog
           onConfirm={async (name) => {
             setShowGuestDialog(false);
-            startGuestSession(name);
-            const gid = await createGuestSession(name);
-            setGuestId(gid);
+            const session = await startGuestSession(name);
+            setGuestId(session.id);
           }}
           onClose={() => setShowGuestDialog(false)}
         />

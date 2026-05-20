@@ -26,7 +26,7 @@ export default function AdminTasks() {
     setIsLoading(false);
   }
 
-  useEffect(() => { setTimeout(() => load(), 0); }, []);
+  useEffect(() => { load(); }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();

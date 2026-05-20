@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Board, Thread, Post, AICharacter, Profile } from './types';
+import type { Board, Thread, Post, AICharacter, Profile, GuestSession } from './types';
 
 // ─── Helper ───
 function requireSupabase() {
@@ -254,13 +254,15 @@ export async function getActiveAICharacters(): Promise<AICharacter[]> {
 }
 
 // ─── Guest Sessions ───
-export async function createGuestSession(username: string): Promise<string> {
+export async function createGuestSession(username: string, ip?: string): Promise<GuestSession> {
   const db = requireSupabase();
   const { data, error } = await db.rpc('create_guest_rpc', {
     p_username: username,
+    p_ip: ip || null
   });
   if (error) throw error;
-  return data as string; // returns the new guest session UUID
+  if (!data || data.length === 0) throw new Error('游客会话创建失败');
+  return data[0] as GuestSession;
 }
 
 // ─── Thread Creation ───
@@ -410,25 +412,6 @@ export async function softDeletePost(postId: string): Promise<void> {
 }
 
 // ─── Notifications ───
-export async function createNotification(params: {
-  recipientId: string;
-  type: 'mention' | 'reply' | 'like';
-  actorId?: string;
-  threadId?: string;
-  postId?: string;
-}): Promise<void> {
-  const db = requireSupabase();
-  const { error } = await db
-    .from('notifications')
-    .insert({
-      recipient_id: params.recipientId,
-      type: params.type,
-      actor_id: params.actorId || null,
-      thread_id: params.threadId || null,
-      post_id: params.postId || null,
-    });
-  if (error) throw error;
-}
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   if (!supabase) return 0;
   const { count, error } = await supabase

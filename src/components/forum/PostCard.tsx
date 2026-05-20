@@ -25,12 +25,19 @@ const MAX_PREVIEW_LENGTH = 200;
 export default function PostCard({ thread: initialThread }: PostCardProps) {
   const { user } = useAuth();
   const [thread, setThread] = useState(initialThread);
-  useEffect(() => { setTimeout(() => setThread(initialThread), 0); }, [initialThread]);
+  const [prevThread, setPrevThread] = useState(initialThread);
+  const [likeCount, setLikeCount] = useState((initialThread.thread_like_count || 0) + (initialThread.like_count || 0));
+
+  if (initialThread !== prevThread) {
+    setThread(initialThread);
+    setPrevThread(initialThread);
+    setLikeCount((initialThread.thread_like_count || 0) + (initialThread.like_count || 0));
+  }
+
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(false);
   const [shareToast, setShareToast] = useState(false);
-  const [likeCount, setLikeCount] = useState((thread.thread_like_count || 0) + (thread.like_count || 0));
   const [isLiking, setIsLiking] = useState(false);
 
   // Load initial like status for this thread

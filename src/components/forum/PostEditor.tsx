@@ -186,8 +186,8 @@ export default function PostEditor({
         } else {
           // If the profile does not exist OR is a real user, we post as an anonymous guest.
           // Create guest session dynamically for the custom author name.
-          const guestSessionId = await createGuestSession(authorName.trim());
-          resolvedGuestId = guestSessionId;
+          const guestSession = await createGuestSession(authorName.trim());
+          resolvedGuestId = guestSession.id;
         }
       } catch (err) {
         setError('作者身份验证/创建失败');
