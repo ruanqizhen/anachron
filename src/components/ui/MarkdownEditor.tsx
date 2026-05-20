@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type TextareaHTMLAttributes, type Ref } from 'react';
+import { useEffect, useRef, useCallback, type ReactNode, type TextareaHTMLAttributes, type Ref } from 'react';
 import { ImagePlus, Bold, Italic, Heading, Quote, Code, Link as LinkIcon, List, ListOrdered } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useImageUpload } from '../../lib/useImageUpload';
@@ -15,6 +15,17 @@ interface MarkdownEditorProps {
   hideLabel?: boolean;
   children?: ReactNode;
 }
+
+const TOOLBAR_ITEMS = [
+  { icon: Bold, label: '加粗', type: 'bold' },
+  { icon: Italic, label: '斜体', type: 'italic' },
+  { icon: Heading, label: '标题', type: 'heading' },
+  { icon: Quote, label: '引用', type: 'quote' },
+  { icon: Code, label: '代码', type: 'code' },
+  { icon: LinkIcon, label: '链接', type: 'link' },
+  { icon: List, label: '无序列表', type: 'list' },
+  { icon: ListOrdered, label: '有序列表', type: 'list-ordered' },
+];
 
 export default function MarkdownEditor({
   value, onChange, textareaProps, className = '',
@@ -46,7 +57,7 @@ export default function MarkdownEditor({
     return () => document.removeEventListener('paste', handlePaste);
   }, [handlePaste]);
 
-  const insertFormat = (prefix: string, suffix: string = '', defaultText: string = '') => {
+  const insertFormat = useCallback((prefix: string, suffix: string = '', defaultText: string = '') => {
     const ta = containerRef.current?.querySelector('textarea');
     if (!ta) return;
     const start = ta.selectionStart;
@@ -60,18 +71,20 @@ export default function MarkdownEditor({
       ta.focus();
       ta.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
     }, 0);
-  };
-  
-  const TOOLBAR_ITEMS = [
-    { icon: Bold, label: '加粗', onClick: () => insertFormat('**', '**', '粗体文本') },
-    { icon: Italic, label: '斜体', onClick: () => insertFormat('*', '*', '斜体文本') },
-    { icon: Heading, label: '标题', onClick: () => insertFormat('### ', '', '标题文本') },
-    { icon: Quote, label: '引用', onClick: () => insertFormat('> ', '', '引用内容') },
-    { icon: Code, label: '代码', onClick: () => insertFormat('```\n', '\n```', '代码片段') },
-    { icon: LinkIcon, label: '链接', onClick: () => insertFormat('[', '](https://)', '链接文本') },
-    { icon: List, label: '无序列表', onClick: () => insertFormat('- ', '', '列表项') },
-    { icon: ListOrdered, label: '有序列表', onClick: () => insertFormat('1. ', '', '列表项') },
-  ];
+  }, [value, onChange]);
+
+  const handleToolbarClick = useCallback((type: string) => {
+    switch (type) {
+      case 'bold': insertFormat('**', '**', '粗体文本'); break;
+      case 'italic': insertFormat('*', '*', '斜体文本'); break;
+      case 'heading': insertFormat('### ', '', '标题文本'); break;
+      case 'quote': insertFormat('> ', '', '引用内容'); break;
+      case 'code': insertFormat('```\n', '\n```', '代码片段'); break;
+      case 'link': insertFormat('[', '](https://)', '链接文本'); break;
+      case 'list': insertFormat('- ', '', '列表项'); break;
+      case 'list-ordered': insertFormat('1. ', '', '列表项'); break;
+    }
+  }, [insertFormat]);
 
   return (
     <div className={`flex-1 flex flex-col ${className}`}>
@@ -85,7 +98,7 @@ export default function MarkdownEditor({
                   key={i}
                   type="button"
                   title={item.label}
-                  onClick={item.onClick}
+                  onClick={() => handleToolbarClick(item.type)}
                   className="p-1.5 flex items-center justify-center rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-card-bg)] transition-colors cursor-pointer border-none bg-transparent"
                 >
                   <item.icon size={15} strokeWidth={2.5} />

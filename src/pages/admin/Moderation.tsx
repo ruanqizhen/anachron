@@ -35,7 +35,23 @@ export default function Moderation() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([getPendingThreads(), getPendingPosts()])
+      .then(([t, p]) => {
+        if (active) {
+          setThreads(t);
+          setPosts(p);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
   const pendingCount = threads.length + posts.length;
 

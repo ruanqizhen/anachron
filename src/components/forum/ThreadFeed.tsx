@@ -27,7 +27,8 @@ export default function ThreadFeed({
   // Initialize from cache if available
   const initialData = cacheKey ? feedCache[cacheKey] : null;
   
-  const [threads, setThreads] = useState<Thread[]>(initialData?.threads || []);
+    const [threads, setThreads] = useState<Thread[]>(initialData?.threads || []);
+  const hasCache = !!(initialData && initialData.threads.length > 0);
   const [isLoading, setIsLoading] = useState(!initialData);
   const [hasMore, setHasMore] = useState(initialData?.hasMore || false);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -37,7 +38,7 @@ export default function ThreadFeed({
     const fetchFirst = async () => {
       // If we have cached data, we can still refresh in background if it's the first mount
       // but to avoid flickering we only set isLoading if cache is empty
-      if (threads.length === 0) setIsLoading(true);
+      if (!hasCache) setIsLoading(true);
       
       const items = await fetchThreads(PAGE_SIZE, 0);
       if (active) {
@@ -53,7 +54,7 @@ export default function ThreadFeed({
     };
     fetchFirst();
     return () => { active = false; };
-  }, [fetchThreads, refreshKey, cacheKey]);
+  }, [fetchThreads, refreshKey, cacheKey, hasCache]);
 
   const loadMore = useCallback(async () => {
     const more = await fetchThreads(PAGE_SIZE, threads.length);

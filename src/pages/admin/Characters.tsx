@@ -5,8 +5,13 @@ import AdminListLayout from '../../components/admin/AdminListLayout';
 import AdminListItem from '../../components/admin/AdminListItem';
 import type { AICharacter } from '../../lib/types';
 
+interface AdminCharacterRow extends AICharacter {
+  username?: string;
+  avatar_url?: string | null;
+}
+
 export default function AdminCharacters() {
-  const [characters, setCharacters] = useState<AICharacter[]>([]);
+  const [characters, setCharacters] = useState<AdminCharacterRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newChar, setNewChar] = useState({ username: '', era: '', birth_year: '', death_year: '', tags: '', personality: '', comedy: '', style: '' });
@@ -24,9 +29,25 @@ export default function AdminCharacters() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    adminGetAllCharacters()
+      .then(data => {
+        if (active) {
+          setCharacters(data);
+          setIsLoading(false);
+        }
+      })
+      .catch(err => {
+        if (active) {
+          setMsg('加载失败: ' + (err instanceof Error ? err.message : String(err)));
+          setIsLoading(false);
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
-  const filtered = characters.filter(c => (c as any).username?.toLowerCase().includes(filter.toLowerCase()));
+  const filtered = characters.filter(c => c.username?.toLowerCase().includes(filter.toLowerCase()));
 
   const FIELD_STYLE: React.CSSProperties = {
     padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
@@ -81,12 +102,12 @@ export default function AdminCharacters() {
       )}
     >
       {filtered.map(c => {
-        const username = (c as any).username || '';
+        const username = c.username || '';
         return (
           <AdminListItem
             key={c.id}
             avatarName={username}
-            avatarUrl={(c as any).avatar_url}
+            avatarUrl={c.avatar_url || undefined}
             title={
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold">{username}</span>

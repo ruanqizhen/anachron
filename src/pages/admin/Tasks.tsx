@@ -5,9 +5,25 @@ import { adminGetTaskQueue, adminCancelTask, adminAddResponseTask, adminGetAllCh
 import { supabase } from '../../lib/supabase';
 import AdminGuard from '../../components/layout/AdminGuard';
 
+interface TaskItem {
+  id: string;
+  thread_id: string;
+  trigger_post_id: string;
+  character_id: string;
+  status: 'pending' | 'processing' | 'dispatched' | 'completed' | 'failed' | 'cancelled';
+  priority: string;
+  execute_after: string | null;
+  thread_title?: string;
+}
+
+interface AdminCharacterRow {
+  id: string;
+  username?: string;
+}
+
 export default function AdminTasks() {
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [characters, setCharacters] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [characters, setCharacters] = useState<AdminCharacterRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addCharId, setAddCharId] = useState('');
@@ -21,12 +37,29 @@ export default function AdminTasks() {
       adminGetTaskQueue(),
       adminGetAllCharacters(),
     ]);
-    setTasks(t);
-    setCharacters(c);
+    setTasks(t as TaskItem[]);
+    setCharacters(c as AdminCharacterRow[]);
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      adminGetTaskQueue(),
+      adminGetAllCharacters(),
+    ]).then(([t, c]) => {
+      if (active) {
+        setTasks(t as TaskItem[]);
+        setCharacters(c as AdminCharacterRow[]);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (active) {
+        setIsLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -76,8 +109,8 @@ export default function AdminTasks() {
               <select value={addCharId} onChange={e => setAddCharId(e.target.value)} required
                 className="px-3 py-2 rounded-lg border outline-none text-sm bg-transparent" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
                 <option value="">选择角色</option>
-                {characters.map((c: any) => (
-                  <option key={c.id as string} value={c.id as string}>{c.username as string}</option>
+                {characters.map((c) => (
+                  <option key={c.id} value={c.id}>{c.username}</option>
                 ))}
               </select>
               <input placeholder="Thread ID" value={addThreadId} onChange={e => setAddThreadId(e.target.value)} required
@@ -99,11 +132,11 @@ export default function AdminTasks() {
           <div className="text-center py-12 text-sm" style={{ color: 'var(--color-text-muted)' }}>暂无任务</div>
         ) : (
           <div className="flex flex-col gap-2">
-            {tasks.map((t: any) => (
-              <div key={t.id as string} className="rounded-lg p-3 flex items-center justify-between gap-3 text-xs"
+            {tasks.map((t) => (
+              <div key={t.id} className="rounded-lg p-3 flex items-center justify-between gap-3 text-xs"
                 style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>
                 <div>
-                  <span className="font-mono">{(t.id as string).slice(0, 8)}…</span>
+                  <span className="font-mono">{t.id.slice(0, 8)}…</span>
                   <span className="ml-2 px-1.5 py-0.5 rounded-full"
                     style={{
                       backgroundColor: t.priority === 'high' ? '#FFF3E0' : 'var(--color-page-bg)',

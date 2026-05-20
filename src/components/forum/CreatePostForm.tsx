@@ -16,7 +16,15 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
   const [showGuestDialog, setShowGuestDialog] = useState(!user && !guest);
   const isLoggedIn = !!user;
 
-  async function doSubmit(data: any) {
+  async function doSubmit(data: {
+    title?: string;
+    content: string;
+    boardId?: string;
+    createdAt?: string;
+    authorId?: string;
+    guestId?: string;
+    turnstileToken?: string;
+  }) {
     const rateCheck = canCreateThread(!isLoggedIn);
     if (!rateCheck.ok) {
       throw new Error(`发言过于频繁，请等 ${rateCheck.wait} 秒后再试`);
@@ -25,8 +33,8 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     const guestId = data.guestId || guest?.id || undefined;
 
     await createThread({
-      boardId: data.boardId,
-      title: data.title,
+      boardId: data.boardId || '',
+      title: data.title || '',
       content: data.content,
       authorId: data.authorId || (data.guestId ? undefined : user?.id),
       guestId,

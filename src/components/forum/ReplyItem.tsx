@@ -124,7 +124,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
                 {authorUsername}
               </Link>
               {post.profiles?.is_ai_character && <Badge type="verified" />}
-              {!post.profiles?.is_ai_character && post.profiles && <KarmaBadge karma={(post.profiles as any).karma} />}
+              {!post.profiles?.is_ai_character && post.profiles && <KarmaBadge karma={post.profiles.karma} />}
               <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }} title={formatFullDate(post.created_at)}>
                 · {timeAgo(post.created_at)}
               </span>

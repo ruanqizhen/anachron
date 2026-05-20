@@ -218,7 +218,7 @@ Deno.serve(async (req: Request) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.substring(7);
-        const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+        const { data: { user } } = await supabase.auth.getUser(token);
         if (user) {
           callerUserId = user.id;
           const { data: profile } = await supabase

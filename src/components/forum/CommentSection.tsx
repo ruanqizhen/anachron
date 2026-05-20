@@ -100,8 +100,8 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'posts',
         filter: `thread_id=eq.${threadId}`,
-      }, (payload: any) => {
-        const p = payload.new as Post;
+      }, (payload: { new: Record<string, unknown> }) => {
+        const p = payload.new as unknown as Post;
         setPosts(prev => {
           if (prev.some(x => x.id === p.id)) return prev;
           return [...prev, p];
@@ -129,7 +129,14 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
       createdAt: createdAt || undefined,
     });
 
-    if (!user && guest) (newPost as any).guest_sessions = { username: guest.username };
+    if (!user && guest) {
+      newPost.guest_sessions = {
+        id: gid || '',
+        username: guest.username,
+        session_token: '',
+        created_at: new Date().toISOString()
+      };
+    }
     setPosts(prev => [...prev, newPost as Post]);
     toast.success('回复成功！');
   }

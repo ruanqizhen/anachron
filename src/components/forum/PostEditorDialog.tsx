@@ -12,7 +12,15 @@ interface PostEditorDialogProps {
   initialCreatedAt?: string;
   placeholder?: string;
   defaultBoardSlug?: string;
-  onSave: (data: any) => Promise<void | boolean>;
+  onSave: (data: {
+    title?: string;
+    content: string;
+    boardId?: string;
+    createdAt?: string;
+    authorId?: string;
+    guestId?: string;
+    turnstileToken?: string;
+  }) => Promise<void | boolean>;
   onClose: () => void;
   title?: string;
   draftKey?: string;

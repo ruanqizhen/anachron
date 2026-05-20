@@ -6,9 +6,15 @@ import AdminGuard from '../../components/layout/AdminGuard';
 import AvatarUpload from '../../components/ui/AvatarUpload';
 import type { AICharacter } from '../../lib/types';
 
+interface AdminCharacterRow extends AICharacter {
+  username?: string;
+  avatar_url?: string | null;
+  bio?: string;
+}
+
 export default function CharacterEdit() {
   const { id } = useParams<{ id: string }>();
-  const [char, setChar] = useState<(AICharacter & { username?: string }) | null>(null);
+  const [char, setChar] = useState<AdminCharacterRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -22,19 +28,22 @@ export default function CharacterEdit() {
   const [avatarUrl, setAvatarUrl] = useState('');
 
   useEffect(() => {
-    adminGetAllCharacters().then((list) => {
-      const found = list.find((c: any) => c.id === id);
+    let activeFlag = true;
+    adminGetAllCharacters().then((list: AdminCharacterRow[]) => {
+      if (!activeFlag) return;
+      const found = list.find((c) => c.id === id);
       if (found) {
-        setChar(found as unknown as AICharacter & { username?: string });
-        setBio((found as unknown as { bio?: string }).bio || '');
+        setChar(found);
+        setBio(found.bio || '');
         setPersonality(found.personality_prompt || '');
         setComedy(found.comedy_notes || '');
         setStyle(found.writing_style || '');
         setActive(found.is_active);
-        setAvatarUrl((found as any).avatar_url || '');
+        setAvatarUrl(found.avatar_url || '');
       }
       setIsLoading(false);
     });
+    return () => { activeFlag = false; };
   }, [id]);
 
   async function handleSave() {
@@ -75,7 +84,7 @@ export default function CharacterEdit() {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">编辑：{(char as unknown as { username?: string }).username}</h1>
+              <h1 className="text-xl font-bold">编辑：{char.username}</h1>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1.5 text-sm cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
                   <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />
@@ -87,7 +96,7 @@ export default function CharacterEdit() {
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer border-none disabled:opacity-50 transition-colors"
                   style={{ backgroundColor: 'var(--color-primary)' }}
                 >
-                  <Save size={14} /> {saving ? '保存中...' : '保存'}
+                   <Save size={14} /> {saving ? '保存中...' : '保存'}
                 </button>
               </div>
             </div>
@@ -104,7 +113,7 @@ export default function CharacterEdit() {
               <div className="mb-2">
                 <AvatarUpload
                   currentUrl={avatarUrl}
-                  name={(char as any).username || '?'}
+                  name={char.username || '?'}
                   userId={char.id}
                   adminMode
                   onUrlChange={setAvatarUrl}

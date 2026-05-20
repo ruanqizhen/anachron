@@ -84,8 +84,15 @@ Deno.serve(async (req: Request) => {
     let triggerAuthor = '游客';
     let parentPostId: string | null = null;
 
+    interface ThreadContext {
+      title: string;
+      content: string;
+      profiles: { username: string } | null;
+    }
+
     const { data: thread } = await supabase
       .from('threads').select('title, content, profiles(username)').eq('id', task.thread_id).single();
+    const threadContext = thread as unknown as ThreadContext | null;
 
     if (task.trigger_post_id) {
       const { data: triggerPost } = await supabase
@@ -96,8 +103,8 @@ Deno.serve(async (req: Request) => {
         parentPostId = triggerPost.parent_post_id;
       }
     } else {
-      triggerContent = thread?.content || '';
-      triggerAuthor = (thread as any)?.profiles?.username || '游客';
+      triggerContent = threadContext?.content || '';
+      triggerAuthor = threadContext?.profiles?.username || '游客';
     }
 
     if (!thread) {
@@ -125,7 +132,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 4. Ask LLM: which figure should reply?
-    const dispatchSystem = `你是一个历史论坛「回音堂」的 AI 调度系统。
+    const dispatchSystem = `你是一个历史论坛「回音堂」的 AI 调度 system。
 用户刚刚发了一条帖子，你需要选择一位中国历史上的名人来回复，以产生最强的戏剧性和娱乐效果。
 可以自由选择中国任何朝代的历史人物，不限于任何范围。
 
@@ -141,23 +148,23 @@ Deno.serve(async (req: Request) => {
 人名必须是最广为人知的叫法。比如先秦诸子使用尊称：孔子、墨子；明末和清朝皇帝使用年号：崇祯、康熙、雍正；其他人使用姓氏+名字：李世民、朱元璋。
 `;
 
-    const mainPoster = (thread as unknown as { profiles?: { username?: string } }).profiles?.username || '游客';
+    const mainPoster = threadContext?.profiles?.username || '游客';
     const isReply = !!chainText;
     const dispatchUser = isReply
       ? `以下是论坛中的一段讨论，请根据最新回复选择一位历史人物来回帖。
 
 主贴（背景）：
-标题：${thread.title}
+标题：${threadContext?.title || ''}
 发帖人：${mainPoster}
-内容：${(thread.content || '').slice(0, 300)}
+内容：${(threadContext?.content || '').slice(0, 300)}
 
 ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
 发帖人：${triggerAuthor}
 内容：${triggerContent.slice(0, 800)}`
       : `主贴：
-标题：${thread.title}
+标题：${threadContext?.title || ''}
 发帖人：${mainPoster}
-内容：${(thread.content || '').slice(0, 800)}`;
+内容：${(threadContext?.content || '').slice(0, 800)}`;
 
     let decision: { name: string; reason: string };
     try {

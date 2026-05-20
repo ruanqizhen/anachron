@@ -28,10 +28,20 @@ export default function AdminBoards() {
 
   async function load() {
     setIsLoading(true);
-    setBoards(await getBoards());
+    const data = await getBoards();
+    setBoards(data);
     setIsLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    getBoards().then(data => {
+      if (active) {
+        setBoards(data);
+        setIsLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   const F = { padding: '4px 8px', borderRadius: 6, border: '1px solid var(--color-border)', outline: 'none', fontSize: 13, color: 'var(--color-text-primary)', backgroundColor: 'var(--color-card-bg)' };
 

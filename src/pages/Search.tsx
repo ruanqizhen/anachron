@@ -10,7 +10,13 @@ export default function Search() {
   const query = searchParams.get('q') || '';
   // Removed local results state as ThreadFeed handles it
   const [isSearching, setIsSearching] = useState(false);
-
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
+    if (query.trim()) {
+      setIsSearching(true);
+    }
+  }
 
   const performSearch = useCallback(async (limit: number, offset: number): Promise<Thread[]> => {
     if (!query.trim()) return [];
@@ -27,11 +33,10 @@ export default function Search() {
   }, [query]);
 
   useEffect(() => {
-    if (!query.trim()) return;
-    setIsSearching(true);
+    if (!isSearching) return;
     const timer = setTimeout(() => setIsSearching(false), 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [isSearching]);
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">

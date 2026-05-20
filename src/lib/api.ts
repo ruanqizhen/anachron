@@ -44,7 +44,8 @@ async function callPostHandler(payload: Record<string, unknown>) {
       let msg = '';
       try {
         // FunctionsHttpError might have the response text
-        const body = await (error as any).response?.json();
+        const httpError = error as { response?: Response; status?: number };
+        const body = (await httpError.response?.json()) as { error?: string } | undefined;
         msg = body?.error || error.message;
       } catch {
         msg = error.message;
@@ -60,13 +61,14 @@ async function callPostHandler(payload: Record<string, unknown>) {
         throw new Error('内容未通过初步审核，请修改后再发');
       }
       
+      const httpError = error as { response?: Response; status?: number };
       // If it's a 4xx error, it's a business/security error, don't fall back, just throw.
-      if ((error as any).status >= 400 && (error as any).status < 500) {
+      if (httpError.status && httpError.status >= 400 && httpError.status < 500) {
         throw new Error(msg || '请求被拒绝');
       }
 
       // For 5xx or other types, we might want to fall back.
-      console.warn('[POST-HANDLER-FAIL] Status:', (error as any).status, 'falling back to RPC');
+      console.warn('[POST-HANDLER-FAIL] Status:', httpError.status, 'falling back to RPC');
       return null;
     }
     return data;

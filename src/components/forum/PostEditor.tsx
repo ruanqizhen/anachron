@@ -44,8 +44,32 @@ export default function PostEditor({
   showResize = true, onFocusInterceptor
 }: PostEditorProps) {
   const { profile } = useAuth();
-  const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState(initialContent);
+  const [title, setTitle] = useState(() => {
+    if (initialTitle) return initialTitle;
+    if (draftKey && !initialContent && !initialTitle) {
+      try {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return parsed.title || '';
+        }
+      } catch { /* ignore */ }
+    }
+    return '';
+  });
+  const [content, setContent] = useState(() => {
+    if (initialContent) return initialContent;
+    if (draftKey && !initialContent && !initialTitle) {
+      try {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return parsed.content || '';
+        }
+      } catch { /* ignore */ }
+    }
+    return '';
+  });
   const [boardId, setBoardId] = useState(initialBoardId);
   const [boards, setBoards] = useState<Board[]>([]);
   const [customTime, setCustomTime] = useState(initialCreatedAt || "");
@@ -55,19 +79,6 @@ export default function PostEditor({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [turnstileKey, setTurnstileKey] = useState(0);
-
-  useEffect(() => {
-    if (draftKey && !initialContent && !initialTitle) {
-      try {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.title) setTitle(parsed.title);
-          if (parsed.content) setContent(parsed.content);
-        }
-      } catch (e) { /* ignore */ }
-    }
-  }, [draftKey, initialContent, initialTitle]);
 
   useEffect(() => {
     if (!draftKey) return;
@@ -189,7 +200,7 @@ export default function PostEditor({
           const guestSession = await createGuestSession(authorName.trim());
           resolvedGuestId = guestSession.id;
         }
-      } catch (err) {
+      } catch {
         setError('作者身份验证/创建失败');
         setIsSubmitting(false);
         return;
@@ -214,8 +225,8 @@ export default function PostEditor({
       }
       setToken('');
       setTurnstileKey(prev => prev + 1);
-    } catch (err: any) {
-      setError(err.message || '操作失败');
+    } catch (err: unknown) {
+      setError((err as Error).message || '操作失败');
       setToken(''); // Clear token on error
       setTurnstileKey(prev => prev + 1); // Force Turnstile reset
     } finally {

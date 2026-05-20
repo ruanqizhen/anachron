@@ -37,7 +37,23 @@ export default function AdminVirtualUsers() {
     setIsLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    adminGetVirtualUsers()
+      .then(data => {
+        if (active) {
+          setUsers(data);
+          setIsLoading(false);
+        }
+      })
+      .catch(err => {
+        if (active) {
+          setMsg('加载失败: ' + (err instanceof Error ? err.message : String(err)));
+          setIsLoading(false);
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
   async function handleSave(id: string) {
     setMsg('');

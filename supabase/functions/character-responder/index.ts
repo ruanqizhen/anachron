@@ -146,14 +146,21 @@ ${sysStyle}
       })
       .join('\n\n');
 
+    interface ThreadDetails {
+      title: string;
+      boards: { name: string } | null;
+      profiles?: { username: string } | null;
+    }
+    const threadDetails = thread as unknown as ThreadDetails | null;
+
     // Determine the trigger: can be a reply (triggerPost) or the thread itself
     const triggerAuthor = triggerPost?.profiles?.username
       || (triggerPost?.guest_sessions as { username?: string })?.username
-      || (thread as any)?.profiles?.username || '游客';
-    const triggerContent = triggerPost?.content || thread?.content || '';
+      || threadDetails?.profiles?.username || '游客';
+    const triggerContent = triggerPost?.content || (thread as { content?: string } | null)?.content || '';
     const triggerLabel = triggerPost ? '最新一条需要你回应的帖子' : '主贴（请对整篇帖子发表看法）';
 
-    const userPrompt = `以下是论坛中关于「${thread?.title || '讨论'}」的讨论，发生在「${(thread?.boards as any)?.name || '未知'}」版块。
+    const userPrompt = `以下是论坛中关于「${threadDetails?.title || '讨论'}」的讨论，发生在「${threadDetails?.boards?.name || '未知'}」版块。
 
 对话记录（从早到晚，最多 10 条）：
 ${contextText}

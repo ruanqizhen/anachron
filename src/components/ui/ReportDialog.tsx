@@ -44,8 +44,8 @@ export default function ReportDialog({ targetType, targetId, reporterId, onClose
       });
       setSuccess(true);
       setTimeout(onClose, 2000);
-    } catch (err: any) {
-      setErrorMsg(err.message || '提交失败');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : '提交失败');
       setIsSubmitting(false);
     }
   }
