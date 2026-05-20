@@ -35,10 +35,10 @@ export async function onRequest(context) {
   const response = await context.next();
   const headers = new Headers(response.headers);
 
-  // Remove all CSP variants and set minimal CSP that allows Turnstile to function
+  // Remove all restrictive CSP variants and set a permissive CSP to allow Turnstile and Supabase connections
   headers.delete('Content-Security-Policy');
   headers.delete('Content-Security-Policy-Report-Only');
-  headers.set('Content-Security-Policy', "trusted-types goog#html ymiGc5 default");
+  headers.set('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';");
 
   let newResponse = new Response(response.body, {
     status: response.status,
