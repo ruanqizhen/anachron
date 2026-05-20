@@ -432,8 +432,8 @@ export async function getNotifications(userId: string) {
     .from('notifications')
     .select(`
       *,
-      profiles (*),
-      threads (*)
+      profiles:profiles!actor_id (*),
+      threads (*, boards (*))
     `)
     .eq('recipient_id', userId)
     .order('created_at', { ascending: false })
