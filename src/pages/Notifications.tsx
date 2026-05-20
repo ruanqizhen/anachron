@@ -5,18 +5,7 @@ import { useAuth } from '../lib/auth';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteAllNotifications } from '../lib/api';
 import Avatar from '../components/ui/Avatar';
 import type { Notification } from '../lib/types';
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '刚刚';
-  if (mins < 60) return `${mins} 分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return new Date(dateStr).toLocaleDateString('zh-CN');
-}
+import { formatDisplayDate } from '../lib/dateUtils';
 
 const TYPE_ICONS: Record<string, typeof AtSign> = {
   mention: AtSign,
@@ -180,7 +169,7 @@ export default function Notifications() {
                     {TYPE_LABELS[n.type] || n.type}
                   </div>
                   <div className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    {timeAgo(n.created_at)}
+                    {formatDisplayDate(n.created_at)}
                   </div>
                 </div>
                 {!n.is_read && (

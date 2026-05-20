@@ -3,11 +3,10 @@ import { ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getThreadById } from '../lib/api';
 import { getDisplayName } from '../lib/types';
-import { timeAgo } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
-import { formatFullDate } from '../lib/dateUtils';
+import { formatFullDate, formatDisplayDate } from '../lib/dateUtils';
 import MarkdownRenderer from '../components/ui/MarkdownRenderer';
 import AIResponseIndicator from '../components/forum/AIResponseIndicator';
 import CommentSection from '../components/forum/CommentSection';
@@ -116,7 +115,7 @@ export default function ThreadPage() {
                   </div>
                   <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                     {board && <>{board.icon} {board.name} · </>}
-                    <time dateTime={thread.created_at} title={formatFullDate(thread.created_at)}>{timeAgo(thread.created_at)}</time>
+                    <time dateTime={thread.created_at} title={formatFullDate(thread.created_at)}>{formatDisplayDate(thread.created_at)}</time>
                     {thread.edited_at && <span> · 已编辑</span>}
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShieldOff } from 'lucide-react';
 import { getBlockedIps, resetBlockedIp } from '../../lib/api';
 import AdminGuard from '../../components/layout/AdminGuard';
+import { formatDisplayDate } from '../../lib/dateUtils';
 
 interface BlockedIp {
   id: string;
@@ -10,15 +11,6 @@ interface BlockedIp {
   risk_score: number;
   blocked_until: string | null;
   created_at: string;
-}
-
-function timeAgo(d: string): string {
-  const diff = Date.now() - new Date(d).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}小时前`;
-  return new Date(d).toLocaleDateString('zh-CN');
 }
 
 export default function IpRisks() {
@@ -102,7 +94,7 @@ export default function IpRisks() {
                     </span>
                   </div>
                   <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    标记于 {timeAgo(ip.created_at)}
+                    标记于 {formatDisplayDate(ip.created_at)}
                     {ip.reason && <> · {ip.reason}</>}
                     {ip.blocked_until && <> · 封禁至 {new Date(ip.blocked_until).toLocaleString('zh-CN')}</>}
                   </div>

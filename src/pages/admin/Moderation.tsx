@@ -10,15 +10,7 @@ import {
 } from '../../lib/api';
 import AdminGuard from '../../components/layout/AdminGuard';
 import type { Thread, Post } from '../../lib/types';
-
-function timeAgo(d: string): string {
-  const diff = Date.now() - new Date(d).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}分钟前`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}小时前`;
-  return new Date(d).toLocaleDateString('zh-CN');
-}
+import { formatDisplayDate } from '../../lib/dateUtils';
 
 export default function Moderation() {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -107,7 +99,7 @@ export default function Moderation() {
                         {t.content.slice(0, 300)}
                       </p>
                       <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {timeAgo(t.created_at)}
+                        {formatDisplayDate(t.created_at)}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -150,7 +142,7 @@ export default function Moderation() {
                         {p.content.slice(0, 300)}
                       </p>
                       <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {timeAgo(p.created_at)} · Thread: {p.thread_id.slice(0, 8)}…
+                        {formatDisplayDate(p.created_at)} · Thread: {p.thread_id.slice(0, 8)}…
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
