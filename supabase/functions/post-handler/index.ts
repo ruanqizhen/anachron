@@ -314,26 +314,7 @@ Deno.serve(async (req: Request) => {
           created_at: payload.created_at || undefined,
         }).select('*').single();
         if (error) throw new Error(error.message);
-        console.log('[POST-HANDLER] Admin/AI thread inserted:', data.id);
-
-        // Trigger dispatcher
-        try {
-          const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
-            thread_id: data.id,
-            trigger_post_id: null,
-            priority: 'normal',
-            execute_after: new Date().toISOString(),
-          }).select('id').single();
-
-          if (!taskInsertErr && taskData) {
-            console.log('[POST-HANDLER] invoking dispatcher for thread:', data.id);
-            supabase.functions.invoke('dispatcher', { body: {} })
-              .catch(e => console.error('[POST-HANDLER] dispatcher trigger error:', e));
-          }
-        } catch (e) {
-          console.error(e);
-        }
-
+        console.log('[POST-HANDLER] Admin/AI thread inserted:', data.id, '(dispatcher skipped)');
         return ok({ ok: true, thread: data, status });
       }
 
@@ -349,35 +330,7 @@ Deno.serve(async (req: Request) => {
           created_at: payload.created_at || undefined,
         }).select('*').single();
         if (error) throw new Error(error.message);
-        console.log('[POST-HANDLER] Admin/AI post inserted:', data.id);
-
-        // Trigger dispatcher
-        try {
-          const mentions = parseMentions(payload.content);
-          const hasMentions = mentions.length > 0;
-          const { data: taskData, error: taskInsertErr } = await supabase.from('ai_task_queue').insert({
-            trigger_post_id: data.id,
-            thread_id: payload.thread_id,
-            priority: hasMentions ? 'high' : 'normal',
-            mentioned_character_ids: hasMentions ? mentions : [],
-            execute_after: new Date().toISOString(),
-          }).select('id').single();
-
-          if (!taskInsertErr && taskData) {
-            console.log('[POST-HANDLER] invoking dispatcher for post:', data.id);
-            fetch(`${FUNCTIONS_BASE}/dispatcher`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${SERVICE_KEY}`,
-              },
-              body: JSON.stringify({}),
-            }).catch(e => console.error('[POST-HANDLER] dispatcher trigger error:', e));
-          }
-        } catch (e) {
-          console.error(e);
-        }
-
+        console.log('[POST-HANDLER] Admin/AI post inserted:', data.id, '(dispatcher skipped)');
         return ok({ ok: true, post: data, status });
       }
     }
