@@ -6,6 +6,7 @@ import CreatePostForm from '../components/forum/CreatePostForm';
 import { PenSquare } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import RightPanel from '../components/layout/RightPanel';
+import SEO from '../components/layout/SEO';
 
 export default function Board() {
   const { boardSlug } = useParams<{ boardSlug: string }>();
@@ -59,6 +60,12 @@ export default function Board() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO
+        title={board.name}
+        description={`${board.name}版块 - ${board.description || ''} · ${board.era_tag || ''}`}
+        keywords={['回音堂', board.name, board.era_tag || '', '历史论坛']}
+        canonicalPath={`/b/${boardSlug}`}
+      />
       <div className="flex gap-6">
         <main className="flex-1 min-w-0">
           <div className="rounded-lg px-6 py-5 mb-6" style={{ backgroundColor: 'var(--color-card-bg)', boxShadow: 'var(--shadow-card)' }}>

@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { toast } from '../lib/toast';
+import SEO from '../components/layout/SEO';
 
 export default function Login() {
   const { user, login, register } = useAuth();
@@ -151,6 +152,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-page-bg)' }}>
+      <SEO
+        title={isRegister ? '注册' : '登录'}
+        description="登录或注册您的回音堂账户，加入跨时空历史名人交流讨论社区。"
+        canonicalPath="/login"
+      />
       <div
         className="w-full max-w-sm rounded-xl px-8 py-10"
         style={{

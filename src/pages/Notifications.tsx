@@ -6,6 +6,7 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead, delet
 import Avatar from '../components/ui/Avatar';
 import type { Notification } from '../lib/types';
 import { formatDisplayDate } from '../lib/dateUtils';
+import SEO from '../components/layout/SEO';
 
 const TYPE_ICONS: Record<string, typeof AtSign> = {
   mention: AtSign,
@@ -68,6 +69,7 @@ export default function Notifications() {
   if (!user) {
     return (
       <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
+        <SEO title="通知" noindex={true} />
         <div className="text-center py-20">
           <Bell size={48} style={{ color: 'var(--color-text-muted)' }} />
           <p className="mt-4 text-lg" style={{ color: 'var(--color-text-secondary)' }}>
@@ -83,6 +85,7 @@ export default function Notifications() {
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO title="通知" description="查看您的回音堂账户通知和最新回复动态。" noindex={true} />
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">通知</h1>
         {notifications.length > 0 && (

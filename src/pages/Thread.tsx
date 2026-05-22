@@ -13,6 +13,7 @@ import CommentSection from '../components/forum/CommentSection';
 import ThreadMenu from '../components/forum/ThreadMenu';
 import type { Thread } from '../lib/types';
 import RightPanel from '../components/layout/RightPanel';
+import SEO from '../components/layout/SEO';
 
 export default function ThreadPage() {
   const { boardSlug, threadId } = useParams<{ boardSlug: string; threadId: string }>();
@@ -68,8 +69,43 @@ export default function ThreadPage() {
     );
   }
 
+  const cleanContentPreview = thread.content
+    ? thread.content.replace(/[#*`_[\]()]/g, '').substring(0, 150)
+    : '';
+
+  const threadSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'DiscussionForumPosting',
+    'headline': thread.title,
+    'description': cleanContentPreview,
+    'datePublished': thread.created_at,
+    'dateModified': thread.edited_at || thread.created_at,
+    'author': {
+      '@type': 'Person',
+      'name': getDisplayName(thread),
+      'url': author ? `${window.location.origin}/u/${author.username}` : undefined
+    },
+    'publisher': {
+      '@type': 'Organization',
+      'name': '回音堂',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': `${window.location.origin}/favicon.svg`
+      }
+    }
+  };
+
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO
+        title={thread.title}
+        description={cleanContentPreview}
+        keywords={['回音堂', thread.title, board?.name || '', getDisplayName(thread)]}
+        ogType="article"
+        ogImage={author?.avatar_url || undefined}
+        canonicalPath={`/b/${boardSlug}/t/${threadId}`}
+        schema={threadSchema}
+      />
       <div className="flex gap-6">
         <main className="flex-1 min-w-0">
           <nav className="flex items-center gap-1 text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>

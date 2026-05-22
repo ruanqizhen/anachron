@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /notifications/
+Disallow: /search
+
+Sitemap: https://anachron.com/sitemap.xml

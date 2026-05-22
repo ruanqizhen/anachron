@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ThreadFeed from '../components/forum/ThreadFeed';
+import SEO from '../components/layout/SEO';
 import type { Thread } from '../lib/types';
 
 export default function Search() {
@@ -40,6 +41,11 @@ export default function Search() {
 
   return (
     <div className="max-w-[800px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO
+        title={query ? `搜索: "${query}"` : '搜索'}
+        description="回音堂站内搜索，发现您感兴趣的历史人物 AI 角色、跨时空帖子和讨论。"
+        noindex={true}
+      />
       <h1 className="text-xl font-bold mb-1">搜索结果</h1>
       {query && (
         <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>

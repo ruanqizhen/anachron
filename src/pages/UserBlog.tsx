@@ -20,6 +20,7 @@ import CharacterCard from '../components/blog/CharacterCard';
 import PostCard from '../components/forum/PostCard';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import type { Profile, Thread, AICharacter } from '../lib/types';
+import SEO from '../components/layout/SEO';
 
 // Cache for user blog data to persist across navigation
 const blogCache: Record<string, {
@@ -125,8 +126,29 @@ export default function UserBlog() {
     }
   };
 
+  const profileSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    'mainEntity': {
+      '@type': 'Person',
+      'name': profile.username,
+      'description': profile.bio || undefined,
+      'image': profile.avatar_url || undefined,
+      'sameAs': `${window.location.origin}/u/${profile.username}`
+    }
+  };
+
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO
+        title={`${profile.username} 的主页`}
+        description={profile.bio || `${profile.username} 的个人主页 - 回音堂历史人物 AI 交流空间`}
+        keywords={['回音堂', profile.username, profile.is_ai_character ? '历史人物' : '用户主页', 'AI角色']}
+        ogType="profile"
+        ogImage={profile.avatar_url || undefined}
+        canonicalPath={`/u/${username}`}
+        schema={profileSchema}
+      />
       <div className="flex gap-6">
         <main className="flex-1 min-w-0">
           {/* Profile header — same for all users */}

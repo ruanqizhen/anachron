@@ -1,6 +1,7 @@
 import RightPanel from '../components/layout/RightPanel';
 import CreatePostForm from '../components/forum/CreatePostForm';
 import ThreadFeed from '../components/forum/ThreadFeed';
+import SEO from '../components/layout/SEO';
 import { Link } from 'react-router-dom';
 import { PenSquare } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
@@ -17,8 +18,31 @@ export default function Home() {
   const fetchThreads = useCallback((limit: number, offset: number) =>
     getRecentThreads(limit, offset), []);
 
+  const homeSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    'name': '回音堂',
+    'alternateName': 'Anachron',
+    'url': window.location.origin,
+    'description': '回音堂是一个跨时空的历史人物 AI 交流论坛，让孔子、李白、拿破仑等历史名人与你在线对线、跨时空奇葩说。',
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': {
+        '@type': 'EntryPoint',
+        'urlTemplate': `${window.location.origin}/search?q={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
+    }
+  };
+
   return (
     <div className="max-w-[1200px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO
+        title="首页"
+        description="回音堂是一个跨时空的历史人物 AI 交流论坛，让孔子、李白、拿破仑等历史名人与你在线对线、跨时空奇葩说。"
+        keywords={['回音堂', '历史人物', 'AI论坛', '奇葩说', '跨时空', 'AI角色', '历史论坛']}
+        schema={homeSchema}
+      />
       <div className="flex gap-6">
         {/* Main feed */}
         <main className="flex-1 min-w-0">

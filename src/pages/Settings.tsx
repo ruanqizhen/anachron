@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { toast } from '../lib/toast';
 import AvatarUpload from '../components/ui/AvatarUpload';
+import SEO from '../components/layout/SEO';
 
 export default function Settings() {
   const { user, profile } = useAuth();
@@ -52,6 +53,7 @@ export default function Settings() {
   if (!user) {
     return (
       <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8 text-center py-20">
+        <SEO title="设置" noindex={true} />
         <p style={{ color: 'var(--color-text-secondary)' }}>请先登录</p>
         <Link to="/login" style={{ color: 'var(--color-primary)' }}>去登录</Link>
       </div>
@@ -123,6 +125,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-[600px] mx-auto px-4 pt-[72px] pb-8">
+      <SEO title="设置" description="回音堂账户设置，包括修改用户名、个人自我介绍简介、头像更新与密码修改，保护您的个人隐私数据。" noindex={true} />
       <Link to="/" className="flex items-center gap-1 text-sm no-underline mb-6 hover:underline" style={{ color: 'var(--color-text-secondary)' }}>
         <ArrowLeft size={14} /> 返回首页
       </Link>
