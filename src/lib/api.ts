@@ -64,7 +64,15 @@ async function callPostHandler(payload: Record<string, unknown>) {
         throw new Error('发言过于频繁，请稍后再试');
       } else if (msg.includes('Turnstile') || msg.includes('验证') || msg.includes('403')) {
         throw new Error('人机验证失败，请刷新页面重试');
-      } else if (msg.includes('content') || msg.includes('审核')) {
+      } else if (msg.includes('violates check constraint') || msg.includes('constraint')) {
+        if (msg.includes('content_length')) {
+          throw new Error('内容至少 10 个字符');
+        } else if (msg.includes('title_length')) {
+          throw new Error('标题长度不符合要求（2-100 个字符）');
+        } else {
+          throw new Error('提交的数据不符合约束要求');
+        }
+      } else if ((msg.includes('content') && !msg.includes('constraint')) || msg.includes('审核')) {
         throw new Error('内容未通过初步审核，请修改后再发');
       }
       
