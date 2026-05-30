@@ -10,7 +10,12 @@ export default function Login() {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [isRegister, setIsRegister] = useState(searchParams.get('register') === '1');
+  const [isRegister, setIsRegister] = useState(() => {
+    const hasRecoveryHash = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='));
+    const hasRecoveryParam = searchParams.get('type') === 'recovery' || searchParams.get('recovery') === 'true';
+    if (hasRecoveryHash || hasRecoveryParam) return false;
+    return searchParams.get('register') === '1';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
@@ -21,25 +26,15 @@ export default function Login() {
   
   // 核心状态控制
   const [showReset, setShowReset] = useState(false);       // 是否显示发送重置链接邮箱表单
-  const [isRecovery, setIsRecovery] = useState(false);     // 是否正处于“重置密码输入新密码”状态
+  const [isRecovery, setIsRecovery] = useState(() => {
+    const hasRecoveryHash = typeof window !== 'undefined' && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token='));
+    const hasRecoveryParam = searchParams.get('type') === 'recovery' || searchParams.get('recovery') === 'true';
+    return !!(hasRecoveryHash || hasRecoveryParam);
+  });
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
 
   const redirect = searchParams.get('redirect') || '/';
-
-  // 1. 检测是否是从密码重置链接跳转回来的
-  useEffect(() => {
-    // 方式 A：Supabase 默认重定向会在 Hash 中带有 type=recovery
-    const hasRecoveryHash = window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token=');
-    // 方式 B：我们在 redirectTo 中显式添加的 Query 参数
-    const hasRecoveryParam = searchParams.get('type') === 'recovery' || searchParams.get('recovery') === 'true';
-
-    if (hasRecoveryHash || hasRecoveryParam) {
-      setIsRecovery(true);
-      setShowReset(false);
-      setIsRegister(false);
-    }
-  }, [searchParams]);
 
   // 2. 重定向守卫：仅在非重置密码状态下，登录成功才跳转
   useEffect(() => {

@@ -14,6 +14,7 @@
   --color-border: #E4E6E9;
   --color-danger: #E4405F;
   --color-success: #42B72A;
+  --color-hover: rgba(0, 0, 0, 0.05);
 
   --font-sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
 

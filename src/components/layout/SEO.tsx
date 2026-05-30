@@ -8,7 +8,7 @@ interface SEOProps {
   ogImage?: string;
   canonicalPath?: string;
   noindex?: boolean;
-  schema?: Record<string, any>;
+  schema?: Record<string, unknown>;
 }
 
 export default function SEO({
