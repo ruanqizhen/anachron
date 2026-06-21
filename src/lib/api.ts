@@ -863,9 +863,21 @@ export async function getFeaturedThreads(): Promise<Thread[]> {
     return [];
   }
 
-  // Shuffle and take 20
   const shuffled = (data as Thread[]).sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 20);
+}
+
+export async function getLatestThreads(limit: number = 10): Promise<Thread[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('threads')
+    .select(`*, boards (*), profiles (*), guest_sessions (*)`)
+    .is('deleted_at', null)
+    .eq('status', 'published')
+    .order('last_post_at', { ascending: false })
+    .limit(limit);
+  if (error) { console.error('Error fetching latest threads:', error); return []; }
+  return data as Thread[];
 }
 
 // ─── Admin: Stats ───
