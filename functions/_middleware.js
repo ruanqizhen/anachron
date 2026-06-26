@@ -31,6 +31,14 @@ function stripMarkdown(md) {
     .trim();
 }
 
+/** Validate that a string looks like a safe identifier (UUID, slug, etc.)
+ *  Allows alphanumeric, hyphens, underscores, and CJK characters. */
+function isSafeParam(str) {
+  if (!str || str.length > 200) return false;
+  // Block characters that could alter PostgREST query: & = ( ) , ; and whitespace
+  return !/[&=();,\s]/.test(str);
+}
+
 async function supabaseQuery(supabaseUrl, supabaseKey, path) {
   const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     headers: {
@@ -125,6 +133,24 @@ async function handleSitemap(supabaseUrl, supabaseKey, origin) {
 }
 
 // ─── Content Injection: HTMLRewriter Handlers ───
+
+/** Removes existing OG/Twitter/description meta tags from <head> so they don't
+ *  duplicate with the dynamically injected ones from index.html. */
+class MetaTagRemover {
+  element(element) {
+    const property = element.getAttribute('property') || '';
+    const name = element.getAttribute('name') || '';
+    if (
+      property.startsWith('og:') ||
+      property.startsWith('twitter:') ||
+      name.startsWith('twitter:') ||
+      name === 'description' ||
+      name === 'keywords'
+    ) {
+      element.remove();
+    }
+  }
+}
 
 class MetaInjector {
   constructor(meta) {
@@ -253,7 +279,11 @@ export async function onRequest(context) {
       return await handleSitemap(supabaseUrl, supabaseKey, url.origin);
     } catch (err) {
       console.error('Sitemap generation error:', err);
-      return context.next();
+      // Return a minimal valid sitemap instead of falling through to SPA index.html
+      const errorFallback = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${escapeXml(url.origin)}/</loc></url>\n</urlset>`;
+      return new Response(errorFallback, {
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+      });
     }
   }
 
@@ -291,9 +321,14 @@ export async function onRequest(context) {
       const boardSlug = threadMatch[1];
       const threadId = threadMatch[2];
 
+      // Validate inputs to prevent query parameter injection
+      if (!isSafeParam(boardSlug) || !isSafeParam(threadId)) {
+        return newResponse;
+      }
+
       // Fetch thread with board info, author info
       const threadData = await supabaseQuery(supabaseUrl, supabaseKey,
-        `threads?id=eq.${threadId}&select=id,title,content,created_at,edited_at,deleted_at,boards(name,slug),profiles(username,avatar_url),guest_sessions(username)&limit=1`
+        `threads?id=eq.${encodeURIComponent(threadId)}&select=id,title,content,created_at,edited_at,deleted_at,boards(name,slug),profiles(username,avatar_url),guest_sessions(username)&limit=1`
       );
 
       if (threadData && threadData.length > 0) {
@@ -303,19 +338,21 @@ export async function onRequest(context) {
           // Deleted thread — just inject OG with deleted notice
           return new HTMLRewriter()
             .on('title', new TitleReplacer('已删除的帖子'))
+            .on('meta', new MetaTagRemover())
             .on('head', new MetaInjector({ title: '已删除的帖子', description: '此内容已被删除' }))
             .transform(newResponse);
         }
 
         // Fetch replies (up to 50, published, not deleted)
         const posts = await supabaseQuery(supabaseUrl, supabaseKey,
-          `posts?thread_id=eq.${threadId}&deleted_at=is.null&status=eq.published&select=id,content,created_at,profiles(username),guest_sessions(username)&order=created_at.asc&limit=50`
+          `posts?thread_id=eq.${encodeURIComponent(threadId)}&deleted_at=is.null&status=eq.published&select=id,content,created_at,profiles(username),guest_sessions(username)&order=created_at.asc&limit=50`
         ) || [];
 
         const contentHtml = buildThreadHtml(thread, posts, boardSlug);
 
         return new HTMLRewriter()
           .on('title', new TitleReplacer(thread.title))
+          .on('meta', new MetaTagRemover())
           .on('head', new MetaInjector({
             title: thread.title,
             description: thread.content,
@@ -331,6 +368,11 @@ export async function onRequest(context) {
     if (boardMatch) {
       const boardSlug = boardMatch[1];
 
+      // Validate input
+      if (!isSafeParam(boardSlug)) {
+        return newResponse;
+      }
+
       // Fetch board info
       const boardData = await supabaseQuery(supabaseUrl, supabaseKey,
         `boards?slug=eq.${encodeURIComponent(boardSlug)}&select=id,name,description,era_tag,slug&limit=1`
@@ -341,7 +383,7 @@ export async function onRequest(context) {
 
         // Fetch threads for this board
         const threads = await supabaseQuery(supabaseUrl, supabaseKey,
-          `threads?board_id=eq.${board.id}&deleted_at=is.null&status=eq.published&select=id,title,content,created_at,boards(slug),profiles(username),guest_sessions(username)&order=created_at.desc&limit=30`
+          `threads?board_id=eq.${encodeURIComponent(board.id)}&deleted_at=is.null&status=eq.published&select=id,title,content,created_at,boards(slug),profiles(username),guest_sessions(username)&order=created_at.desc&limit=30`
         ) || [];
 
         const description = `${board.name} - ${board.description || ''} · ${board.era_tag || ''}`;
@@ -349,6 +391,7 @@ export async function onRequest(context) {
 
         return new HTMLRewriter()
           .on('title', new TitleReplacer(board.name))
+          .on('meta', new MetaTagRemover())
           .on('head', new MetaInjector({
             title: board.name,
             description: description,
@@ -381,6 +424,12 @@ export async function onRequest(context) {
     const userMatch = url.pathname.match(/^\/u\/([^/]+)$/);
     if (userMatch) {
       const username = decodeURIComponent(userMatch[1]);
+
+      // Validate input
+      if (!isSafeParam(username)) {
+        return newResponse;
+      }
+
       const profileData = await supabaseQuery(supabaseUrl, supabaseKey,
         `profiles?username=eq.${encodeURIComponent(username)}&select=username,avatar_url,bio&limit=1`
       );
@@ -389,6 +438,7 @@ export async function onRequest(context) {
         const profile = profileData[0];
         return new HTMLRewriter()
           .on('title', new TitleReplacer(profile.username))
+          .on('meta', new MetaTagRemover())
           .on('head', new MetaInjector({
             title: profile.username,
             description: profile.bio || `查看 ${profile.username} 的个人主页`,
