@@ -58,7 +58,14 @@ async function callLLM(
     throw new Error(`API ${resp.status}`);
   }
   const json = JSON.parse(text);
-  return json.choices[0].message.content;
+  console.log(`[RESPONDER] ${provider} API response JSON:`, JSON.stringify(json));
+  const message = json.choices?.[0]?.message;
+  const content = message?.content;
+  if (!content) {
+    console.error(`[RESPONDER] ${provider} content is null or missing. Message:`, JSON.stringify(message));
+    throw new Error(`Responder LLM content is empty or refused. message: ${JSON.stringify(message)}`);
+  }
+  return content;
 }
 
 Deno.serve(async (req: Request) => {
@@ -113,7 +120,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: thread } = await supabase
       .from('threads')
-      .select('title, boards(name)')
+      .select('title, content, boards(name)')
       .eq('id', task.thread_id)
       .single();
 

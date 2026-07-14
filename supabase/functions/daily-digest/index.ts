@@ -53,7 +53,14 @@ async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepse
   const text = await resp.text();
   if (!resp.ok) throw new Error(`API ${resp.status}: ${text.slice(0, 200)}`);
   const json = JSON.parse(text);
-  return json.choices[0].message.content;
+  console.log('[DAILY] API response JSON:', JSON.stringify(json));
+  const message = json.choices?.[0]?.message;
+  const content = message?.content;
+  if (!content) {
+    console.error('[DAILY] content is null or missing. Message:', JSON.stringify(message));
+    throw new Error(`Daily LLM content is empty or refused. message: ${JSON.stringify(message)}`);
+  }
+  return content;
 }
 
 Deno.serve(async () => {

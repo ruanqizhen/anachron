@@ -172,12 +172,25 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
             { role: 'system', content: systemPrompt },
             { role: 'user', content: text.slice(0, 2000) },
           ],
-          max_tokens: 200,
+          max_tokens: 2000,
           temperature: 0,
         }),
       });
-      const json = await resp.json();
-      const result = JSON.parse(json.choices[0].message.content);
+      const textResp = await resp.text();
+      if (!resp.ok) {
+        console.error(`[MODERATION] ${provider} API HTTP error:`, resp.status, textResp.slice(0, 200));
+        throw new Error(`API ${resp.status}: ${textResp.slice(0, 200)}`);
+      }
+      const json = JSON.parse(textResp);
+      console.log('[MODERATION] API response JSON:', JSON.stringify(json));
+      const message = json.choices?.[0]?.message;
+      const content = message?.content;
+      if (!content) {
+        console.error('[MODERATION] content is null or missing. Message:', JSON.stringify(message));
+        throw new Error(`Moderation content is empty or refused. message: ${JSON.stringify(message)}`);
+      }
+      const m = content.match(/\{[\s\S]*\}/);
+      const result = m ? JSON.parse(m[0]) : JSON.parse(content);
       console.log('[MODERATION] score:', result.score, 'reason:', result.reason);
       return result;
     }
@@ -202,7 +215,8 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
 
     // Unknown provider → skip moderation
     return { safe: true, score: 1 };
-  } catch {
+  } catch (err) {
+    console.error('[MODERATION] error:', err);
     // Moderation API failure → pending_review (safe default)
     return { safe: false, score: 10, reason: '审核服务暂时不可用' };
   }

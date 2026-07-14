@@ -45,14 +45,21 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
         { role: 'system', content: adjSystem },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 2000,
+      max_tokens: 4000,
       temperature: 0,
     }),
   });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`API ${resp.status}: ${text.slice(0, 100)}`);
   const json = JSON.parse(text);
-  return json.choices[0].message.content;
+  console.log('[DISPATCHER] API response JSON:', JSON.stringify(json));
+  const message = json.choices?.[0]?.message;
+  const content = message?.content;
+  if (!content) {
+    console.error('[DISPATCHER] content is null or missing. Message:', JSON.stringify(message));
+    throw new Error(`Dispatcher content is empty or refused. message: ${JSON.stringify(message)}`);
+  }
+  return content;
 }
 
 const CORS_HEADERS = {
