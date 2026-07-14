@@ -9,20 +9,44 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'deepseek';
+const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.1' : '');
+
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
+const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 
 async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepseek-v4-flash', temp = 0, jsonMode = false): Promise<string> {
   const adjSystem = jsonMode ? systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。' : systemPrompt;
-  const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  
+  let baseUrl: string;
+  let apiKey: string;
+  let resolvedModel: string;
+
+  if (DAILY_PROVIDER === 'meta') {
+    baseUrl = 'https://api.meta.ai/v1/chat/completions';
+    apiKey = META_API_KEY;
+    resolvedModel = DAILY_MODEL || 'muse-spark-1.1';
+  } else if (DAILY_PROVIDER === 'deepseek') {
+    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
+    apiKey = DEEPSEEK_KEY;
+    resolvedModel = model;
+  } else {
+    baseUrl = 'https://api.openai.com/v1/chat/completions';
+    apiKey = OPENAI_KEY;
+    resolvedModel = model;
+  }
+
+  const resp = await fetch(baseUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model,
+      model: resolvedModel,
       messages: [
         { role: 'system', content: adjSystem },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: model.includes('flash') ? 2000 : 8000,
+      max_tokens: resolvedModel.includes('flash') ? 2000 : 8000,
       temperature: temp,
     }),
   });

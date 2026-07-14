@@ -13,15 +13,34 @@ const supabase = createClient(
 const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
+const DISPATCHER_PROVIDER = Deno.env.get('DISPATCHER_MODEL_PROVIDER') || 'deepseek';
+const DISPATCHER_MODEL = Deno.env.get('DISPATCHER_MODEL_NAME') || (DISPATCHER_PROVIDER === 'meta' ? 'muse-spark-1.1' : 'deepseek-v4-flash');
+
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
+const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 
 async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
   const adjSystem = systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。';
-  const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  
+  let baseUrl: string;
+  let apiKey: string;
+  if (DISPATCHER_PROVIDER === 'meta') {
+    baseUrl = 'https://api.meta.ai/v1/chat/completions';
+    apiKey = META_API_KEY;
+  } else if (DISPATCHER_PROVIDER === 'deepseek') {
+    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
+    apiKey = DEEPSEEK_KEY;
+  } else {
+    baseUrl = 'https://api.openai.com/v1/chat/completions';
+    apiKey = OPENAI_KEY;
+  }
+
+  const resp = await fetch(baseUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'deepseek-v4-flash',
+      model: DISPATCHER_MODEL,
       messages: [
         { role: 'system', content: adjSystem },
         { role: 'user', content: userPrompt },

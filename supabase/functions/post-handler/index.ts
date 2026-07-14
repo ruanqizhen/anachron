@@ -148,13 +148,21 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
     const provider = MODERATION_PROVIDER;
     const model = MODERATION_MODEL;
 
-    // OpenAI-compatible providers (OpenAI, DeepSeek, etc.)
-    if (provider === 'openai' || provider === 'deepseek') {
-      const apiKey = Deno.env.get(provider === 'deepseek' ? 'DEEPSEEK_API_KEY' : 'OPENAI_API_KEY');
+    // OpenAI-compatible providers (OpenAI, DeepSeek, Meta, etc.)
+    if (provider === 'openai' || provider === 'deepseek' || provider === 'meta') {
+      let apiKey = '';
+      let baseUrl = '';
+      if (provider === 'deepseek') {
+        apiKey = Deno.env.get('DEEPSEEK_API_KEY') || '';
+        baseUrl = 'https://api.deepseek.com/v1/chat/completions';
+      } else if (provider === 'meta') {
+        apiKey = Deno.env.get('META_API_KEY') || '';
+        baseUrl = 'https://api.meta.ai/v1/chat/completions';
+      } else {
+        apiKey = Deno.env.get('OPENAI_API_KEY') || '';
+        baseUrl = 'https://api.openai.com/v1/chat/completions';
+      }
       if (!apiKey) return { safe: true };
-      const baseUrl = provider === 'deepseek'
-        ? 'https://api.deepseek.com/v1/chat/completions'
-        : 'https://api.openai.com/v1/chat/completions';
       const resp = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },

@@ -13,8 +13,12 @@ const supabase = createClient(
 const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
+const CHAT_PROVIDER = Deno.env.get('CHAT_MODEL_PROVIDER') || 'deepseek';
+const CHAT_MODEL = Deno.env.get('CHAT_MODEL_NAME') || (CHAT_PROVIDER === 'meta' ? 'muse-spark-1.1' : 'deepseek-v4-pro');
+
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
+const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 
 async function callLLM(
   provider: string,
@@ -22,11 +26,18 @@ async function callLLM(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> {
-  const isDeepSeek = provider === 'deepseek';
-  const baseUrl = isDeepSeek
-    ? 'https://api.deepseek.com/v1/chat/completions'
-    : 'https://api.openai.com/v1/chat/completions';
-  const apiKey = isDeepSeek ? DEEPSEEK_KEY : OPENAI_KEY;
+  let baseUrl: string;
+  let apiKey: string;
+  if (provider === 'meta') {
+    baseUrl = 'https://api.meta.ai/v1/chat/completions';
+    apiKey = META_API_KEY;
+  } else if (provider === 'deepseek') {
+    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
+    apiKey = DEEPSEEK_KEY;
+  } else {
+    baseUrl = 'https://api.openai.com/v1/chat/completions';
+    apiKey = OPENAI_KEY;
+  }
 
   const resp = await fetch(baseUrl, {
     method: 'POST',
@@ -43,7 +54,7 @@ async function callLLM(
   });
   const text = await resp.text();
   if (!resp.ok) {
-    console.error('[RESPONDER] DeepSeek API error:', resp.status, text.slice(0, 200));
+    console.error(`[RESPONDER] ${provider} API error:`, resp.status, text.slice(0, 200));
     throw new Error(`API ${resp.status}`);
   }
   const json = JSON.parse(text);
@@ -175,7 +186,7 @@ ${triggerLabel}：
     let reply: string;
     try {
       reply = await callLLM(
-        'deepseek', 'deepseek-v4-pro', systemPrompt, userPrompt,
+        CHAT_PROVIDER, CHAT_MODEL, systemPrompt, userPrompt,
       );
       console.log('[RESPONDER] generated reply for:', profile?.username);
       reply = reply.trim();
