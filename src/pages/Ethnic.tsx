@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 interface EthnicGroup {
   id: string;
@@ -112,6 +112,8 @@ for (let y = startYear; y <= endYear; y += 200) {
 export default function Ethnic() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lockedId, setLockedId] = useState<string | null>(null);
+  const [hoveredEdgeIdx, setHoveredEdgeIdx] = useState<number | null>(null);
+  const [lockedEdgeIdx, setLockedEdgeIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(980);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -200,6 +202,37 @@ export default function Ethnic() {
   
   const height = (Wc - Rl) * ni + 160;
   const activeId = lockedId ?? hoveredId;
+  const activeEdgeIdx = lockedEdgeIdx ?? hoveredEdgeIdx;
+
+  const relatedIds = useMemo(() => {
+    if (!activeId) return new Set<string>();
+    const ids = new Set<string>([activeId]);
+    
+    const ancQueue = [activeId];
+    while (ancQueue.length > 0) {
+      const curr = ancQueue.shift()!;
+      for (const edge of Nm) {
+        if (edge.to === curr && !ids.has(edge.from)) {
+          ids.add(edge.from);
+          ancQueue.push(edge.from);
+        }
+      }
+    }
+    
+    const descQueue = [activeId];
+    while (descQueue.length > 0) {
+      const curr = descQueue.shift()!;
+      for (const edge of Nm) {
+        if (edge.from === curr && !ids.has(edge.to)) {
+          ids.add(edge.to);
+          descQueue.push(edge.to);
+        }
+      }
+    }
+    
+    return ids;
+  }, [activeId]);
+
   const getGroupById = (id: string) => Ac.find((c) => c.id === id);
 
   return (
@@ -255,7 +288,7 @@ export default function Ethnic() {
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
                 <h1 className="text-[22px] md:text-[36px] font-[800] tracking-[0.14em] leading-[1.1] text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #f5efe3 0%, #d4a574 50%, #f5efe3 100%)', backgroundSize: '200% auto', animation: 'shimmer 8s linear infinite' }}>
-                  从匈奴到蒙古：北方民族传承总谱
+                  北方民族传承总谱
                 </h1>
                 <p className="mt-2.5 text-[12px] md:text-[14px] tracking-[0.4em] text-[#c9b99a]/80 uppercase">
                   四条血脉，千年更替 · 200BC — 1600AD
@@ -385,7 +418,7 @@ export default function Ethnic() {
                     const g = isOverlap ? Ll(h.start) : Ll(p.end) + 2;
                     const w = isOverlap ? Ll(h.start) : Ll(h.start) - 2;
 
-                    const isHighlighted = activeId && (edge.from === activeId || edge.to === activeId || p.id === activeId || h.id === activeId);
+                    const isHighlighted = (activeId && relatedIds.has(edge.from) && relatedIds.has(edge.to)) || (idx === activeEdgeIdx);
                     const isCultural = edge.type === 'cultural';
                     const isMerge = edge.type === 'merge';
 
@@ -398,28 +431,44 @@ export default function Ethnic() {
 
                     return (
                       <g key={idx}>
+                        {/* Thick interactive path for hover & click */}
+                        <path 
+                          d={`M ${startX} ${g} C ${startX} ${ctrlY1}, ${endX} ${ctrlY2}, ${endX} ${w}`}
+                          fill="none"
+                          stroke="transparent"
+                          strokeWidth={14}
+                          className="cursor-pointer"
+                          style={{ pointerEvents: "stroke" }}
+                          onMouseEnter={() => setHoveredEdgeIdx(idx)}
+                          onMouseLeave={() => setHoveredEdgeIdx(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLockedEdgeIdx((prev) => prev === idx ? null : idx);
+                          }}
+                        />
+
                         <path 
                           d={`M ${startX} ${g} C ${startX} ${ctrlY1}, ${endX} ${ctrlY2}, ${endX} ${w}`}
                           fill="none"
                           stroke={strokeColor}
                           strokeWidth={isHighlighted ? 2.6 : isCultural ? 1.4 : 1.2}
-                          strokeOpacity={isHighlighted ? 0.9 : isCultural ? 0.55 : 0.38}
+                          strokeOpacity={isHighlighted ? 0.95 : isCultural ? 0.55 : 0.38}
                           strokeDasharray={isCultural ? "6 6" : isMerge ? "3 5" : "0"}
                           filter={isHighlighted ? "url(#glow)" : undefined}
-                          className="transition-all duration-300"
+                          className="transition-all duration-300 pointer-events-none"
                         />
-                        {edge.label && (
+                        {(edge.label || isHighlighted) && (
                           <text 
                             x={(startX + endX) / 2}
                             y={midY - 4}
                             textAnchor="middle"
                             fontSize="10"
-                            fill={strokeColor}
-                            opacity={isHighlighted ? 0.9 : 0.45}
-                            className="mono"
-                            style={{ paintOrder: "stroke", stroke: "#0c0b09", strokeWidth: 3 }}
+                            fill={isHighlighted ? "#facc15" : strokeColor}
+                            opacity={isHighlighted ? 1 : 0.45}
+                            className="mono font-semibold"
+                            style={{ paintOrder: "stroke", stroke: "#0a0908", strokeWidth: 4, pointerEvents: "none" }}
                           >
-                            {edge.label}
+                            {edge.label || `${p.name} ➔ ${h.name}`}
                           </text>
                         )}
                       </g>
@@ -427,11 +476,13 @@ export default function Ethnic() {
                   })}
                 </svg>
 
-                {/* Nodes rendering */}
                 {Ac.map((group) => {
                   const topPos = Ll(group.start);
                   const heightVal = Math.max(26, (group.end - group.start) * ni);
                   const isActive = activeId === group.id;
+                  const activeEdge = activeEdgeIdx !== null ? Nm[activeEdgeIdx] : null;
+                  const isNodeHighlighted = (activeId && relatedIds.has(group.id)) || 
+                                            (activeEdge && (activeEdge.from === group.id || activeEdge.to === group.id));
                   const m = ur[group.lane];
                   
                   return (
@@ -443,7 +494,7 @@ export default function Ethnic() {
                         top: topPos, 
                         transform: "translateX(-50%)", 
                         width: group.highlight ? "176px" : "148px", 
-                        zIndex: isActive ? 30 : group.highlight ? 10 : 5 
+                        zIndex: isActive ? 30 : isNodeHighlighted ? 15 : group.highlight ? 10 : 5 
                       }}
                       onMouseEnter={() => {
                         if (isDragging.current) return;
@@ -467,8 +518,8 @@ export default function Ethnic() {
                         style={{ 
                           height: heightVal + 8, 
                           background: m.color, 
-                          opacity: isActive ? 0.9 : 0.28, 
-                          boxShadow: isActive ? `0 0 12px ${m.color}` : "none" 
+                          opacity: isActive ? 0.9 : isNodeHighlighted ? 0.65 : 0.28, 
+                          boxShadow: isActive ? `0 0 12px ${m.color}` : isNodeHighlighted ? `0 0 8px ${m.color}80` : "none" 
                         }}
                       />
                       
@@ -478,11 +529,13 @@ export default function Ethnic() {
                           isActive ? "scale-[1.06]" : "hover:scale-[1.03] hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)]"
                         }`}
                         style={{ 
-                          borderColor: isActive ? m.color : `rgba(255,255,255,0.1)`, 
+                          borderColor: isActive ? m.color : isNodeHighlighted ? `${m.color}b0` : `rgba(255,255,255,0.1)`, 
                           borderLeftWidth: "3px", 
                           borderLeftColor: m.color, 
                           boxShadow: isActive 
                             ? `0 0 0 1px ${m.color}50, 0 0 24px ${m.color}15, 0 12px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)` 
+                            : isNodeHighlighted
+                            ? `0 0 12px ${m.color}20, inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.3)`
                             : `inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.3)` 
                         }}
                       >
