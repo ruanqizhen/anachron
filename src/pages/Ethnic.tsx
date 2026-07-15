@@ -29,22 +29,22 @@ const Ac: EthnicGroup[] = [
   { id: "xiongnu", name: "匈奴", alias: "Xiongnu", start: -209, end: 155, x: 4.5, lane: "isolated", lang: "混合·匈奴语", polities: ["匈奴帝国 209BC-48AD", "北匈奴西迁"], desc: "部分融入鲜卑、丁零；阿提拉匈人存疑", highlight: true },
   { id: "jie", name: "羯", alias: "Jie", start: 304, end: 352, x: 6.5, lane: "isolated", lang: "中亚-羌渠?", polities: ["后赵 319-351", "石勒建国"], desc: "冉闵灭羯，残部融入汉地" },
   { id: "sogdian", name: "粟特", alias: "Sogdian", start: 150, end: 850, x: 31, lane: "cultural", lang: "东伊朗语", polities: ["丝路商团", "文字之师"], desc: "粟特文 → 回鹘文 → 蒙古文", highlight: true },
-  { id: "donghu", name: "东胡", alias: "Donghu", start: -300, end: -150, x: 68, lane: "mongolic", lang: "古蒙古语", polities: ["东胡联盟"], desc: "被冒顿单于击败后分化", highlight: true },
-  { id: "wuhuan", name: "乌桓", alias: "Wuhuan", start: -150, end: 207, x: 70, lane: "mongolic", lang: "蒙古语", polities: ["乌桓山诸部"], desc: "207年被曹操击破，融入汉、鲜卑" },
+  { id: "donghu", name: "东胡", alias: "Donghu", start: -300, end: -150, x: 70, lane: "mongolic", lang: "古蒙古语", polities: ["东胡联盟"], desc: "被冒顿单于击败后分化", highlight: true },
+  { id: "wuhuan", name: "乌桓", alias: "Wuhuan", start: -150, end: 207, x: 68, lane: "mongolic", lang: "蒙古语", polities: ["乌桓山诸部"], desc: "207年被曹操击破，融入汉、鲜卑" },
   { id: "xianbei", name: "鲜卑", alias: "Xianbei", start: -100, end: 310, x: 72, lane: "mongolic", lang: "鲜卑语", polities: ["檀石槐联盟 155-181"], desc: "东胡正统，草原共主", highlight: true },
-  { id: "murong", name: "慕容鲜卑", alias: "Murong", start: 281, end: 410, x: 74, lane: "mongolic", lang: "鲜卑语", polities: ["前燕 337-370", "后燕 384-409"], desc: "入主中原，汉化最早" },
-  { id: "tuoba", name: "拓跋鲜卑", alias: "Tuoba", start: 315, end: 534, x: 76, lane: "mongolic", lang: "鲜卑语", polities: ["代 315-376", "北魏 386-534", "孝文汉化"], desc: "北魏统一北方", highlight: true },
+  { id: "murong", name: "慕容鲜卑", alias: "Murong", start: 281, end: 410, x: 70, lane: "mongolic", lang: "鲜卑语", polities: ["前燕 337-370", "后燕 384-409"], desc: "入主中原，汉化最早" },
+  { id: "tuoba", name: "拓跋鲜卑", alias: "Tuoba", start: 315, end: 534, x: 75, lane: "mongolic", lang: "鲜卑语", polities: ["代 315-376", "北魏 386-534", "孝文汉化"], desc: "北魏统一北方", highlight: true },
   { id: "yuwen", name: "宇文鲜卑", alias: "Yuwen", start: 340, end: 581, x: 78, lane: "mongolic", lang: "鲜卑语", polities: ["西魏 535-557", "北周 557-581"], desc: "府兵制创立者" },
   { id: "tuyuhun", name: "吐谷浑", alias: "Tuyuhun", start: 284, end: 670, x: 29, lane: "mongolic", lang: "鲜卑语+羌", polities: ["吐谷浑汗国 青海"], desc: "鲜卑在青藏高原的分支" },
-  { id: "kumoXi", name: "库莫奚/奚", alias: "Kumo Xi", start: 386, end: 906, x: 77, lane: "mongolic", lang: "蒙古语", polities: ["饶乐都督府"], desc: "契丹近亲，后融入契丹" },
-  { id: "rouran", name: "柔然", alias: "Rouran", start: 330, end: 555, x: 79, lane: "mongolic", lang: "蒙古语", polities: ["柔然汗国 330-555"], desc: "被突厥所灭，西迁为阿瓦尔?", highlight: true },
+  { id: "kumoXi", name: "库莫奚/奚", alias: "Kumo Xi", start: 386, end: 906, x: 81, lane: "mongolic", lang: "蒙古语", polities: ["饶乐都督府"], desc: "契丹近亲，后融入契丹" },
+  { id: "rouran", name: "柔然", alias: "Rouran", start: 330, end: 555, x: 62, lane: "mongolic", lang: "蒙古语", polities: ["柔然汗国 330-555"], desc: "被突厥所灭，西迁为阿瓦尔?", highlight: true },
   { id: "avar", name: "阿瓦尔", alias: "Avar", start: 555, end: 810, x: 8.5, lane: "mongolic", lang: "蒙古语?", polities: ["欧洲阿瓦尔汗国 567-804"], desc: "柔然后裔假说，冲击东欧" },
-  { id: "shiwei", name: "室韦", alias: "Shiwei", start: 550, end: 1150, x: 75, lane: "mongolic", lang: "古蒙古语", polities: ["大兴安岭诸部"], desc: "蒙古人直系祖先" },
+  { id: "shiwei", name: "室韦", alias: "Shiwei", start: 550, end: 1150, x: 76, lane: "mongolic", lang: "古蒙古语", polities: ["大兴安岭诸部"], desc: "蒙古人直系祖先" },
   { id: "khitan", name: "契丹", alias: "Khitan", start: 388, end: 1218, x: 73, lane: "mongolic", lang: "契丹语", polities: ["辽 907-1125", "西辽 1124-1218"], desc: "创契丹大字小字", highlight: true },
   { id: "daur", name: "达斡尔", alias: "Daur", start: 1200, end: 1700, x: 71, lane: "mongolic", lang: "蒙古语", polities: ["契丹遗民"], desc: "契丹后裔之一" },
   { id: "mongol", name: "蒙古", alias: "Mongols", start: 1130, end: 1368, x: 69, lane: "mongolic", lang: "蒙古语", polities: ["蒙古帝国 1206-1259", "元 1271-1368"], desc: "成吉思汗统一草原", highlight: true },
   { id: "tatars", name: "鞑靼·东蒙古", alias: "Tatar", start: 1368, end: 1635, x: 67, lane: "mongolic", lang: "蒙古语", polities: ["北元 1368-1388", "鞑靼本部"], desc: "黄金家族东支" },
-  { id: "oirat", name: "瓦剌·卫拉特", alias: "Oirat", start: 1399, end: 1755, x: 65, lane: "mongolic", lang: "卫拉特语", polities: ["瓦剌 1400-1635", "准噶尔 1635-1755"], desc: "西蒙古，创托忒文" },
+  { id: "oirat", name: "瓦剌·卫拉特", alias: "Oirat", start: 1399, end: 1755, x: 64, lane: "mongolic", lang: "卫拉特语", polities: ["瓦剌 1400-1635", "准噶尔 1635-1755"], desc: "西蒙古，创托忒文" },
   { id: "dingling", name: "丁零", alias: "Dingling", start: -200, end: 300, x: 51, lane: "turkic", lang: "突厥语?", polities: ["贝加尔湖诸部"], desc: "最早的突厥系记录" },
   { id: "gaoche", name: "高车", alias: "Gaoche", start: 300, end: 540, x: 53, lane: "turkic", lang: "突厥语", polities: ["袁纥部为王"], desc: "丁零别名，车轮高大" },
   { id: "tiele", name: "铁勒", alias: "Tiele", start: 500, end: 630, x: 55, lane: "turkic", lang: "突厥语", polities: ["十五部", "薛延陀、回纥等"], desc: "突厥汗国主体部落" },
@@ -53,25 +53,25 @@ const Ac: EthnicGroup[] = [
   { id: "westTurk", name: "西突厥", alias: "West Turk", start: 582, end: 657, x: 34, lane: "turkic", lang: "突厥语", polities: ["西突厥汗国 582-657", "十姓部落"], desc: "控制丝绸之路" },
   { id: "xueyantuo", name: "薛延陀", alias: "Xueyantuo", start: 628, end: 646, x: 49, lane: "turkic", lang: "突厥语", polities: ["薛延陀汗国 629-646"], desc: "贞观年间称雄漠北" },
   { id: "huihe", name: "回纥/回鹘", alias: "Uyghur", start: 744, end: 840, x: 61, lane: "turkic", lang: "古回鹘语", polities: ["回鹘汗国 744-840"], desc: "摩尼教汗国，后西迁", highlight: true },
-  { id: "ganzhou", name: "甘州回鹘", alias: "Ganzhou", start: 848, end: 1036, x: 46, lane: "turkic", lang: "回鹘语", polities: ["甘州 848-1036", "今裕固族"], desc: "河西走廊" },
-  { id: "gaochang", name: "高昌回鹘", alias: "Qocho", start: 843, end: 1368, x: 36, lane: "turkic", lang: "回鹘语", polities: ["高昌回鹘 843-1335"], desc: "创回鹘文，佛教繁荣" },
-  { id: "karakhanid", name: "喀喇汗·西回鹘", alias: "Karakhanid", start: 840, end: 1212, x: 44, lane: "turkic", lang: "喀喇汗语", polities: ["喀喇汗朝 840-1212"], desc: "首个伊斯兰化突厥王朝" },
+  { id: "ganzhou", name: "甘州回鹘", alias: "Ganzhou", start: 848, end: 1036, x: 48, lane: "turkic", lang: "回鹘语", polities: ["甘州 848-1036", "今裕固族"], desc: "河西走廊" },
+  { id: "gaochang", name: "高昌回鹘", alias: "Qocho", start: 843, end: 1368, x: 40, lane: "turkic", lang: "回鹘语", polities: ["高昌回鹘 843-1335"], desc: "创回鹘文，佛教繁荣" },
+  { id: "karakhanid", name: "喀喇汗·西回鹘", alias: "Karakhanid", start: 840, end: 1212, x: 32, lane: "turkic", lang: "喀喇汗语", polities: ["喀喇汗朝 840-1212"], desc: "首个伊斯兰化突厥王朝" },
   { id: "chuyue", name: "处月", alias: "Chuyue", start: 600, end: 800, x: 38, lane: "turkic", lang: "突厥语", polities: ["西突厥别部"], desc: "沙陀祖先" },
-  { id: "gelulu", name: "葛逻禄", alias: "Karluk", start: 650, end: 1130, x: 42, lane: "turkic", lang: "葛逻禄语", polities: ["葛逻禄 650-1212"], desc: "怛罗斯之战关键" },
-  { id: "kangli", name: "康里", alias: "Kangli", start: 1000, end: 1220, x: 40, lane: "turkic", lang: "钦察语", polities: ["康里部"], desc: "后融入钦察、哈萨克" },
-  { id: "shatuo", name: "沙陀", alias: "Shatuo", start: 808, end: 950, x: 63, lane: "turkic", lang: "突厥语", polities: ["沙陀三部"], desc: "处月后裔，入居中原", highlight: true },
-  { id: "laterTang", name: "后唐", alias: "Later Tang", start: 923, end: 936, x: 65, lane: "turkic", lang: "突厥-汉", polities: ["后唐 923-936 李存勖"], desc: "沙陀建五代第一朝" },
-  { id: "laterJin", name: "后晋·后汉", alias: "Later Jin/Han", start: 936, end: 951, x: 67, lane: "turkic", lang: "突厥-汉", polities: ["后晋 936-947", "后汉 947-951"], desc: "石敬瑭割燕云十六州" },
-  { id: "sushen", name: "肃慎", alias: "Sushen", start: -700, end: -200, x: 83, lane: "tungusic", lang: "古通古斯语", polities: ["肃慎氏"], desc: "最早东北民族" },
-  { id: "yilou", name: "挹娄", alias: "Yilou", start: -200, end: 300, x: 85, lane: "tungusic", lang: "通古斯语", polities: ["挹娄国"], desc: "肃慎后裔" },
-  { id: "goguryeo", name: "高句丽", alias: "Goguryeo", start: -37, end: 668, x: 81, lane: "isolated", lang: "扶余/高句丽语", polities: ["卒本扶余 37BC-3AD", "国内城 3-427AD", "平壤时期 427-668AD"], desc: "源自扶余，668年亡于唐与新罗，遗民融入渤海、汉族等", highlight: true },
-  { id: "wuji", name: "勿吉", alias: "Wuji", start: 300, end: 500, x: 87, lane: "tungusic", lang: "通古斯语", polities: ["勿吉七部"], desc: "南北朝时强大" },
-  { id: "mohe", name: "靺鞨七部", alias: "Mohe", start: 400, end: 700, x: 89, lane: "tungusic", lang: "靺鞨语", polities: ["粟末、白山、黑水等"], desc: "勿吉后裔分化", highlight: true },
-  { id: "sumo", name: "粟末靺鞨", alias: "Sumo Mohe", start: 550, end: 700, x: 91, lane: "tungusic", lang: "靺鞨语", polities: ["粟末部"], desc: "渤海国主族" },
-  { id: "bohai", name: "渤海国", alias: "Bohai", start: 698, end: 926, x: 93, lane: "tungusic", lang: "靺鞨-汉", polities: ["渤海 698-926", "海东盛国"], desc: "粟末靺鞨+高句丽遗民", highlight: true },
-  { id: "heishui", name: "黑水靺鞨", alias: "Heishui", start: 500, end: 1000, x: 95, lane: "tungusic", lang: "女真语前身", polities: ["黑水都督府"], desc: "女真直系" },
-  { id: "jurchen", name: "女真", alias: "Jurchen", start: 1000, end: 1234, x: 93, lane: "tungusic", lang: "女真语", polities: ["金 1115-1234"], desc: "完颜阿骨打建国", highlight: true },
-  { id: "manchu", name: "满洲", alias: "Manchu", start: 1616, end: 1720, x: 91, lane: "tungusic", lang: "满语", polities: ["后金 1616-1636", "清 1636-1912"], desc: "建州女真，创满文", highlight: true },
+  { id: "gelulu", name: "葛逻禄", alias: "Karluk", start: 650, end: 1130, x: 35, lane: "turkic", lang: "葛逻禄语", polities: ["葛逻禄 650-1212"], desc: "怛罗斯之战关键" },
+  { id: "kangli", name: "康里", alias: "Kangli", start: 1000, end: 1220, x: 30, lane: "turkic", lang: "钦察语", polities: ["康里部"], desc: "后融入钦察、哈萨克" },
+  { id: "shatuo", name: "沙陀", alias: "Shatuo", start: 808, end: 950, x: 64, lane: "turkic", lang: "突厥语", polities: ["沙陀三部"], desc: "处月后裔，入居中原", highlight: true },
+  { id: "laterTang", name: "后唐", alias: "Later Tang", start: 923, end: 936, x: 66, lane: "turkic", lang: "突厥-汉", polities: ["后唐 923-936 李存勖"], desc: "沙陀建五代第一朝" },
+  { id: "laterJin", name: "后晋·后汉", alias: "Later Jin/Han", start: 936, end: 951, x: 68, lane: "turkic", lang: "突厥-汉", polities: ["后晋 936-947", "后汉 947-951"], desc: "石敬瑭割燕云十六州" },
+  { id: "sushen", name: "肃慎", alias: "Sushen", start: -700, end: -200, x: 86, lane: "tungusic", lang: "古通古斯语", polities: ["肃慎氏"], desc: "最早东北民族" },
+  { id: "yilou", name: "挹娄", alias: "Yilou", start: -200, end: 300, x: 88, lane: "tungusic", lang: "通古斯语", polities: ["挹娄国"], desc: "肃慎后裔" },
+  { id: "goguryeo", name: "高句丽", alias: "Goguryeo", start: -37, end: 668, x: 84, lane: "isolated", lang: "扶余/高句丽语", polities: ["卒本扶余 37BC-3AD", "国内城 3-427AD", "平壤时期 427-668AD"], desc: "源自扶余，668年亡于唐与新罗，遗民融入渤海、汉族等", highlight: true },
+  { id: "wuji", name: "勿吉", alias: "Wuji", start: 300, end: 500, x: 90, lane: "tungusic", lang: "通古斯语", polities: ["勿吉七部"], desc: "南北朝时强大" },
+  { id: "mohe", name: "靺鞨七部", alias: "Mohe", start: 400, end: 700, x: 92, lane: "tungusic", lang: "靺鞨语", polities: ["粟末、白山、黑水等"], desc: "勿吉后裔分化", highlight: true },
+  { id: "sumo", name: "粟末靺鞨", alias: "Sumo Mohe", start: 550, end: 700, x: 94, lane: "tungusic", lang: "靺鞨语", polities: ["粟末部"], desc: "渤海国主族" },
+  { id: "bohai", name: "渤海国", alias: "Bohai", start: 698, end: 926, x: 96, lane: "tungusic", lang: "靺鞨-汉", polities: ["渤海 698-926", "海东盛国"], desc: "粟末靺鞨+高句丽遗民", highlight: true },
+  { id: "heishui", name: "黑水靺鞨", alias: "Heishui", start: 500, end: 1000, x: 98, lane: "tungusic", lang: "女真语前身", polities: ["黑水都督府"], desc: "女真直系" },
+  { id: "jurchen", name: "女真", alias: "Jurchen", start: 1000, end: 1234, x: 96, lane: "tungusic", lang: "女真语", polities: ["金 1115-1234"], desc: "完颜阿骨打建国", highlight: true },
+  { id: "manchu", name: "满洲", alias: "Manchu", start: 1616, end: 1720, x: 94, lane: "tungusic", lang: "满语", polities: ["后金 1616-1636", "清 1636-1912"], desc: "建州女真，创满文", highlight: true },
   { id: "ancientQiang", name: "古羌", alias: "Ancient Qiang", start: -1000, end: 100, x: 14, lane: "qiang", lang: "羌语支", polities: ["发羌、唐旄等"], desc: "藏缅语族祖先", highlight: true },
   { id: "di", name: "氐", alias: "Di", start: 100, end: 500, x: 17, lane: "qiang", lang: "氐羌语", polities: ["成汉 304-347", "前秦 351-394", "后凉 386-403", "仇池 296-442"], desc: "苻坚统一北方" },
   { id: "dangxiangQiang", name: "党项羌", alias: "Dangxiang", start: 400, end: 800, x: 20, lane: "qiang", lang: "党项语", polities: ["党项八部"], desc: "羌族西迁后裔" },
@@ -328,11 +328,11 @@ export default function Ethnic() {
                 {/* Desktop Column Labels */}
                 <div className="hidden md:block absolute inset-0">
                   {[
-                    { label: "⟵ 西迁/草原西缘", center: 6 },
+                    { label: "⟵ 欧亚草原西段 · 西迁", center: 6 },
                     { label: "青藏高原", center: 20 },
-                    { label: "河西·西域", center: 38 },
-                    { label: "漠北·蒙古高原", center: 64 },
-                    { label: "东北·白山黑水 ⟶", center: 90 }
+                    { label: "河西 · 西域 · 中亚", center: 38 },
+                    { label: "漠北 · 蒙古高原", center: 64 },
+                    { label: "东北 · 白山黑水 ⟶", center: 90 }
                   ].map((item, idx) => (
                     <div 
                       key={idx}
@@ -487,6 +487,7 @@ export default function Ethnic() {
                   const isNodeHighlighted = (activeId && relatedIds.has(group.id)) || 
                                             (activeEdge && (activeEdge.from === group.id || activeEdge.to === group.id));
                   const m = ur[group.lane];
+                  const baseZ = Math.round((group.start + 1000) / 10) + Math.round(group.x);
                   
                   return (
                     <div 
@@ -497,7 +498,7 @@ export default function Ethnic() {
                         top: topPos, 
                         transform: "translateX(-50%)", 
                         width: group.highlight ? "192px" : "164px", 
-                        zIndex: isActive ? 30 : isNodeHighlighted ? 15 : group.highlight ? 10 : 5 
+                        zIndex: isActive ? 5000 : isNodeHighlighted ? 1000 : baseZ
                       }}
                       onMouseEnter={() => {
                         if (isDragging.current) return;
