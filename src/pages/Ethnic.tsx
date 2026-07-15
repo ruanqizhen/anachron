@@ -179,13 +179,15 @@ export default function Ethnic() {
     };
   }, [containerWidth]);
 
-  const handleMinimapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const mainNavArea = e.currentTarget.querySelector('.minimap-nav-area');
-    if (!mainNavArea) return;
+  const isDraggingMinimap = useRef(false);
+
+  const updateScrollFromMinimap = (clientX: number, clientY: number) => {
+    const minimapEl = document.querySelector('.minimap-nav-area');
+    if (!minimapEl) return;
     
-    const navRect = mainNavArea.getBoundingClientRect();
-    const relativeX = Math.max(0, Math.min(navRect.width, e.clientX - navRect.left));
-    const relativeY = Math.max(0, Math.min(navRect.height, e.clientY - navRect.top));
+    const navRect = minimapEl.getBoundingClientRect();
+    const relativeX = Math.max(0, Math.min(navRect.width, clientX - navRect.left));
+    const relativeY = Math.max(0, Math.min(navRect.height, clientY - navRect.top));
     
     const pctX = relativeX / navRect.width;
     const pctY = relativeY / navRect.height;
@@ -202,10 +204,31 @@ export default function Ethnic() {
     const containerRect = containerEl.getBoundingClientRect();
     const pageY = window.scrollY + containerRect.top + 36;
     const targetScrollY = pageY + pctY * scrollState.scrollHeight - window.innerHeight / 2;
-    window.scrollTo({
-      top: targetScrollY,
-      behavior: 'smooth'
-    });
+    window.scrollTo(0, targetScrollY);
+  };
+
+  const handleMinimapMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    
+    isDraggingMinimap.current = true;
+    document.body.style.cursor = 'grabbing';
+    updateScrollFromMinimap(e.clientX, e.clientY);
+    
+    const handleWindowMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingMinimap.current) return;
+      updateScrollFromMinimap(moveEvent.clientX, moveEvent.clientY);
+    };
+    
+    const handleWindowMouseUp = () => {
+      isDraggingMinimap.current = false;
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+    
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -751,8 +774,8 @@ export default function Ethnic() {
 
       {/* Floating Minimap Navigation Panel */}
       <div 
-        onClick={handleMinimapClick}
-        className={`fixed bottom-6 right-6 z-40 hidden md:flex flex-col items-center rounded-2xl border border-amber-200/30 bg-[#0d0c0a]/90 p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl transition-all duration-500 ease-out cursor-crosshair select-none ${
+        onMouseDown={handleMinimapMouseDown}
+        className={`fixed bottom-6 right-6 z-40 hidden md:flex flex-col items-center rounded-2xl border border-amber-200/30 bg-[#0d0c0a]/90 p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl transition-all duration-500 ease-out cursor-grab active:cursor-grabbing select-none ${
           isMinimapVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95 pointer-events-none"
         }`}
         style={{ width: "110px", height: "260px" }}
