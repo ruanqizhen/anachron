@@ -288,14 +288,14 @@ export default function Ethnic() {
           <div className="relative mx-auto max-w-[1600px] px-4 md:px-8 py-5 md:py-7 flex flex-col gap-4">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
-                <h1 className="text-[22px] md:text-[36px] font-[800] tracking-[0.14em] leading-[1.1] text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #f5efe3 0%, #d4a574 50%, #f5efe3 100%)', backgroundSize: '200% auto', animation: 'shimmer 8s linear infinite' }}>
+                <h1 className="text-[24px] md:text-[38px] font-[800] tracking-[0.14em] leading-[1.1] text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #f5efe3 0%, #d4a574 50%, #f5efe3 100%)', backgroundSize: '200% auto', animation: 'shimmer 8s linear infinite' }}>
                   北方民族传承总谱
                 </h1>
-                <p className="mt-2.5 text-[12px] md:text-[14px] tracking-[0.4em] text-[#c9b99a]/80 uppercase">
+                <p className="mt-2.5 text-[14px] md:text-[16px] tracking-[0.4em] text-[#c9b99a]/80 uppercase">
                   四条血脉，千年更替 · 200BC — 1600AD
                 </p>
               </div>
-              <div className="text-[11px] leading-5 text-[#9a8d75]/80 max-w-[420px] mono rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+              <div className="text-[13px] leading-5 text-[#9a8d75]/80 max-w-[420px] mono rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
                 悬停查看政权与后裔 · 实线=血缘继承 · 虚线=文化/文字传承 · 卡片点击锁定
               </div>
             </div>
@@ -304,7 +304,7 @@ export default function Ethnic() {
               {Object.entries(ur).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/[0.06] hover:border-white/15 hover:scale-105">
                   <span className="h-2.5 w-2.5 rounded-full animate-pulse" style={{ background: value.color, boxShadow: `0 0 10px ${value.color}60, 0 0 20px ${value.color}20` }} />
-                  <span className="text-[11px] md:text-[12px] tracking-wide text-[#d9cfb8]/90">{value.label}</span>
+                  <span className="text-[13px] md:text-[14px] tracking-wide text-[#d9cfb8]/90">{value.label}</span>
                 </div>
               ))}
             </div>
@@ -317,9 +317,9 @@ export default function Ethnic() {
             {/* Horizontal Header Bar (Scroll Synced) */}
             <div 
               ref={headerRef}
-              className="sticky top-0 z-20 flex h-9 items-center border-b border-amber-200/8 bg-[#0d0c0a]/95 backdrop-blur-xl text-[10px] tracking-widest text-[#a99a7d] mono overflow-x-hidden select-none shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
+              className="sticky top-0 z-20 flex h-9 items-center border-b border-amber-200/8 bg-[#0d0c0a]/95 backdrop-blur-xl text-[12px] tracking-widest text-[#a99a7d] mono overflow-x-hidden select-none shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
             >
-              <div className="relative" style={{ width: "min(1600px, 140vw)", minWidth: "980px", height: "100%" }}>
+              <div className="relative shrink-0" style={{ width: "min(1600px, 140vw)", minWidth: "980px", height: "100%", flexShrink: 0 }}>
                 {/* Mobile Guide */}
                 <div className="md:hidden absolute inset-0 flex items-center justify-center text-center w-full">
                   向右横滑查看全谱 · 双指缩放查看细节
@@ -346,19 +346,21 @@ export default function Ethnic() {
               </div>
             </div>
 
-            {/* Left Year Scale Column */}
-            <div 
-              className="absolute left-0 top-9 bottom-0 z-30 w-[60px] border-r border-amber-200/10 bg-gradient-to-r from-[#0c0b09]/98 to-[#0c0b09]/90 backdrop-blur-md pointer-events-none"
-            >
+            {/* Timeline content area wrapper to limit absolute scale height */}
+            <div className="relative">
+              {/* Left Year Scale Column */}
+              <div 
+                className="absolute left-0 top-0 bottom-0 z-30 w-[60px] border-r border-amber-200/10 bg-gradient-to-r from-[#0c0b09]/98 to-[#0c0b09]/90 backdrop-blur-md pointer-events-none"
+              >
               {years.map((p) => {
                 const h = Ll(p);
                 return (
                   <div 
                     key={p} 
-                    className="absolute right-0 -translate-y-1/2 pr-3 text-[10px] mono text-[#c9b99a]/90 font-semibold drop-shadow-[0_0_6px_rgba(201,185,154,0.15)]"
+                    className="absolute right-0 -translate-y-1/2 pr-3 text-[12px] mono text-[#c9b99a]/90 font-semibold drop-shadow-[0_0_6px_rgba(201,185,154,0.15)]"
                     style={{ top: h }}
                   >
-                    {ti(p).replace("公元", "").replace("年", "")}
+                    {p === 0 ? "公元0" : ti(p).replace("公元", "").replace("年", "")}
                   </div>
                 );
               })}
@@ -463,7 +465,7 @@ export default function Ethnic() {
                             x={(startX + endX) / 2}
                             y={midY - 4}
                             textAnchor="middle"
-                            fontSize="10"
+                            fontSize="12"
                             fill={isHighlighted ? "#facc15" : strokeColor}
                             opacity={isHighlighted ? 1 : 0.45}
                             className="mono font-semibold"
@@ -494,7 +496,7 @@ export default function Ethnic() {
                         left: `calc(120px + (100% - 120px) * ${group.x / 100})`, 
                         top: topPos, 
                         transform: "translateX(-50%)", 
-                        width: group.highlight ? "176px" : "148px", 
+                        width: group.highlight ? "192px" : "164px", 
                         zIndex: isActive ? 30 : isNodeHighlighted ? 15 : group.highlight ? 10 : 5 
                       }}
                       onMouseEnter={() => {
@@ -542,22 +544,22 @@ export default function Ethnic() {
                       >
                         <div className="flex items-start justify-between gap-1">
                           <div className="leading-tight">
-                            <div className={`text-[13px] font-[700] tracking-wide ${group.highlight ? "text-[#fff5e0]" : "text-[#e8ddd0]"}`}>
+                            <div className={`text-[15px] font-[700] tracking-wide ${group.highlight ? "text-[#fff5e0]" : "text-[#e8ddd0]"}`}>
                               {group.name}
                             </div>
                             {group.alias && (
-                              <div className="mono text-[9px] tracking-widest text-white/40">{group.alias}</div>
+                              <div className="mono text-[11px] tracking-widest text-white/40">{group.alias}</div>
                             )}
                           </div>
                           <div 
-                            className="rounded-full px-1.5 py-0.5 text-[8px] mono leading-none"
+                            className="rounded-full px-1.5 py-0.5 text-[10px] mono leading-none"
                             style={{ background: `${m.color}22`, color: m.color, border: `1px solid ${m.color}44` }}
                           >
                             {group.lang.split("·")[0]}
                           </div>
                         </div>
                         
-                        <div className="mt-1 flex items-center gap-1 text-[10px] mono text-[#9a8c74]">
+                        <div className="mt-1 flex items-center gap-1 text-[12px] mono text-[#9a8c74]">
                           <span>{ti(group.start)}</span>
                           <span className="opacity-40">—</span>
                           <span>{ti(group.end)}</span>
@@ -569,21 +571,21 @@ export default function Ethnic() {
                             <div className="rounded-[10px] bg-gradient-to-b from-black/25 to-black/40 p-2.5 ring-1 ring-white/[0.08] backdrop-blur-sm">
                               <div className="space-y-2">
                                 <div>
-                                  <div className="text-[10px] tracking-widest text-white/40">政权 / 关键事件</div>
+                                  <div className="text-[12px] tracking-widest text-white/40">政权 / 关键事件</div>
                                   <div className="mt-1 flex flex-wrap gap-1">
                                     {group.polities.map((polity) => (
-                                      <span key={polity} className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[10px] text-[#d6c8ad]">{polity}</span>
+                                      <span key={polity} className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[12px] text-[#d6c8ad]">{polity}</span>
                                     ))}
                                   </div>
                                 </div>
                                 
                                 <div>
-                                  <div className="text-[10px] tracking-widest text-white/40">传承与后裔</div>
-                                  <div className="mt-1 text-[11px] leading-[1.5] text-[#c9bb9a]">{group.desc}</div>
+                                  <div className="text-[12px] tracking-widest text-white/40">传承与后裔</div>
+                                  <div className="mt-1 text-[13px] leading-[1.5] text-[#c9bb9a]">{group.desc}</div>
                                 </div>
                                 
                                 <div className="flex items-center justify-between pt-1">
-                                  <span className="mono text-[9px] text-white/30 font-sans">语言: {group.lang}</span>
+                                  <span className="mono text-[11px] text-white/30 font-sans">语言: {group.lang}</span>
                                   <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: m.color }} />
                                 </div>
                               </div>
@@ -596,15 +598,16 @@ export default function Ethnic() {
                 })}
               </div>
             </div>
+            </div>
 
             {/* Read guidelines footer */}
             <div className="border-t border-amber-200/8 bg-gradient-to-b from-[#0f0e0c]/90 to-[#0a0908]/95 px-4 md:px-8 py-8">
               <div className="grid gap-6 md:grid-cols-[1.2fr_1fr_1fr]">
                 <div>
-                  <h4 className="text-[13px] font-semibold tracking-widest text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #e8ddd0, #c9a87c)' }}>
+                  <h4 className="text-[15px] font-semibold tracking-widest text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #e8ddd0, #c9a87c)' }}>
                     读图指南 · 四条血脉如何分化
                   </h4>
-                  <p className="mt-2 text-[12px] leading-6 text-[#a99c85]">
+                  <p className="mt-2 text-[14px] leading-6 text-[#a99c85]">
                     东胡线以<span className="text-[#7fb4ff]">蓝色</span>为主，从鲜卑分出慕容、拓跋、柔然、契丹直至蒙古；
                     丁零线以<span className="text-[#ff8c4b]">赤橙</span>为主，丁零→高车→铁勒→突厥→回鹘→沙陀建五代；
                     肃慎线以<span className="text-[#4ade80]">绿色</span>为主，靺鞨→渤海/女真→满洲；
@@ -614,8 +617,8 @@ export default function Ethnic() {
                 </div>
                 
                 <div className="rounded-xl border border-yellow-500/15 bg-gradient-to-br from-yellow-500/[0.06] to-amber-800/[0.04] p-3.5 shadow-[inset_0_1px_0_rgba(250,204,21,0.06)]">
-                  <div className="text-[11px] font-semibold tracking-widest text-[#facc15]">文字的丝路</div>
-                  <div className="mt-2 text-[11px] leading-5 text-[#c9bb8a]">
+                  <div className="text-[13px] font-semibold tracking-widest text-[#facc15]">文字的丝路</div>
+                  <div className="mt-2 text-[13px] leading-5 text-[#c9bb8a]">
                     粟特文（Sogdian）→ 回鹘文（Old Uyghur）→ 蒙古文（Mongolian Script）→ 满文（Manchu Script）。
                     <br />
                     这条黄线解释了为何草原帝国能跨越语言行政。
@@ -623,8 +626,8 @@ export default function Ethnic() {
                 </div>
 
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <div className="text-[11px] font-semibold tracking-widest text-[#d9cfb8]">学术备注</div>
-                  <div className="mt-2 text-[11px] leading-5 text-[#9a8d75]">
+                  <div className="text-[13px] font-semibold tracking-widest text-[#d9cfb8]">学术备注</div>
+                  <div className="mt-2 text-[13px] leading-5 text-[#9a8d75]">
                     • 匈奴语系归属仍有争议（突厥/蒙古/叶尼塞），此处标为混合。
                     <br />
                     • 羯人=匈奴羌渠分支，说法源自《魏书》，后赵石勒。
@@ -642,7 +645,7 @@ export default function Ethnic() {
         <footer className="py-12 text-center mono">
           <a 
             href="https://anachron.qizhen.xyz/" 
-            className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-5 py-2.5 text-[11px] tracking-[0.2em] text-white/40 transition-all duration-300 hover:text-amber-200 hover:border-amber-200/20 hover:bg-amber-200/[0.04] hover:shadow-[0_0_20px_rgba(217,180,120,0.1)] hover:scale-105"
+            className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-5 py-2.5 text-[13px] tracking-[0.2em] text-white/40 transition-all duration-300 hover:text-amber-200 hover:border-amber-200/20 hover:bg-amber-200/[0.04] hover:shadow-[0_0_20px_rgba(217,180,120,0.1)] hover:scale-105"
           >
             <span>⟲</span>
             <span>返回回音堂主页</span>
