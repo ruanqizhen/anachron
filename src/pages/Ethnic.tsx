@@ -568,6 +568,17 @@ export default function Ethnic() {
                           }}
                         />
 
+                        {isHighlighted && (
+                          <path 
+                            d={`M ${startX} ${g} C ${startX} ${ctrlY1}, ${endX} ${ctrlY2}, ${endX} ${w}`}
+                            fill="none"
+                            stroke={strokeColor}
+                            strokeWidth={6}
+                            strokeOpacity={0.35}
+                            strokeDasharray={isCultural ? "6 6" : isMerge ? "3 5" : "0"}
+                            className="transition-all duration-300 pointer-events-none"
+                          />
+                        )}
                         <path 
                           d={`M ${startX} ${g} C ${startX} ${ctrlY1}, ${endX} ${ctrlY2}, ${endX} ${w}`}
                           fill="none"
@@ -575,7 +586,6 @@ export default function Ethnic() {
                           strokeWidth={isHighlighted ? 2.6 : isCultural ? 1.4 : 1.2}
                           strokeOpacity={isHighlighted ? 0.95 : isCultural ? 0.55 : 0.38}
                           strokeDasharray={isCultural ? "6 6" : isMerge ? "3 5" : "0"}
-                          filter={isHighlighted ? "url(#glow)" : undefined}
                           className="transition-all duration-300 pointer-events-none"
                         />
                         {(edge.label || isHighlighted) && (
