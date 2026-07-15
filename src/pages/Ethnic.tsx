@@ -123,6 +123,91 @@ export default function Ethnic() {
   const dragStart = useRef({ screenX: 0, screenY: 0, scrollLeft: 0, scrollTop: 0 });
   const isDragging = useRef(false);
 
+  const [isMinimapVisible, setIsMinimapVisible] = useState(false);
+  const [scrollState, setScrollState] = useState({
+    scrollX: 0,
+    scrollY: 0,
+    scrollWidth: 1600,
+    scrollHeight: 4600,
+    clientWidth: 1200,
+    clientHeight: 900,
+  });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollEl = scrollContainerRef.current;
+      const containerEl = containerRef.current;
+      if (!scrollEl || !containerEl) return;
+      
+      const rect = containerEl.getBoundingClientRect();
+      const inView = rect.top < window.innerHeight && rect.bottom > 0;
+      setIsMinimapVisible(inView);
+      
+      // Calculate relative scroll Y and visible height
+      const relativeScrollY = Math.max(0, -rect.top + 36);
+      const totalScrollHeight = rect.height - 36 - 160;
+      
+      let visibleHeight = Math.min(window.innerHeight - 36, rect.bottom - 36) - Math.max(0, rect.top + 36);
+      visibleHeight = Math.max(100, visibleHeight);
+      
+      setScrollState({
+        scrollX: scrollEl.scrollLeft,
+        scrollY: relativeScrollY,
+        scrollWidth: scrollEl.scrollWidth || 1600,
+        scrollHeight: totalScrollHeight || 4600,
+        clientWidth: scrollEl.clientWidth || 1200,
+        clientHeight: visibleHeight || 900,
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+    
+    const scrollEl = scrollContainerRef.current;
+    if (scrollEl) {
+      scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+      if (scrollEl) {
+        scrollEl.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [containerWidth]);
+
+  const handleMinimapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const mainNavArea = e.currentTarget.querySelector('.minimap-nav-area');
+    if (!mainNavArea) return;
+    
+    const navRect = mainNavArea.getBoundingClientRect();
+    const relativeX = Math.max(0, Math.min(navRect.width, e.clientX - navRect.left));
+    const relativeY = Math.max(0, Math.min(navRect.height, e.clientY - navRect.top));
+    
+    const pctX = relativeX / navRect.width;
+    const pctY = relativeY / navRect.height;
+    
+    const scrollEl = scrollContainerRef.current;
+    const containerEl = containerRef.current;
+    if (!scrollEl || !containerEl) return;
+    
+    // Scroll container horizontally
+    const targetScrollX = pctX * scrollEl.scrollWidth - scrollEl.clientWidth / 2;
+    scrollEl.scrollLeft = targetScrollX;
+    
+    // Scroll window vertically
+    const containerRect = containerEl.getBoundingClientRect();
+    const pageY = window.scrollY + containerRect.top + 36;
+    const targetScrollY = pageY + pctY * scrollState.scrollHeight - window.innerHeight / 2;
+    window.scrollTo({
+      top: targetScrollY,
+      behavior: 'smooth'
+    });
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     if (!scrollContainerRef.current) return;
@@ -235,6 +320,16 @@ export default function Ethnic() {
   }, [activeId]);
 
   const getGroupById = (id: string) => Ac.find((c) => c.id === id);
+
+  const minimapX = (scrollState.scrollX / scrollState.scrollWidth) * 100;
+  const minimapY = (scrollState.scrollY / scrollState.scrollHeight) * 100;
+  const minimapW = (scrollState.clientWidth / scrollState.scrollWidth) * 100;
+  const minimapH = (scrollState.clientHeight / scrollState.scrollHeight) * 100;
+  
+  const indicatorLeft = Math.max(0, Math.min(100 - minimapW, minimapX));
+  const indicatorTop = Math.max(0, Math.min(100 - minimapH, minimapY));
+  const indicatorWidth = Math.max(8, Math.min(100, minimapW));
+  const indicatorHeight = Math.max(8, Math.min(100, minimapH));
 
   return (
     <div className="min-h-screen bg-[#0c0b09] text-[#e8e0d0] selection:bg-amber-200/30 overflow-x-hidden">
@@ -652,6 +747,48 @@ export default function Ethnic() {
             <span>返回回音堂主页</span>
           </a>
         </footer>
+      </div>
+
+      {/* Floating Minimap Navigation Panel */}
+      <div 
+        onClick={handleMinimapClick}
+        className={`fixed bottom-6 right-6 z-40 hidden md:flex flex-col items-center rounded-2xl border border-amber-200/30 bg-[#0d0c0a]/90 p-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl transition-all duration-500 ease-out cursor-crosshair select-none ${
+          isMinimapVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95 pointer-events-none"
+        }`}
+        style={{ width: "110px", height: "260px" }}
+      >
+        <div className="text-[11px] font-bold tracking-widest text-[#d9cfb8] uppercase mb-2">
+          全图导航
+        </div>
+        
+        <div className="relative w-full flex-1 rounded-lg bg-black/40 overflow-hidden ring-1 ring-white/[0.15] minimap-nav-area">
+          {/* Main Lane Guides */}
+          <div className="absolute left-[5%] top-0 bottom-0 w-px bg-zinc-500/15" />
+          <div className="absolute left-[20%] top-0 bottom-0 w-px bg-violet-500/15" />
+          <div className="absolute left-[45%] top-0 bottom-0 w-px bg-orange-500/15" />
+          <div className="absolute left-[72%] top-0 bottom-0 w-px bg-blue-500/15" />
+          <div className="absolute left-[92%] top-0 bottom-0 w-px bg-emerald-500/15" />
+          
+          {/* Year ticks */}
+          {Array.from({ length: 10 }).map((_, idx) => (
+            <div 
+              key={idx} 
+              className="absolute left-0 right-0 h-px bg-white/[0.03]" 
+              style={{ top: `${(idx + 0.5) * 10}%` }}
+            />
+          ))}
+          
+          {/* Viewport Box */}
+          <div 
+            className="absolute rounded border border-amber-400 bg-amber-400/[0.08] shadow-[0_0_12px_rgba(251,191,36,0.2)] transition-all duration-75 pointer-events-none"
+            style={{
+              left: `${indicatorLeft}%`,
+              top: `${indicatorTop}%`,
+              width: `${indicatorWidth}%`,
+              height: `${indicatorHeight}%`
+            }}
+          />
+        </div>
       </div>
     </div>
   );
