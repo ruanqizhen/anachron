@@ -9,6 +9,48 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+interface Thread {
+  id: string;
+  title: string | null;
+  content: string | null;
+  board_id: string;
+  author_id: string | null;
+  profiles: { username: string } | null;
+}
+
+interface Post {
+  id: string;
+  thread_id: string;
+  content: string;
+  author_id: string | null;
+  parent_post_id: string | null;
+  profiles: { username: string } | null;
+  guest_sessions: { username: string } | null;
+}
+
+interface RepliedPost {
+  author_id: string | null;
+  profiles: { username: string } | null;
+}
+
+interface Profile {
+  id: string;
+  username: string;
+  bio?: string | null;
+  is_ai_character?: boolean;
+  is_admin?: boolean;
+}
+
+interface CharacterInfo {
+  era?: string;
+  tags?: string[];
+  birth_year?: number;
+  death_year?: number;
+  personality_prompt?: string;
+  comedy_notes?: string;
+  writing_style?: string;
+}
+
 const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'deepseek';
 const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.1' : '');
 
@@ -95,7 +137,7 @@ Deno.serve(async () => {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
-    const thread = threads[0] as any;
+    const thread = threads[0] as unknown as Thread;
     console.log('[DAILY] selected thread:', thread.title?.slice(0, 50));
 
     // 2. Get all posts in this thread
@@ -107,19 +149,21 @@ Deno.serve(async () => {
       .eq('status', 'published')
       .order('created_at', { ascending: true });
 
-    if (!posts || posts.length === 0) {
+    const typedPosts = posts as unknown as Post[] | null;
+
+    if (!typedPosts || typedPosts.length === 0) {
       // No replies — use the thread itself as trigger
       console.log('[DAILY] no replies, using thread as trigger');
     }
 
     // Pick a random post to reply to (or the thread itself)
-    const allTargets = posts && posts.length > 0 ? [...posts] : [];
+    const allTargets = typedPosts && typedPosts.length > 0 ? [...typedPosts] : [];
     // 30% chance to reply to thread itself if there are replies
     const useThread = allTargets.length === 0 || Math.random() < 0.3;
     const triggerPost = useThread ? null : allTargets[Math.floor(Math.random() * allTargets.length)];
     const triggerContent = triggerPost ? triggerPost.content : thread.content;
     const triggerAuthor = triggerPost
-      ? (triggerPost.profiles?.username || (triggerPost as any).guest_sessions?.username || '游客')
+      ? (triggerPost.profiles?.username || triggerPost.guest_sessions?.username || '游客')
       : (thread.profiles?.username || '游客');
     console.log('[DAILY] trigger:', triggerPost ? 'reply' : 'thread', 'by:', triggerAuthor);
 
@@ -134,7 +178,7 @@ Deno.serve(async () => {
     const repliedNames = new Set<string>();
     const repliedIds = new Set<string>();
     if (repliedPosts) {
-      for (const p of repliedPosts as any[]) {
+      for (const p of repliedPosts as unknown as RepliedPost[]) {
         if (p.profiles?.username) repliedNames.add(p.profiles.username);
         if (p.author_id) repliedIds.add(p.author_id);
       }
@@ -157,17 +201,18 @@ Deno.serve(async () => {
           .from('posts').select('*, profiles(username), guest_sessions(username)')
           .eq('id', pid).single();
         if (!parent) break;
-        const name = (parent as any).profiles?.username || (parent as any).guest_sessions?.username || '游客';
-        chain.unshift(`[${name}]：${parent.content}`);
-        pid = parent.parent_post_id;
+        const parentPost = parent as unknown as Post;
+        const name = parentPost.profiles?.username || parentPost.guest_sessions?.username || '游客';
+        chain.unshift(`[${name}]：${parentPost.content}`);
+        pid = parentPost.parent_post_id;
       }
       if (chain.length > 0) chainText = '回复链（从早到晚）：\n' + chain.join('\n\n') + '\n\n';
     }
 
     // 5. Get recent posts for context
-    const recentPosts = (posts || []).slice(-8);
+    const recentPosts = (typedPosts || []).slice(-8);
     const contextText = recentPosts
-      .map((p: any) => {
+      .map((p) => {
         const name = p.profiles?.username || p.guest_sessions?.username || '游客';
         return `[${name}]：${p.content || ''}`;
       })
@@ -199,7 +244,7 @@ ${excludeHint}
 最近的讨论：
 ${contextText.slice(-800)}
 
-★ 需要回应的内容 ★：
+${chainText}★ 需要回应的内容 ★：
 发帖人：${triggerAuthor}
 内容：${triggerContent.slice(0, 800)}`;
 
@@ -209,7 +254,7 @@ ${contextText.slice(-800)}
       const m = resp.match(/\{[\s\S]*\}/);
       decision = m ? JSON.parse(m[0]) : { name: '', reason: 'parse error' };
     } catch (e) {
-      console.error('[DAILY] LLM error:', String(e).slice(0, 100));
+      console.error('[DAILY] LLM error:', e);
       return new Response(JSON.stringify({ ok: false, error: 'LLM error' }), {
         status: 500, headers: { 'Content-Type': 'application/json' },
       });
@@ -225,7 +270,7 @@ ${contextText.slice(-800)}
 
     // 7. Find or create the character
     let characterId: string;
-    let characterProfile: any;
+    let characterProfile: Profile;
     const { data: existingProfile } = await supabase
       .from('profiles')
       .select('*')
@@ -235,7 +280,7 @@ ${contextText.slice(-800)}
 
     if (existingProfile) {
       characterId = existingProfile.id;
-      characterProfile = existingProfile;
+      characterProfile = existingProfile as unknown as Profile;
       console.log('[DAILY] character exists:', decision.name);
     } else {
       // Auto-create the character
@@ -244,7 +289,7 @@ ${contextText.slice(-800)}
 返回 JSON 格式：
 {"era":"所属时代","tags":["标签1","标签2","标签3"],"birth_year":生年数字,"death_year":卒年数字,"personality_prompt":"人格与性格描述（中文，200字内）","comedy_notes":"喜剧方向描述（中文，200字内）","writing_style":"语言风格描述（中文，100字内）"}`;
       const charResp = await callLLM(charSystem, '请提供资料', 'deepseek-v4-flash', 0, true);
-      let charInfo: Record<string, any> = {};
+      let charInfo: CharacterInfo = {};
       try { const m = charResp.match(/\{[\s\S]*\}/); charInfo = m ? JSON.parse(m[0]) : {}; } catch { charInfo = {}; }
 
       const { data: newChar, error: createErr } = await supabase.from('profiles').insert({
@@ -261,7 +306,7 @@ ${contextText.slice(-800)}
         writing_style: charInfo.writing_style || '', is_active: true,
       });
       characterId = newChar.id;
-      characterProfile = newChar;
+      characterProfile = newChar as unknown as Profile;
     }
 
     // 8. Get full character config
@@ -311,7 +356,7 @@ ${replyLabel}：
       reply = reply.trim();
       if (!reply) throw new Error('Empty response');
     } catch (llmErr) {
-      console.error('[DAILY] reply generation error:', String(llmErr).slice(0, 200));
+      console.error('[DAILY] reply generation error:', llmErr);
       throw llmErr;
     }
 
@@ -338,7 +383,7 @@ ${replyLabel}：
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
   } catch (e) {
-    console.error('[DAILY] error:', String(e).slice(0, 300));
+    console.error('[DAILY] error:', e);
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });

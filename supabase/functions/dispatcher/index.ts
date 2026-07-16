@@ -198,7 +198,7 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
       const m = resp.match(/\{[\s\S]*\}/);
       decision = m ? JSON.parse(m[0]) : { name: '', reason: 'parse error' };
     } catch (e) {
-      console.error('[DISPATCHER] LLM error:', String(e).slice(0, 100));
+      console.error('[DISPATCHER] LLM error:', e);
       decision = { name: '', reason: 'LLM error' };
     }
 
