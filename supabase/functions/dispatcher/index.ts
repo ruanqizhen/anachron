@@ -217,9 +217,17 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
       .eq('username', decision.name)
       .maybeSingle();
 
-    if (existingProfile && existingProfile.is_ai_character) {
-      characterId = existingProfile.id;
-      console.log('[DISPATCHER] character:', decision.name, '(existing)');
+    if (existingProfile) {
+      if (existingProfile.is_ai_character) {
+        characterId = existingProfile.id;
+        console.log('[DISPATCHER] character:', decision.name, '(existing)');
+      } else {
+        console.log('[DISPATCHER] character name collision with human user:', decision.name);
+        await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', task.id);
+        return new Response(JSON.stringify({ ok: true, reason: `Name collision with human user: ${decision.name}` }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
     } else {
       console.log('[DISPATCHER] character:', decision.name, '(new)');
       const charSystem = `请提供关于中国历史名人「${decision.name}」的详细资料，用于创建 AI 角色。

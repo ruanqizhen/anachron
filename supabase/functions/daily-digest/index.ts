@@ -275,13 +275,19 @@ ${chainText}★ 需要回应的内容 ★：
       .from('profiles')
       .select('*')
       .eq('username', decision.name)
-      .eq('is_ai_character', true)
       .maybeSingle();
 
     if (existingProfile) {
-      characterId = existingProfile.id;
-      characterProfile = existingProfile as unknown as Profile;
-      console.log('[DAILY] character exists:', decision.name);
+      if (existingProfile.is_ai_character) {
+        characterId = existingProfile.id;
+        characterProfile = existingProfile as unknown as Profile;
+        console.log('[DAILY] character exists:', decision.name);
+      } else {
+        console.log('[DAILY] character name collision with human user:', decision.name);
+        return new Response(JSON.stringify({ ok: true, reason: `Name collision with human user: ${decision.name}` }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
     } else {
       // Auto-create the character
       console.log('[DAILY] creating new character:', decision.name);
