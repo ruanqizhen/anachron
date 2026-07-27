@@ -48,7 +48,7 @@ async function callLLM(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 8000,
+      max_tokens: provider === 'meta' ? 16384 : 8000,
       temperature: 0.9,
     }),
   });

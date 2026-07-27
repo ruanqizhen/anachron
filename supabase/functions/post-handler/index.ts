@@ -172,7 +172,7 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
             { role: 'system', content: systemPrompt },
             { role: 'user', content: text.slice(0, 2000) },
           ],
-          max_tokens: 2000,
+          max_tokens: provider === 'meta' ? 16384 : 2000,
           temperature: 0,
         }),
       });

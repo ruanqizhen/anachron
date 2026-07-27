@@ -88,7 +88,7 @@ async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepse
         { role: 'system', content: adjSystem },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: resolvedModel.includes('flash') ? 2000 : 8000,
+      max_tokens: DAILY_PROVIDER === 'meta' ? 16384 : (resolvedModel.includes('flash') ? 2000 : 8000),
       temperature: temp,
     }),
   });

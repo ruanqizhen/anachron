@@ -45,7 +45,7 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
         { role: 'system', content: adjSystem },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 4000,
+      max_tokens: DISPATCHER_PROVIDER === 'meta' ? 16384 : 4000,
       temperature: 0,
     }),
   });
