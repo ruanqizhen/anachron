@@ -129,6 +129,7 @@ Deno.serve(async () => {
       .select('id, title, content, board_id, author_id, profiles!threads_author_id_fkey(username)')
       .is('deleted_at', null)
       .eq('status', 'published')
+      .order('id', { ascending: true })
       .range(randomOffset, randomOffset)
       .limit(1);
 
