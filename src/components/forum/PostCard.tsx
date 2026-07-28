@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
@@ -7,11 +7,12 @@ import { getDisplayName } from '../../lib/types';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import KarmaBadge from '../ui/KarmaBadge';
-import MarkdownRenderer from '../ui/MarkdownRenderer';
 import CommentSection from './CommentSection';
 import ThreadMenu from './ThreadMenu';
 import { formatDisplayDate, formatFullDate } from '../../lib/dateUtils';
 import { toggleThreadLike, getThreadLikes } from '../../lib/api';
+
+const MarkdownRenderer = lazy(() => import('../ui/MarkdownRenderer'));
 
 interface PostCardProps {
   thread: Thread;
@@ -179,7 +180,9 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
           className="relative overflow-hidden transition-all duration-300"
           style={{ maxHeight: !expanded && isLong ? '300px' : 'none' }}
         >
-          <MarkdownRenderer content={displayContent} />
+          <Suspense fallback={<div className="text-sm whitespace-pre-wrap break-words" style={{ color: 'var(--color-text-primary)' }}>{displayContent.slice(0, 300)}</div>}>
+            <MarkdownRenderer content={displayContent} />
+          </Suspense>
           {!expanded && isLong && (
             <div
               className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
