@@ -5,25 +5,19 @@ RETURNS void AS $$
 BEGIN
   PERFORM check_admin_access();
 
-  -- Clean notifications first (both directions)
   DELETE FROM notifications WHERE recipient_id = p_id OR actor_id = p_id;
-
-  -- Likes and thread_likes have ON DELETE CASCADE but explicit delete is safer for RLS edge cases
   DELETE FROM likes WHERE user_id = p_id;
   DELETE FROM thread_likes WHERE user_id = p_id;
-
-  -- Follows
   DELETE FROM account_follows WHERE follower_id = p_id OR following_id = p_id;
+  DELETE FROM reports WHERE reporter_id = p_id;
 
-  -- IP risks if any were stored per user id pattern (defensive)
-  -- blocked_ips uses ip_address, not profile id, so skip unless pattern user:<uuid>
-  DELETE FROM blocked_ips WHERE ip_address = ('user:' || p_id::text);
+  -- blocked_ips is INET type, 'user:<uuid>' pattern was invalid and caused transaction abort
+  -- Do not attempt to delete from blocked_ips here; IP blocking is separate concern.
+  -- If needed in future, store user ref in reason column and clean via reason LIKE.
 
-  -- Preserve content: null out author_id so posts/threads remain but become anonymous
   UPDATE posts SET author_id = NULL WHERE author_id = p_id;
   UPDATE threads SET author_id = NULL WHERE author_id = p_id;
 
-  -- Finally delete profile (only non-AI, non-admin)
   DELETE FROM profiles WHERE id = p_id AND is_ai_character = false AND is_admin = false;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

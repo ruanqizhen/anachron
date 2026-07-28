@@ -24,9 +24,10 @@ export default function ThreadFeed({
   const render = renderCard || ((t: Thread) => <PostCard thread={t} />);
 
   const initialData = cacheKey ? feedCache[cacheKey] : null;
+  const hasValidCache = !!(initialData && initialData.threads.length > 0);
 
   const [threads, setThreads] = useState<Thread[]>(initialData?.threads || []);
-  const [isLoading, setIsLoading] = useState(!initialData);
+  const [isLoading, setIsLoading] = useState(!hasValidCache);
   const [hasMore, setHasMore] = useState(initialData?.hasMore ?? true);
 
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -35,17 +36,24 @@ export default function ThreadFeed({
   const fetchThreadsRef = useRef(fetchThreads);
   fetchThreadsRef.current = fetchThreads;
 
-  // First fetch - skip if cache hit, except when refreshKey changes or no cache
-  const hasFetchedOnceRef = useRef(!!initialData);
+  const hasFetchedOnceRef = useRef(hasValidCache);
   const prevRefreshKeyRef = useRef(refreshKey);
+  const prevCacheKeyRef = useRef(cacheKey);
 
   useEffect(() => {
     const isRefresh = refreshKey !== undefined && prevRefreshKeyRef.current !== refreshKey;
+    const cacheKeyChanged = prevCacheKeyRef.current !== cacheKey;
     prevRefreshKeyRef.current = refreshKey;
+    prevCacheKeyRef.current = cacheKey;
 
-    // If we have cache and this is not an explicit refresh, just use cache
-    if (initialData && !isRefresh && hasFetchedOnceRef.current) {
+    if (cacheKeyChanged) {
+      hasFetchedOnceRef.current = false;
+      offsetRef.current = 0;
+    }
+
+    if (hasValidCache && !isRefresh && !cacheKeyChanged && hasFetchedOnceRef.current) {
       setIsLoading(false);
+      offsetRef.current = initialData!.threads.length;
       return;
     }
 

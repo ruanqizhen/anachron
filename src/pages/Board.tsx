@@ -15,20 +15,18 @@ export default function Board() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [prevSlug, setPrevSlug] = useState(boardSlug);
-
-  if (boardSlug !== prevSlug) {
-    setPrevSlug(boardSlug);
+  useEffect(() => {
     setIsLoading(true);
-  }
+    setBoard(null);
+  }, [boardSlug]);
 
   useEffect(() => {
     let active = true;
     if (!boardSlug) return;
-    getBoardBySlug(boardSlug).then(b => { 
+    getBoardBySlug(boardSlug).then(b => {
       if (active) {
-        setBoard(b); 
-        setIsLoading(false); 
+        setBoard(b);
+        setIsLoading(false);
       }
     });
     return () => { active = false; };

@@ -135,53 +135,74 @@ export async function getBoardBySlug(slug: string): Promise<Board | null> {
 
 export async function getRecentThreads(limit: number = 20, offset: number = 0): Promise<Thread[]> {
   if (!supabase) return [];
-  // Fetch twice as many threads, then apply weighted random ranking
-  const { data, error } = await supabase
-    .from('threads')
-    .select(`
-      *,
-      boards (*),
-      profiles (*),
-      guest_sessions (*)
-    `)
-    .is('deleted_at', null)
-    .eq('status', 'published')
-    .order('pin_level', { ascending: false })
-    .order('last_post_at', { ascending: false })
-    .limit(100);
 
-  if (error) {
-    console.error('Error fetching recent threads:', error);
-    return [];
+  // For offset 0, keep discovery scoring but deterministic (no minuteSeed) for stable pagination.
+  // For offset > 0, use stable last_post_at ordering with proper range to avoid duplicates.
+
+  if (offset === 0) {
+    const { data, error } = await supabase
+      .from('threads')
+      .select(`
+        *,
+        boards (*),
+        profiles (*),
+        guest_sessions (*)
+      `)
+      .is('deleted_at', null)
+      .eq('status', 'published')
+      .order('pin_level', { ascending: false })
+      .order('last_post_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error('Error fetching recent threads:', error);
+      return [];
+    }
+
+    const threads = data as Thread[];
+    const now = Date.now();
+    function hash(s: string): number { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return Math.abs(h); }
+    function hoursAgo(d: string): number { return Math.max(0, (now - new Date(d).getTime()) / 3600000); }
+
+    const pinned = threads.filter(t => t.pin_level > 0);
+    const unpinned = threads.filter(t => t.pin_level === 0);
+
+    const scored = unpinned.map(t => {
+      const ageH = hoursAgo(t.last_post_at);
+      const recency = Math.max(0, 15 - Math.floor(ageH / 40));
+      return {
+        thread: t,
+        score: (t.is_featured ? 20 : 0)
+          + recency
+          + Math.min(t.reply_count, 10)
+          + hash(t.id) % 4, // deterministic jitter, no minuteSeed
+      };
+    });
+    scored.sort((a, b) => b.score - a.score);
+
+    pinned.sort((a, b) => b.pin_level - a.pin_level);
+    const result = [...pinned.map(t => ({ thread: t, score: 999 })), ...scored];
+    return result.slice(0, limit).map(s => s.thread);
+  } else {
+    const { data, error } = await supabase
+      .from('threads')
+      .select(`
+        *,
+        boards (*),
+        profiles (*),
+        guest_sessions (*)
+      `)
+      .is('deleted_at', null)
+      .eq('status', 'published')
+      .order('last_post_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Error fetching more threads:', error);
+      return [];
+    }
+    return data as Thread[];
   }
-
-  const threads = data as Thread[];
-  const minuteSeed = new Date().getMinutes() + new Date().getHours() * 60;
-  const now = Date.now();
-  function hash(s: string): number { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return Math.abs(h); }
-  function hoursAgo(d: string): number { return Math.max(0, (now - new Date(d).getTime()) / 3600000); }
-
-  // Separate pinned from unpinned — pinned always first
-  const pinned = threads.filter(t => t.pin_level > 0);
-  const unpinned = threads.filter(t => t.pin_level === 0);
-
-  const scored = unpinned.map(t => {
-    const ageH = hoursAgo(t.last_post_at);
-    const recency = Math.max(0, 15 - Math.floor(ageH / 40)); // 15pts now, decays by 1 every 40h, 0 after 600h
-    return {
-      thread: t,
-      score: (t.is_featured ? 20 : 0)            // featured: +20
-        + recency                                 // recency: 0-15
-        + Math.min(t.reply_count, 10)             // engagement: 0-10
-        + hash(t.id + minuteSeed) % 10,           // random: 0-9, changes every minute
-    };
-  });
-  scored.sort((a, b) => b.score - a.score);
-
-  // Pinned sorted by level, then merged with scored
-  pinned.sort((a, b) => b.pin_level - a.pin_level);
-  const result = [...pinned.map(t => ({ thread: t, score: 999 })), ...scored];
-  return result.slice(offset, offset + limit).map(s => s.thread);
 }
 
 export async function getThreadsByBoard(boardId: string, limit: number = 20, offset: number = 0): Promise<Thread[]> {

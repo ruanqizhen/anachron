@@ -128,23 +128,18 @@ Deno.serve(async (req: Request) => {
         break;
       }
       const task = tasks[0];
-      const { error: lockErr } = await supabase
+      const { data: lockedRows, error: lockErr } = await supabase
         .from('ai_task_queue')
         .update({ status: 'processing' })
         .eq('id', task.id)
-        .eq('status', 'pending'); // optimistic lock: another concurrent instance may have taken it
+        .eq('status', 'pending')
+        .select('id');
 
       if (lockErr) {
         console.warn('[DISPATCHER] lock failed for', task.id, lockErr.message);
         continue;
       }
-      // Verify lock succeeded (row still exists as processing for us)
-      const { data: locked, error: verifyErr } = await supabase
-        .from('ai_task_queue')
-        .select('id, status')
-        .eq('id', task.id)
-        .single();
-      if (verifyErr || !locked || locked.status !== 'processing') {
+      if (!lockedRows || lockedRows.length === 0) {
         console.log('[DISPATCHER] lost race for task', task.id, 'skipping');
         continue;
       }
@@ -368,8 +363,7 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
       results.push({ ok: true, character: decision.name, reason: decision.reason, id: task.id });
     } catch (e) {
       console.error('[DISPATCHER] round error:', e);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const taskId = (e as unknown as Record<string, unknown>)?.taskId as string | undefined;
+      const taskId = (e as any)?.taskId as string | undefined;
       if (taskId) {
         await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', taskId).catch(() => {});
       }
@@ -377,8 +371,6 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
     }
   }
 
-  // Ensure fire-and-forget responder calls are awaited with timeout to avoid lost work,
-  // but don't block excessively — cap to 10s total.
   if (responderPromises.length > 0) {
     console.log('[DISPATCHER] awaiting', responderPromises.length, 'responder calls');
     const timeout = (ms: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
