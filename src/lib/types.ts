@@ -63,8 +63,8 @@ export interface Thread {
   is_featured: boolean;
   view_count: number;
   reply_count: number;
-  like_count: number;
-  thread_like_count?: number;   // Added by migration 024: explicit thread-level likes
+  like_count: number;              // Deprecated: kept for backwards compat, not updated. Use thread_like_count.
+  thread_like_count?: number;       // Source of truth via thread_likes + on_thread_like_change trigger
   last_post_at: string;
   edited_at: string | null;
   deleted_at: string | null;

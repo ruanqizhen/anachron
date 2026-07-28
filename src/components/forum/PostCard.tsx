@@ -20,10 +20,9 @@ interface PostCardProps {
 const MAX_PREVIEW_LENGTH = 200;
 
 function getThreadLikeCount(t: Thread): number {
-  // Prefer thread_like_count (explicit thread likes), fallback to like_count only if that's all we have
-  if (t.thread_like_count != null && t.thread_like_count !== 0) return t.thread_like_count;
-  if (t.like_count != null && t.like_count !== 0) return t.like_count;
-  return t.thread_like_count ?? t.like_count ?? 0;
+  // Single source of truth: thread_like_count via thread_likes table + on_thread_like_change trigger.
+  // like_count is deprecated (kept for backwards compat, not updated).
+  return t.thread_like_count ?? 0;
 }
 
 export default function PostCard({ thread: initialThread }: PostCardProps) {
