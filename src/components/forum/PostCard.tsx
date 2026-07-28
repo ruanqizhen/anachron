@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThumbsUp, MessageCircle, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
@@ -17,22 +17,19 @@ interface PostCardProps {
   thread: Thread;
 }
 
-// timeAgo logic is now in formatDisplayDate
-
-
 const MAX_PREVIEW_LENGTH = 200;
+
+function getThreadLikeCount(t: Thread): number {
+  // Prefer thread_like_count (explicit thread likes), fallback to like_count only if that's all we have
+  if (t.thread_like_count != null && t.thread_like_count !== 0) return t.thread_like_count;
+  if (t.like_count != null && t.like_count !== 0) return t.like_count;
+  return t.thread_like_count ?? t.like_count ?? 0;
+}
 
 export default function PostCard({ thread: initialThread }: PostCardProps) {
   const { user } = useAuth();
   const [thread, setThread] = useState(initialThread);
-  const [prevThread, setPrevThread] = useState(initialThread);
-  const [likeCount, setLikeCount] = useState((initialThread.thread_like_count || 0) + (initialThread.like_count || 0));
-
-  if (initialThread !== prevThread) {
-    setThread(initialThread);
-    setPrevThread(initialThread);
-    setLikeCount((initialThread.thread_like_count || 0) + (initialThread.like_count || 0));
-  }
+  const [likeCount, setLikeCount] = useState(() => getThreadLikeCount(initialThread));
 
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -40,12 +37,20 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const [shareToast, setShareToast] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
 
-  // Load initial like status for this thread
+  const userId = user?.id || null;
+
+  // Sync from prop change (ThreadFeed cache update, etc.)
   useEffect(() => {
-    getThreadLikes(user?.id || null, [thread.id]).then(likedIds => {
-      setLiked(likedIds.has(thread.id));
+    setThread(initialThread);
+    setLikeCount(getThreadLikeCount(initialThread));
+  }, [initialThread]);
+
+  // Load initial like status
+  useEffect(() => {
+    getThreadLikes(userId, [initialThread.id]).then(likedIds => {
+      setLiked(likedIds.has(initialThread.id));
     });
-  }, [user, thread.id]);
+  }, [userId, initialThread.id]);
 
   const author = thread.profiles;
   const board = thread.boards;
@@ -53,6 +58,27 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
   const displayContent = thread.content;
   const navigate = useNavigate();
   const threadUrl = board ? `/b/${board.slug}/t/${thread.id}` : '#';
+
+  const handleToggleLike = useCallback(async () => {
+    if (isLiking) return;
+    const wasLiked = liked;
+    setIsLiking(true);
+    setLiked(!wasLiked);
+    setLikeCount(c => c + (wasLiked ? -1 : 1));
+    try {
+      const result = await toggleThreadLike(thread.id, userId);
+      setLiked(result);
+      if (result === wasLiked) {
+        // Server says no change -> revert optimistic
+        setLikeCount(c => c + (wasLiked ? 1 : -1));
+      }
+    } catch {
+      setLiked(wasLiked);
+      setLikeCount(c => c + (wasLiked ? 1 : -1));
+    } finally {
+      setIsLiking(false);
+    }
+  }, [isLiking, liked, thread.id, userId]);
 
   if (thread.deleted_at) {
     return (
@@ -75,11 +101,9 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         boxShadow: 'var(--shadow-card)',
       }}
     >
-      {/* Menu button */}
       <div className="absolute top-3 right-3 z-10">
         <ThreadMenu thread={thread} onUpdate={(t) => setThread(t)} />
       </div>
-      {/* Header */}
       <div className="flex items-start gap-3 px-4 pt-4">
         <Link to={author ? `/u/${author.username}` : '#'}>
           <Avatar
@@ -98,7 +122,7 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
               {getDisplayName(thread)}
             </Link>
             {author?.is_ai_character && <Badge type="verified" />}
-                        {author && !author.is_ai_character && <KarmaBadge karma={author.karma} className="ml-1" />}
+            {author && !author.is_ai_character && <KarmaBadge karma={author.karma} className="ml-1" />}
           </div>
           <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {board && (
@@ -118,7 +142,6 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         </div>
       </div>
 
-      {/* Pin / Featured indicators */}
       {(thread.pin_level > 0 || thread.is_featured) && (
         <div className="px-4 pt-2 flex items-center gap-2">
           {thread.pin_level > 0 && (
@@ -139,11 +162,9 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         </div>
       )}
 
-      {/* Title + Content — clickable to navigate to thread */}
       <div
         className="px-4 pt-3 pb-2 cursor-pointer"
         onClick={(e) => {
-          // Don't navigate if user clicked on a link, button, or selected text
           const target = e.target as HTMLElement;
           if (target.closest('a') || target.closest('button') || window.getSelection()?.toString()) return;
           if (threadUrl !== '#') navigate(threadUrl);
@@ -155,13 +176,13 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         >
           {thread.title}
         </h2>
-        <div 
+        <div
           className="relative overflow-hidden transition-all duration-300"
           style={{ maxHeight: !expanded && isLong ? '300px' : 'none' }}
         >
           <MarkdownRenderer content={displayContent} />
           {!expanded && isLong && (
-            <div 
+            <div
               className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
               style={{ background: 'linear-gradient(to bottom, transparent, var(--color-card-bg))' }}
             />
@@ -182,30 +203,14 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         )}
       </div>
 
-      {/* Action bar */}
       <div
         className="flex items-center border-t mx-4 py-1"
         style={{ borderColor: 'var(--color-border)' }}
       >
         <button
-          onClick={async () => {
-            if (isLiking) return;
-            const wasLiked = liked;
-            setLiked(!wasLiked);
-            setLikeCount(c => c + (wasLiked ? -1 : 1));
-            setIsLiking(true);
-            try {
-              const result = await toggleThreadLike(thread.id, user?.id || null);
-              setLiked(result);
-              setLikeCount(c => c + (result === wasLiked ? (wasLiked ? -1 : 1) : 0));
-            } catch {
-              setLiked(wasLiked);
-              setLikeCount(c => c + (wasLiked ? 1 : -1));
-            } finally {
-              setIsLiking(false);
-            }
-          }}
-          className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)]`}
+          onClick={handleToggleLike}
+          disabled={isLiking}
+          className="flex items-center gap-1.5 flex-1 justify-center py-2 rounded-md text-sm font-medium cursor-pointer bg-transparent border-none transition-colors hover:bg-[var(--color-page-bg)] disabled:opacity-50"
           style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}
         >
           <ThumbsUp size={16} fill={liked ? 'currentColor' : 'none'} />
@@ -233,7 +238,6 @@ export default function PostCard({ thread: initialThread }: PostCardProps) {
         </button>
       </div>
 
-      {/* Inline comments */}
       {showComments && (
         <CommentSection threadId={thread.id} />
       )}

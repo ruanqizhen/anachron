@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback, type ReactNode } from 
 import PostCard from './PostCard';
 import type { Thread } from '../../lib/types';
 
-// Simple global cache to persist feeds across navigation
 const feedCache: Record<string, { threads: Thread[]; hasMore: boolean }> = {};
 
 interface ThreadFeedProps {
@@ -15,76 +14,107 @@ interface ThreadFeedProps {
 
 const PAGE_SIZE = 20;
 
-export default function ThreadFeed({ 
-  fetchThreads, 
-  refreshKey, 
-  emptyMessage = '暂无内容', 
+export default function ThreadFeed({
+  fetchThreads,
+  refreshKey,
+  emptyMessage = '暂无内容',
   renderCard,
-  cacheKey
+  cacheKey,
 }: ThreadFeedProps) {
   const render = renderCard || ((t: Thread) => <PostCard thread={t} />);
-  
-  // Initialize from cache if available
+
   const initialData = cacheKey ? feedCache[cacheKey] : null;
-  
-    const [threads, setThreads] = useState<Thread[]>(initialData?.threads || []);
-  const hasCache = !!(initialData && initialData.threads.length > 0);
+
+  const [threads, setThreads] = useState<Thread[]>(initialData?.threads || []);
   const [isLoading, setIsLoading] = useState(!initialData);
-  const [hasMore, setHasMore] = useState(initialData?.hasMore || false);
+  const [hasMore, setHasMore] = useState(initialData?.hasMore ?? true);
+
   const loaderRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef<number>(initialData?.threads.length || 0);
+  const isLoadingMoreRef = useRef(false);
+  const fetchThreadsRef = useRef(fetchThreads);
+  fetchThreadsRef.current = fetchThreads;
+
+  // First fetch - skip if cache hit, except when refreshKey changes or no cache
+  const hasFetchedOnceRef = useRef(!!initialData);
+  const prevRefreshKeyRef = useRef(refreshKey);
 
   useEffect(() => {
+    const isRefresh = refreshKey !== undefined && prevRefreshKeyRef.current !== refreshKey;
+    prevRefreshKeyRef.current = refreshKey;
+
+    // If we have cache and this is not an explicit refresh, just use cache
+    if (initialData && !isRefresh && hasFetchedOnceRef.current) {
+      setIsLoading(false);
+      return;
+    }
+
     let active = true;
     const fetchFirst = async () => {
-      // If we have cached data, we can still refresh in background if it's the first mount
-      // but to avoid flickering we only set isLoading if cache is empty
-      if (!hasCache) setIsLoading(true);
-      
-      const items = await fetchThreads(PAGE_SIZE, 0);
-      if (active) {
+      if (!initialData || isRefresh) setIsLoading(true);
+      try {
+        const items = await fetchThreadsRef.current(PAGE_SIZE, 0);
+        if (!active) return;
         setThreads(items);
+        offsetRef.current = items.length;
         setHasMore(items.length >= PAGE_SIZE);
         setIsLoading(false);
-        
-        // Update cache
+        hasFetchedOnceRef.current = true;
         if (cacheKey) {
           feedCache[cacheKey] = { threads: items, hasMore: items.length >= PAGE_SIZE };
         }
+      } catch {
+        if (active) setIsLoading(false);
       }
     };
     fetchFirst();
     return () => { active = false; };
-  }, [fetchThreads, refreshKey, cacheKey, hasCache]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey, cacheKey]);
 
   const loadMore = useCallback(async () => {
-    const more = await fetchThreads(PAGE_SIZE, threads.length);
-    if (more.length > 0) {
-      const newThreads = [...threads, ...more];
-      setThreads(newThreads);
-      setHasMore(more.length >= PAGE_SIZE);
-      
-      // Update cache
-      if (cacheKey) {
-        feedCache[cacheKey] = { threads: newThreads, hasMore: more.length >= PAGE_SIZE };
+    if (isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    try {
+      const offset = offsetRef.current;
+      const more = await fetchThreadsRef.current(PAGE_SIZE, offset);
+      if (more.length > 0) {
+        setThreads(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const deduped = more.filter(t => !existingIds.has(t.id));
+          const newThreads = [...prev, ...deduped];
+          offsetRef.current = newThreads.length;
+          if (cacheKey) {
+            feedCache[cacheKey] = { threads: newThreads, hasMore: deduped.length >= PAGE_SIZE || more.length >= PAGE_SIZE };
+          }
+          return newThreads;
+        });
+        // functional check above handles hasMore via deduped
+        if (more.length < PAGE_SIZE) setHasMore(false);
+        else setHasMore(true);
+      } else {
+        setHasMore(false);
+        if (cacheKey && feedCache[cacheKey]) {
+          feedCache[cacheKey].hasMore = false;
+        }
       }
-    } else {
-      setHasMore(false);
-      if (cacheKey && feedCache[cacheKey]) {
-        feedCache[cacheKey].hasMore = false;
-      }
+    } finally {
+      isLoadingMoreRef.current = false;
     }
-  }, [fetchThreads, threads, cacheKey]);
+  }, [cacheKey]);
 
   useEffect(() => {
     const el = loaderRef.current;
-    if (!el || !hasMore) return;
+    if (!el || !hasMore || isLoading) return;
     const obs = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { threshold: 0.1 }
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isLoadingMoreRef.current) loadMore();
+      },
+      { threshold: 0.1, rootMargin: '200px' }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, loadMore]);
+  }, [hasMore, isLoading, loadMore]);
 
   return (
     <div className="flex flex-col gap-4">

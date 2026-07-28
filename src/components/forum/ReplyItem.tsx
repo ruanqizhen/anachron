@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, MoreHorizontal, Pencil, Trash2, Link as LinkIcon } from 'lucide-react';
 import type { Post } from '../../lib/types';
@@ -34,22 +34,50 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
   const [liked, setLiked] = useState(likedIds.has(post.id));
   const [likes, setLikes] = useState(post.likes);
   const [showMenu, setShowMenu] = useState(false);
-  const [prevLikedIds, setPrevLikedIds] = useState(likedIds);
-  if (likedIds !== prevLikedIds) {
-    setPrevLikedIds(likedIds);
-    setLiked(likedIds.has(post.id));
-  }
   const [showEdit, setShowEdit] = useState(false);
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [replying, setReplying] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
 
   const [guestId, setGuestId] = useState<string | null>(null);
   const author = post.profiles;
   const authorUsername = getDisplayName(post);
   const isOwn = user && post.profiles && user.id === post.profiles.id && !post.profiles.is_ai_character;
   const canEdit = showEditDelete && (isOwn || admin);
+
+  // Sync liked state when likedIds changes
+  useEffect(() => {
+    setLiked(likedIds.has(post.id));
+  }, [likedIds, post.id]);
+
+  // Sync likes count when post prop changes (after parent reload)
+  useEffect(() => {
+    setLikes(post.likes);
+  }, [post.likes]);
+
+  const handleToggleLike = useCallback(async () => {
+    if (isLiking) return;
+    const wasLiked = liked;
+    setIsLiking(true);
+    setLiked(!wasLiked);
+    setLikes(c => c + (wasLiked ? -1 : 1));
+    try {
+      const result = await toggleLike(post.id, user?.id || null, guestId || authGuest?.id);
+      setLiked(result);
+      if (result === wasLiked) {
+        // Server disagrees with optimistic (no change happened) -> revert
+        setLikes(c => c + (wasLiked ? 1 : -1));
+      }
+    } catch {
+      setLiked(wasLiked);
+      setLikes(c => c + (wasLiked ? 1 : -1));
+      toast.error('操作失败');
+    } finally {
+      setIsLiking(false);
+    }
+  }, [isLiking, liked, post.id, user?.id, guestId, authGuest?.id]);
 
   if (post.deleted_at) {
     return (
@@ -162,9 +190,8 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
           </div>
           <MarkdownRenderer content={post.content} className="text-sm" />
           <div className="flex items-center gap-3 mt-2">
-            <button onClick={async () => { setLiked(!liked); setLikes(l => l + (liked ? -1 : 1));
-              try { const result = await toggleLike(post.id, user?.id || null); setLiked(result); setLikes(post.likes + (result ? 1 : 0)); } catch { toast.error('操作失败'); } }}
-              className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none"
+            <button onClick={handleToggleLike} disabled={isLiking}
+              className="flex items-center gap-1 text-xs font-medium cursor-pointer bg-transparent border-none disabled:opacity-50"
               style={{ color: liked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
               <ThumbsUp size={14} fill={liked ? 'currentColor' : 'none'} /> {likes}
             </button>
@@ -197,7 +224,7 @@ export default function ReplyItem({ post, likedIds, showEditDelete = true, onPos
       {showEdit && <EditDialog content={post.content} onSave={async (_title: string | undefined, c: string) => { await updatePost(post.id, c); onPostUpdated(); }} onClose={() => setShowEdit(false)} />}
       {showAdminEdit && <AdminEditDialog content={post.content} createdAt={post.created_at}
         onSave={async (d: { content: string; createdAt?: string }) => { await adminUpdatePost(post.id, d.content, d.createdAt!); onPostUpdated(); }} onClose={() => setShowAdminEdit(false)} />}
-      
+
       {showGuestDialog && (
         <GuestNameDialog
           onConfirm={async (name) => {

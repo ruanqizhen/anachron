@@ -15,64 +15,90 @@ interface CommentSectionProps {
   realtime?: boolean;
 }
 
-
 export default function CommentSection({ threadId, isLocked, realtime }: CommentSectionProps) {
   const { user, guest, startGuestSession } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showGuestDialog, setShowGuestDialog] = useState(false);
   const [guestId, setGuestId] = useState<string | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
-
-  // No longer need localStorage for replyText here, handled by PostEditor if needed or just removed for simplicity
+  const [hasMore, setHasMore] = useState(false);
 
   const POST_PAGE = 20;
-  const [hasMore, setHasMore] = useState(false);
-  const postsCountRef = useRef(0);
+  const serverOffsetRef = useRef(0); // only counts rows fetched from server
+  const userId = user?.id || null;
 
-  // Keep ref in sync with posts state
-  useEffect(() => { postsCountRef.current = posts.length; }, [posts.length]);
-
-  const loadPosts = useCallback(async (isMore = false) => {
-    const offset = isMore ? postsCountRef.current : 0;
-
+  const fetchPage = useCallback(async (offset: number, forMore: boolean) => {
     const fetchedPosts = await getPostsByThread(threadId, POST_PAGE, offset);
-    
-    if (isMore) {
-      setPosts(prev => [...prev, ...fetchedPosts]);
+
+    setPosts(prev => {
+      if (!forMore) {
+        // fresh load: replace entirely
+        return fetchedPosts;
+      }
+      // loadMore: dedup by id (realtime may have inserted)
+      const existingIds = new Set(prev.map(p => p.id));
+      const deduped = fetchedPosts.filter(p => !existingIds.has(p.id));
+      return prev.length === 0 ? fetchedPosts : [...prev, ...deduped];
+    });
+
+    // Update server offset only by how many rows we actually fetched from server
+    if (forMore) {
+      serverOffsetRef.current += fetchedPosts.length;
     } else {
-      setPosts(fetchedPosts);
+      serverOffsetRef.current = fetchedPosts.length;
     }
-    
+
     setHasMore(fetchedPosts.length >= POST_PAGE);
-    
+
     if (fetchedPosts.length > 0) {
-      getUserLikes(user?.id || null, fetchedPosts.map(p => p.id)).then(newLikes => {
-        setLikedIds(prev => new Set([...Array.from(prev), ...Array.from(newLikes)]));
+      getUserLikes(userId, fetchedPosts.map(p => p.id)).then(newLikes => {
+        if (forMore) {
+          setLikedIds(prev => new Set([...Array.from(prev), ...Array.from(newLikes)]));
+        } else {
+          setLikedIds(newLikes);
+        }
       });
     }
-  }, [threadId, user]);
 
+    return fetchedPosts;
+  }, [threadId, userId]);
+
+  // Initial load
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
       setIsLoading(true);
-      const initialPosts = await getPostsByThread(threadId, POST_PAGE, 0);
-      if (!isMounted) return;
-      
-      setPosts(initialPosts);
-      setHasMore(initialPosts.length >= POST_PAGE);
-      setIsLoading(false);
-      
-      if (initialPosts.length > 0) {
-        getUserLikes(user?.id || null, initialPosts.map(p => p.id)).then(setLikedIds);
+      serverOffsetRef.current = 0;
+      try {
+        const initial = await getPostsByThread(threadId, POST_PAGE, 0);
+        if (!isMounted) return;
+        setPosts(initial);
+        serverOffsetRef.current = initial.length;
+        setHasMore(initial.length >= POST_PAGE);
+        if (initial.length > 0) {
+          getUserLikes(userId, initial.map(p => p.id)).then(ids => {
+            if (isMounted) setLikedIds(ids);
+          });
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     }
     loadData();
-
     return () => { isMounted = false; };
-  }, [threadId, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId]);
 
+  // Update likedIds when userId changes (login/logout) - keep posts, refresh likes for all loaded
+  useEffect(() => {
+    if (posts.length === 0) return;
+    getUserLikes(userId, posts.map(p => p.id)).then(setLikedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // Scroll to anchor hash
   useEffect(() => {
     if (!isLoading && posts.length > 0 && window.location.hash) {
       const id = window.location.hash.slice(1);
@@ -83,16 +109,14 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
           const originalBg = el.style.backgroundColor;
           el.style.transition = 'background-color 0.5s ease';
           el.style.backgroundColor = 'rgba(var(--color-primary-rgb, 0, 122, 255), 0.1)';
-          setTimeout(() => {
-            el.style.backgroundColor = originalBg;
-          }, 2000);
+          setTimeout(() => { el.style.backgroundColor = originalBg; }, 2000);
         }
       }, 100);
     }
   }, [isLoading, posts.length]);
 
+  // Realtime subscription - does NOT affect serverOffset
   useEffect(() => {
-    // Real-time subscription
     if (!realtime || !threadId || !supabase) return;
 
     const channel = supabase
@@ -111,37 +135,58 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
     return () => { channel.unsubscribe(); };
   }, [threadId, realtime]);
 
-  async function doSubmitReply(content: string, createdAt?: string, overrideGuestName?: string, authorId?: string, resolvedGuestId?: string) {
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      await fetchPage(serverOffsetRef.current, true);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [fetchPage, isLoadingMore, hasMore]);
+
+  async function doSubmitReply(content: string, createdAt?: string, _overrideGuestName?: string, authorId?: string, resolvedGuestId?: string) {
     let gid: string | undefined = resolvedGuestId || guestId || guest?.id || undefined;
-    const currentGuestName = overrideGuestName || guest?.username;
 
-    if (!resolvedGuestId && !user && !gid && currentGuestName) {
-      const session = await startGuestSession(currentGuestName);
-      gid = session.id;
-      setGuestId(gid);
+    if (!resolvedGuestId && !user && !gid && guest?.username) {
+      try {
+        const session = await startGuestSession(guest.username);
+        gid = session.id;
+        setGuestId(gid);
+      } catch {
+        toast.error('游客身份创建失败，请重试');
+        return;
+      }
     }
 
-    const newPost = await createPost({
-      threadId,
-      content: content.trim(),
-      authorId: authorId || (resolvedGuestId ? undefined : user?.id),
-      guestId: gid,
-      createdAt: createdAt || undefined,
-    });
+    try {
+      const newPost = await createPost({
+        threadId,
+        content: content.trim(),
+        authorId: authorId || (resolvedGuestId ? undefined : user?.id),
+        guestId: gid,
+        createdAt: createdAt || undefined,
+      });
 
-    if (!user && guest) {
-      newPost.guest_sessions = {
-        id: gid || '',
-        username: guest.username,
-        session_token: '',
-        created_at: new Date().toISOString()
-      };
+      if (!user && guest) {
+        newPost.guest_sessions = {
+          id: gid || '',
+          username: guest.username,
+          session_token: '',
+          created_at: new Date().toISOString(),
+        };
+      }
+      setPosts(prev => {
+        if (prev.some(x => x.id === newPost.id)) return prev;
+        return [...prev, newPost as Post];
+      });
+      toast.success('回复成功！');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '回复失败，请稍后再试';
+      toast.error(msg);
+      throw e; // let PostEditor show error state
     }
-    setPosts(prev => [...prev, newPost as Post]);
-    toast.success('回复成功！');
   }
-
-  // handleReply removed, logic moved to PostEditor's onSave
 
   if (isLoading) {
     return (
@@ -163,17 +208,18 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
   return (
     <div style={{ borderTop: '1px solid var(--color-border)' }}>
       <ReplyTree posts={posts} renderItem={(p) => (
-        <ReplyItem post={p} likedIds={likedIds} onPostUpdated={() => loadPosts(false)} />
+        <ReplyItem post={p} likedIds={likedIds} onPostUpdated={() => { serverOffsetRef.current = 0; fetchPage(0, false); }} />
       )} />
 
       {hasMore && (
         <div className="text-center py-3">
           <button
-            onClick={() => loadPosts(true)}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-none transition-colors hover:opacity-80 disabled:opacity-50"
             style={{ backgroundColor: 'var(--color-page-bg)', color: 'var(--color-primary)' }}
           >
-            加载更多回复
+            {isLoadingMore ? '加载中...' : '加载更多回复'}
           </button>
         </div>
       )}
@@ -215,9 +261,12 @@ export default function CommentSection({ threadId, isLocked, realtime }: Comment
         <GuestNameDialog
           onConfirm={async (name) => {
             setShowGuestDialog(false);
-            const session = await startGuestSession(name);
-            setGuestId(session.id);
-            // After getting guest name, the user will have to click submit again
+            try {
+              const session = await startGuestSession(name);
+              setGuestId(session.id);
+            } catch {
+              toast.error('游客身份创建失败');
+            }
           }}
           onClose={() => setShowGuestDialog(false)}
         />
