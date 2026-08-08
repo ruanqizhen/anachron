@@ -52,7 +52,7 @@ interface CharacterInfo {
 }
 
 const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'deepseek';
-const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.1' : '');
+const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.2' : '');
 
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
@@ -68,7 +68,7 @@ async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepse
   if (DAILY_PROVIDER === 'meta') {
     baseUrl = 'https://api.meta.ai/v1/chat/completions';
     apiKey = META_API_KEY;
-    resolvedModel = DAILY_MODEL || 'muse-spark-1.1';
+    resolvedModel = DAILY_MODEL || 'muse-spark-1.2';
   } else if (DAILY_PROVIDER === 'deepseek') {
     baseUrl = 'https://api.deepseek.com/v1/chat/completions';
     apiKey = DEEPSEEK_KEY;

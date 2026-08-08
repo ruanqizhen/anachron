@@ -19,7 +19,6 @@ interface PostEditorDialogProps {
     createdAt?: string;
     authorId?: string;
     guestId?: string;
-    turnstileToken?: string;
   }) => Promise<void | boolean>;
   onClose: () => void;
   title?: string;

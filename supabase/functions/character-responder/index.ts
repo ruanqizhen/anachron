@@ -14,7 +14,7 @@ const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 const CHAT_PROVIDER = Deno.env.get('CHAT_MODEL_PROVIDER') || 'deepseek';
-const CHAT_MODEL = Deno.env.get('CHAT_MODEL_NAME') || (CHAT_PROVIDER === 'meta' ? 'muse-spark-1.1' : 'deepseek-v4-pro');
+const CHAT_MODEL = Deno.env.get('CHAT_MODEL_NAME') || (CHAT_PROVIDER === 'meta' ? 'muse-spark-1.2' : 'deepseek-v4-pro');
 
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';

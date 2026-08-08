@@ -23,7 +23,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
     createdAt?: string;
     authorId?: string;
     guestId?: string;
-    turnstileToken?: string;
   }) {
     const rateCheck = canCreateThread(!isLoggedIn);
     if (!rateCheck.ok) {
@@ -38,7 +37,6 @@ export default function CreatePostForm({ onClose, onCreated, defaultBoardSlug }:
       content: data.content,
       authorId: data.authorId || (data.guestId ? undefined : user?.id),
       guestId,
-      turnstileToken: data.turnstileToken,
       createdAt: data.createdAt,
     });
 

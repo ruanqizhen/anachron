@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Send } from 'lucide-react';
-import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth } from '../../lib/auth';
 import { useMentions } from '../../hooks/useMentions';
 import { getBoards, adminCheckAuthorType, createGuestSession } from '../../lib/api';
@@ -27,7 +26,6 @@ interface PostEditorProps {
     createdAt?: string;
     authorId?: string;
     guestId?: string;
-    turnstileToken?: string;
   }) => Promise<void | boolean>;
   onCancel?: () => void;
   className?: string;
@@ -75,10 +73,8 @@ export default function PostEditor({
   const [customTime, setCustomTime] = useState(initialCreatedAt || "");
   const [isTimeModified, setIsTimeModified] = useState(false);
   const [authorName, setAuthorName] = useState('');
-  const [token, setToken] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [turnstileKey, setTurnstileKey] = useState(0);
 
   useEffect(() => {
     if (!draftKey) return;
@@ -100,10 +96,7 @@ export default function PostEditor({
   const isAdminUser = isAdmin(profile);
   const showTitle = isThread || (mode === 'create' && isThread);
   const showBoardSelect = (mode === 'create' || mode === 'edit') && isThread;
-  const showTurnstile = mode === 'create';
   const showAdminControls = isAdminUser;
-
-  const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
   useEffect(() => {
     if (showBoardSelect) {
@@ -180,11 +173,6 @@ export default function PostEditor({
     if (c.length < 10) { setError('内容至少 10 个字符'); return; }
     if (c.length > 10000) { setError('内容最多 10000 个字符'); return; }
 
-    if (showTurnstile && !token) {
-      setError('请完成验证');
-      return;
-    }
-
     setIsSubmitting(true);
     let resolvedAuthorId: string | undefined;
     let resolvedGuestId: string | undefined;
@@ -215,7 +203,6 @@ export default function PostEditor({
         createdAt: (showAdminControls && isTimeModified) ? customTime : undefined,
         authorId: resolvedAuthorId,
         guestId: resolvedGuestId,
-        turnstileToken: showTurnstile ? token : undefined,
       });
       if (result === false) return;
       if (mode === 'create' || mode === 'reply') {
@@ -223,12 +210,8 @@ export default function PostEditor({
         setTitle('');
         if (draftKey) localStorage.removeItem(draftKey);
       }
-      setToken('');
-      setTurnstileKey(prev => prev + 1);
     } catch (err: unknown) {
       setError((err as Error).message || '操作失败');
-      setToken(''); // Clear token on error
-      setTurnstileKey(prev => prev + 1); // Force Turnstile reset
     } finally {
       setIsSubmitting(false);
     }
@@ -336,20 +319,7 @@ export default function PostEditor({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4 mt-2 shrink-0">
-        <div className="flex-1 min-w-0 max-w-[200px] sm:max-w-[300px] overflow-hidden">
-          {showTurnstile && (
-            <div className="transform scale-[0.55] sm:scale-90 origin-left -my-4 h-[70px] flex items-center">
-              <Turnstile
-                key={turnstileKey}
-                siteKey={SITE_KEY}
-                onSuccess={(t) => setToken(t)}
-                onExpire={() => setToken('')}
-              />
-            </div>
-          )}
-        </div>
-
+      <div className="flex items-center justify-end gap-3 mt-2 shrink-0">
         <div className="flex items-center gap-3">
           {onCancel && (
             <button
@@ -362,7 +332,7 @@ export default function PostEditor({
           )}
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || (showTurnstile && !token) || !content.trim()}
+            disabled={isSubmitting || !content.trim()}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer border-none"
             style={{
               backgroundColor: 'var(--color-primary)',

@@ -62,8 +62,6 @@ async function callPostHandler(payload: Record<string, unknown>) {
 
       if (msg.includes('rate limit') || msg.includes('频繁') || msg.includes('429')) {
         throw new Error('发言过于频繁，请稍后再试');
-      } else if (msg.includes('Turnstile') || msg.includes('验证') || msg.includes('403')) {
-        throw new Error('人机验证失败，请刷新页面重试');
       } else if (msg.includes('violates check constraint') || msg.includes('constraint')) {
         if (msg.includes('content_length')) {
           throw new Error('内容至少 10 个字符');
@@ -89,9 +87,8 @@ async function callPostHandler(payload: Record<string, unknown>) {
   } catch (err: unknown) {
     // Re-throw errors that we explicitly threw above
     if (err instanceof Error && (
-      err.message.includes('频繁') || 
-      err.message.includes('验证') || 
-      err.message.includes('审核') || 
+      err.message.includes('频繁') ||
+      err.message.includes('审核') ||
       err.message.includes('拒绝')
     )) {
       throw err;
@@ -303,7 +300,6 @@ export async function createGuestSession(username: string, ip?: string): Promise
 }
 
 // ─── Thread Creation ───
-// Requires turnstileToken for Edge Function verification.
 // Falls back to direct DB insert if Edge Function is not deployed.
 export async function createThread(params: {
   boardId: string;
@@ -311,10 +307,9 @@ export async function createThread(params: {
   content: string;
   authorId?: string;
   guestId?: string;
-  turnstileToken?: string;
   createdAt?: string;
 }): Promise<Thread> {
-  // Try Edge Function first (verifies Turnstile server-side)
+  // Try Edge Function first
   if (supabase) {
     const result = await callPostHandler({
       action: 'create_thread',
@@ -323,7 +318,6 @@ export async function createThread(params: {
       content: params.content,
       author_id: params.authorId || undefined,
       guest_id: params.guestId || undefined,
-      turnstile_token: params.turnstileToken || '',
       created_at: params.createdAt || undefined,
     });
     if (result?.thread) {
@@ -361,7 +355,6 @@ export async function createPost(params: {
   authorId?: string;
   guestId?: string;
   parentPostId?: string;
-  turnstileToken?: string;
   createdAt?: string;
 }): Promise<Post> {
   // Try Edge Function first
@@ -373,7 +366,6 @@ export async function createPost(params: {
       author_id: params.authorId || undefined,
       guest_id: params.guestId || undefined,
       parent_post_id: params.parentPostId || undefined,
-      turnstile_token: params.turnstileToken || '',
       created_at: params.createdAt || undefined,
     });
     if (result?.post) {

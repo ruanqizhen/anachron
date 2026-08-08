@@ -1,5 +1,5 @@
 // Edge Function: post-handler
-// Handles Turnstile verification, IP risk check, AI content moderation,
+// Handles IP risk check, AI content moderation,
 // and DB insertion. PRD §6.2.3, §6.3, §9.1
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -34,39 +34,6 @@ function ok(data: unknown) {
 
 function err(message: string, status: number) {
   return new Response(JSON.stringify({ error: message }), { status, headers: CORS_HEADERS });
-}
-
-// ─── Turnstile ───
-async function verifyTurnstile(token: string, clientIp: string): Promise<boolean> {
-  const secret = Deno.env.get('TURNSTILE_SECRET_KEY');
-  if (!secret) {
-    console.warn('[TURNSTILE] TURNSTILE_SECRET_KEY not set, skipping verification');
-    return true;
-  }
-  console.log(
-    '[TURNSTILE] Verifying token. Secret key prefix:',
-    secret.substring(0, 6) + '...',
-    'Token prefix:',
-    (token || '').substring(0, 15) + '...',
-    'Client IP:',
-    clientIp
-  );
-  const formData = new FormData();
-  formData.append('secret', secret);
-  formData.append('response', token);
-  formData.append('remoteip', clientIp);
-  try {
-    const resp = await fetch(
-      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-      { method: 'POST', body: formData }
-    );
-    const result = await resp.json();
-    console.log('[TURNSTILE] Cloudflare siteverify response:', JSON.stringify(result));
-    return result.success === true;
-  } catch (e) {
-    console.error('[TURNSTILE] Verification exception:', e);
-    return false;
-  }
 }
 
 // ─── IP Risk ───
@@ -244,7 +211,7 @@ Deno.serve(async (req: Request) => {
       guest_id?: string;
       parent_post_id?: string;
       created_at?: string;
-      turnstile_token: string;
+      turnstile_token?: string;
     } = await req.json();
     const isThread = payload.action === 'create_thread';
     const isGuest = !payload.author_id;
@@ -357,25 +324,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Step 1: Turnstile (required for new threads only; replies skip)
-    if (isThread && !payload.turnstile_token) { console.log('[POST-HANDLER] missing turnstile token'); return err('缺少人机验证 token', 400); }
-    if (payload.turnstile_token) {
-      const turnstileOk = await verifyTurnstile(payload.turnstile_token, clientIp);
-      if (!turnstileOk) { console.log('[POST-HANDLER] turnstile failed'); return err('人机验证失败', 403); }
-    }
-
-    // Step 2: Rate limiting
+    // Step 1: Rate limiting
     const userId = payload.author_id;
     const allowed = await checkRateLimit(clientIp, isGuest, isThread, userId, payload.guest_id);
     if (!allowed) { console.log('[POST-HANDLER] rate limited'); return err('发言过于频繁，请稍后再试', 429); }
 
-    // Step 3: Risk check
+    // Step 2: Risk check
     const highRiskGuest = isGuest ? await isHighRiskIp(clientIp) : false;
     const highRiskUser = !isGuest && userId ? await isHighRiskUser(userId) : false;
     const highRisk = highRiskGuest || highRiskUser;
     if (highRisk) console.log('[POST-HANDLER] high risk user/ip');
 
-    // Step 4: AI content moderation
+    // Step 3: AI content moderation
     let status = 'published';
     const threshold = isGuest ? 8 : 9;
     const textToCheck = [payload.title, payload.content].filter(Boolean).join(' ');
@@ -396,7 +356,7 @@ Deno.serve(async (req: Request) => {
       status = 'pending_review';
     }
 
-    // Step 5: Insert into DB
+    // Step 4: Insert into DB
     if (payload.action === 'create_thread') {
       const { data, error } = await supabase
         .from('threads')
