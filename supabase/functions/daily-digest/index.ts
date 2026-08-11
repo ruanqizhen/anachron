@@ -54,6 +54,20 @@ interface CharacterInfo {
 const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'deepseek';
 const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.2' : '');
 
+const MODERN_BLOCKLIST = new Set([
+  '孙中山','蒋介石','汪精卫','毛泽东','周恩来','刘少奇','朱德','邓小平','陈独秀','李大钊',
+  '胡适','鲁迅','郭沫若','巴金','老舍','钱学森','钱钟书','袁隆平','雷锋','焦裕禄',
+  '蒋经国','宋庆龄','宋美龄','张学良','张作霖','袁世凯','溥仪','康有为','梁启超','蔡元培',
+  '闻一多','徐志摩','丁玲','冰心','茅盾','丰子恺','李宗仁','冯玉祥','阎锡山','陈毅','彭德怀',
+]);
+
+function isModernFigure(name: string, era?: string, birthYear?: number): boolean {
+  if (MODERN_BLOCKLIST.has(name)) return true;
+  if (birthYear != null && birthYear >= 1912) return true;
+  if (era && /民国|现代|当代|共和国|新中国|抗战|建国后/.test(era)) return true;
+  return false;
+}
+
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const META_API_KEY = Deno.env.get('META_API_KEY') || '';
@@ -225,7 +239,8 @@ Deno.serve(async () => {
       : '';
 
     const dispatchSystem = `你是一个历史论坛「回音堂」的 AI 调度系统。需要选择一位中国历史上的名人来回复一条帖子。
-可以自由选择中国任何朝代的历史人物，不限于任何范围。
+
+可选范围：仅限清朝及之前（1912年之前）的中国历史人物，严禁选择民国及之后（1912年及以后）的人物。民国、抗战、新中国、当代等时期人物一律不可选，例如孙中山、蒋介石、汪精卫、毛泽东、周恩来、邓小平、鲁迅、胡适、郭沫若、钱学森等。若人物主要活动/去世时间在1912年之后则不可选；清朝人物如康熙、雍正、乾隆、和珅等均在可选范围内。
 
 选择标准：
 1. 寻找与帖子观点高度相关或水火不容的历史人物，制造有趣对话
@@ -267,6 +282,12 @@ ${chainText}★ 需要回应的内容 ★：
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
+    if (isModernFigure(decision.name)) {
+      console.log('[DAILY] rejected modern figure:', decision.name);
+      return new Response(JSON.stringify({ ok: true, reason: `modern figure rejected: ${decision.name}` }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    }
     console.log('[DAILY] chosen character:', decision.name, decision.reason);
 
     // 7. Find or create the character
@@ -298,6 +319,13 @@ ${chainText}★ 需要回应的内容 ★：
       const charResp = await callLLM(charSystem, '请提供资料', 'deepseek-v4-flash', 0, true);
       let charInfo: CharacterInfo = {};
       try { const m = charResp.match(/\{[\s\S]*\}/); charInfo = m ? JSON.parse(m[0]) : {}; } catch { charInfo = {}; }
+
+      if (isModernFigure(decision.name, charInfo.era, charInfo.birth_year)) {
+        console.log('[DAILY] rejected modern era/birth for:', decision.name, charInfo.era, charInfo.birth_year);
+        return new Response(JSON.stringify({ ok: true, reason: `modern era rejected: ${decision.name} ${charInfo.era}` }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
 
       const { data: newChar, error: createErr } = await supabase.from('profiles').insert({
         username: decision.name,

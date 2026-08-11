@@ -25,6 +25,22 @@ const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 const MAX_BATCH = 10; // max tasks per invocation to stay within Edge timeout (LLM 2-4s each)
 const STALE_PROCESSING_MINUTES = 10;
 
+// Blocklist: 民国及之后人物一律拦截，兜底 prompt 约束
+const MODERN_BLOCKLIST = new Set([
+  '孙中山','蒋介石','汪精卫','毛泽东','周恩来','刘少奇','朱德','邓小平','陈独秀','李大钊',
+  '胡适','鲁迅','郭沫若','巴金','老舍','钱学森','钱钟书','袁隆平','雷锋','焦裕禄',
+  '蒋经国','宋庆龄','宋美龄','张学良','张作霖','袁世凯','溥仪','康有为','梁启超','蔡元培',
+  '闻一多','徐志摩','丁玲','冰心','茅盾','丰子恺','李宗仁','冯玉祥','阎锡山','陈毅','彭德怀',
+]);
+
+function isModernFigure(name: string, era?: string, birthYear?: number, deathYear?: number): boolean {
+  if (MODERN_BLOCKLIST.has(name)) return true;
+  if (birthYear != null && birthYear >= 1912) return true;
+  if (deathYear != null && deathYear > 1912 && birthYear != null && birthYear >= 1880) return true;
+  if (era && /民国|现代|当代|共和国|新中国|抗战|建国后/.test(era)) return true;
+  return false;
+}
+
 async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
   const adjSystem = systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。';
 
@@ -205,7 +221,8 @@ Deno.serve(async (req: Request) => {
 
       const dispatchSystem = `你是一个历史论坛「回音堂」的 AI 调度 system。
 用户刚刚发了一条帖子，你需要选择一位中国历史上的名人来回复，以产生最强的戏剧性和娱乐效果。
-可以自由选择中国任何朝代的历史人物，不限于任何范围。
+
+可选范围：仅限清朝及之前（1912年之前）的中国历史人物，严禁选择民国及之后（1912年及以后）的人物。民国、抗战、新中国、当代等时期人物一律不可选，例如孙中山、蒋介石、汪精卫、毛泽东、周恩来、邓小平、鲁迅、胡适、郭沫若、钱学森等。若人物主要活动/去世时间在1912年之后则不可选；清朝人物如康熙、雍正、乾隆、和珅等均在可选范围内。
 
 选择标准：
 1. 寻找与帖子观点水火不容的历史人物，制造激烈辩论
@@ -255,6 +272,13 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
         continue;
       }
 
+      if (isModernFigure(decision.name)) {
+        console.log('[DISPATCHER] rejected modern figure:', decision.name);
+        await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', task.id);
+        results.push({ ok: false, id: task.id, error: `modern figure rejected: ${decision.name}` });
+        continue;
+      }
+
       let characterId: string;
       const { data: existingProfile } = await supabase
         .from('profiles')
@@ -285,6 +309,14 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
           const m = charResp.match(/\{[\s\S]*\}/);
           charInfo = m ? JSON.parse(m[0]) : {};
         } catch { charInfo = {}; }
+
+        // 二次校验：若 LLM 返回的 era/birth 属于民国后，拦截建档
+        if (isModernFigure(decision.name, String(charInfo.era || ''), charInfo.birth_year as number | undefined, charInfo.death_year as number | undefined)) {
+          console.log('[DISPATCHER] rejected modern era/birth for:', decision.name, charInfo.era, charInfo.birth_year);
+          await supabase.from('ai_task_queue').update({ status: 'failed' }).eq('id', task.id);
+          results.push({ ok: false, id: task.id, error: `modern era rejected: ${decision.name} ${charInfo.era}` });
+          continue;
+        }
 
         const { data: newChar, error: createErr } = await supabase
           .from('profiles')
