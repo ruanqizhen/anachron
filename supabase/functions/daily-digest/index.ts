@@ -72,48 +72,55 @@ const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepseek-v4-flash', temp = 0, jsonMode = false): Promise<string> {
   const adjSystem = jsonMode ? systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。' : systemPrompt;
 
-  let baseUrl: string;
-  let apiKey: string;
-  let resolvedModel: string;
-
-  if (DAILY_PROVIDER === 'meta') {
-    baseUrl = 'https://api.meta.ai/v1/chat/completions';
-    apiKey = META_API_KEY;
-    resolvedModel = DAILY_MODEL || 'muse-spark-1.2';
-  } else if (DAILY_PROVIDER === 'deepseek') {
-    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
-    apiKey = DEEPSEEK_KEY;
-    resolvedModel = model;
+  // 供应商故障切换链：主供应商 → 备选 → OpenAI（若配置了 key）。
+  const primary = DAILY_PROVIDER;
+  const chain: Array<{ provider: string; model: string; key: string; baseUrl: string; maxTokens: number }> = [];
+  if (primary === 'meta') {
+    chain.push({ provider: 'meta', model: DAILY_MODEL || 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 });
+    chain.push({ provider: 'deepseek', model, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
+  } else if (primary === 'deepseek') {
+    chain.push({ provider: 'deepseek', model, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
+    chain.push({ provider: 'meta', model: 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 });
   } else {
-    baseUrl = 'https://api.openai.com/v1/chat/completions';
-    apiKey = OPENAI_KEY;
-    resolvedModel = model;
+    chain.push({ provider: 'openai', model, key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
+  }
+  if (OPENAI_KEY && primary !== 'openai') {
+    chain.push({ provider: 'openai', model: model || 'gpt-4o-mini', key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
   }
 
-  const resp = await fetch(baseUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: resolvedModel,
-      messages: [
-        { role: 'system', content: adjSystem },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: DAILY_PROVIDER === 'meta' ? 16384 : (resolvedModel.includes('flash') ? 2000 : 8000),
-      temperature: temp,
-    }),
-  });
-  const text = await resp.text();
-  if (!resp.ok) throw new Error(`API ${resp.status}: ${text.slice(0, 200)}`);
-  const json = JSON.parse(text);
-  console.log('[DAILY] API response JSON:', JSON.stringify(json));
-  const message = json.choices?.[0]?.message;
-  const content = message?.content;
-  if (!content) {
-    console.error('[DAILY] content is null or missing. Message:', JSON.stringify(message));
-    throw new Error(`Daily LLM content is empty or refused. message: ${JSON.stringify(message)}`);
+  let lastErr = '';
+  for (const { provider, model: resolvedModel, key, baseUrl, maxTokens } of chain) {
+    if (!key) { lastErr = `${provider} API key missing`; continue; }
+    try {
+      const resp = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model: resolvedModel,
+          messages: [
+            { role: 'system', content: adjSystem },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: maxTokens,
+          temperature: temp,
+        }),
+      });
+      const text = await resp.text();
+      if (!resp.ok) throw new Error(`${provider} API ${resp.status}: ${text.slice(0, 160)}`);
+      const json = JSON.parse(text);
+      const message = json.choices?.[0]?.message;
+      const content = message?.content;
+      if (!content) {
+        throw new Error(`${provider} content is empty or refused. message: ${JSON.stringify(message).slice(0, 120)}`);
+      }
+      if (provider !== primary) console.log('[DAILY] used fallback provider:', provider);
+      return content;
+    } catch (e) {
+      lastErr = String(e).slice(0, 200);
+      console.warn('[DAILY] provider', provider, 'failed:', lastErr);
+    }
   }
-  return content;
+  throw new Error('all providers failed: ' + lastErr);
 }
 
 Deno.serve(async () => {

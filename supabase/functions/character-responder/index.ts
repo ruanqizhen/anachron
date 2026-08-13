@@ -26,46 +26,55 @@ async function callLLM(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> {
-  let baseUrl: string;
-  let apiKey: string;
-  if (provider === 'meta') {
-    baseUrl = 'https://api.meta.ai/v1/chat/completions';
-    apiKey = META_API_KEY;
-  } else if (provider === 'deepseek') {
-    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
-    apiKey = DEEPSEEK_KEY;
-  } else {
-    baseUrl = 'https://api.openai.com/v1/chat/completions';
-    apiKey = OPENAI_KEY;
+  // 供应商故障切换链：主供应商 → 备选 → OpenAI（若配置了 key）。
+  const primary = provider;
+  const chain: Array<{ provider: string; model: string; key: string; baseUrl: string; maxTokens: number }> = [
+    primary === 'meta'
+      ? { provider: 'meta', model, key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 }
+      : { provider: 'deepseek', model, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 8000 },
+    primary === 'meta'
+      ? { provider: 'deepseek', model: 'deepseek-v4-pro', key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 8000 }
+      : { provider: 'meta', model: 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 },
+  ];
+  if (OPENAI_KEY) {
+    chain.push({ provider: 'openai', model: model || 'gpt-4o-mini', key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: 8000 });
   }
 
-  const resp = await fetch(baseUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: provider === 'meta' ? 16384 : 8000,
-      temperature: 0.9,
-    }),
-  });
-  const text = await resp.text();
-  if (!resp.ok) {
-    console.error(`[RESPONDER] ${provider} API error:`, resp.status, text.slice(0, 200));
-    throw new Error(`API ${resp.status}`);
+  let lastErr = '';
+  for (const { provider: p, model: m, key, baseUrl, maxTokens } of chain) {
+    if (!key) { lastErr = `${p} API key missing`; continue; }
+    try {
+      const resp = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model: m,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: maxTokens,
+          temperature: 0.9,
+        }),
+      });
+      const text = await resp.text();
+      if (!resp.ok) {
+        throw new Error(`${p} API ${resp.status}: ${text.slice(0, 160)}`);
+      }
+      const json = JSON.parse(text);
+      const message = json.choices?.[0]?.message;
+      const content = message?.content;
+      if (!content) {
+        throw new Error(`${p} content is empty or refused. message: ${JSON.stringify(message).slice(0, 120)}`);
+      }
+      if (p !== primary) console.log('[RESPONDER] used fallback provider:', p);
+      return content;
+    } catch (e) {
+      lastErr = String(e).slice(0, 200);
+      console.warn(`[RESPONDER] ${p} failed:`, lastErr);
+    }
   }
-  const json = JSON.parse(text);
-  console.log(`[RESPONDER] ${provider} API response JSON:`, JSON.stringify(json));
-  const message = json.choices?.[0]?.message;
-  const content = message?.content;
-  if (!content) {
-    console.error(`[RESPONDER] ${provider} content is null or missing. Message:`, JSON.stringify(message));
-    throw new Error(`Responder LLM content is empty or refused. message: ${JSON.stringify(message)}`);
-  }
-  return content;
+  throw new Error('all providers failed: ' + lastErr);
 }
 
 Deno.serve(async (req: Request) => {

@@ -94,7 +94,53 @@ async function isHighRiskUser(userId: string): Promise<boolean> {
 // 不再写入 blocked_ips（该表 ip_address 为 INET 类型，无法存 user id）。
 
 // ─── Content Moderation ───
-async function moderateContent(text: string): Promise<{ safe: boolean; score?: number; reason?: string; outage?: boolean }> {
+// 调用单个供应商做审核，失败抛错；由 moderateContent 负责在供应商间做故障切换。
+async function callModerationProvider(
+  provider: string, model: string, systemPrompt: string, text: string,
+): Promise<{ score: number; reason: string }> {
+  let apiKey = '';
+  let baseUrl = '';
+  if (provider === 'deepseek') {
+    apiKey = Deno.env.get('DEEPSEEK_API_KEY') || '';
+    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
+  } else if (provider === 'meta') {
+    apiKey = Deno.env.get('META_API_KEY') || '';
+    baseUrl = 'https://api.meta.ai/v1/chat/completions';
+  } else {
+    apiKey = Deno.env.get('OPENAI_API_KEY') || '';
+    baseUrl = 'https://api.openai.com/v1/chat/completions';
+  }
+  if (!apiKey) throw new Error(`${provider} API key missing`);
+
+  const resp = await fetch(baseUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text.slice(0, 2000) },
+      ],
+      max_tokens: provider === 'meta' ? 16384 : 2000,
+      temperature: 0,
+    }),
+  });
+  const textResp = await resp.text();
+  if (!resp.ok) {
+    throw new Error(`${provider} API ${resp.status}: ${textResp.slice(0, 160)}`);
+  }
+  const json = JSON.parse(textResp);
+  const message = json.choices?.[0]?.message;
+  const content = message?.content;
+  if (!content) {
+    throw new Error(`${provider} content is empty or refused. message: ${JSON.stringify(message).slice(0, 120)}`);
+  }
+  const m = content.match(/\{[\s\S]*\}/);
+  const result = m ? JSON.parse(m[0]) : JSON.parse(content);
+  return { score: result.score, reason: result.reason };
+}
+
+async function moderateContent(text: string): Promise<{ safe: boolean; score?: number; reason?: string; outage?: boolean; errorDetail?: string }> {
   const systemPrompt = `你是内容安全审核系统。评估用户内容的违规风险程度，给出 1-10 的评分。
 
 1-3 分：完全安全，正常的讨论内容
@@ -106,83 +152,36 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
 
 只回复 JSON：{"score": <1-10的整数>, "reason": "评分原因（中文，20字内）"}`;
 
-  try {
-    const provider = MODERATION_PROVIDER;
-    const model = MODERATION_MODEL;
-
-    // OpenAI-compatible providers (OpenAI, DeepSeek, Meta, etc.)
-    if (provider === 'openai' || provider === 'deepseek' || provider === 'meta') {
-      let apiKey = '';
-      let baseUrl = '';
-      if (provider === 'deepseek') {
-        apiKey = Deno.env.get('DEEPSEEK_API_KEY') || '';
-        baseUrl = 'https://api.deepseek.com/v1/chat/completions';
-      } else if (provider === 'meta') {
-        apiKey = Deno.env.get('META_API_KEY') || '';
-        baseUrl = 'https://api.meta.ai/v1/chat/completions';
-      } else {
-        apiKey = Deno.env.get('OPENAI_API_KEY') || '';
-        baseUrl = 'https://api.openai.com/v1/chat/completions';
-      }
-      if (!apiKey) return { safe: true };
-      const resp = await fetch(baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: text.slice(0, 2000) },
-          ],
-          max_tokens: provider === 'meta' ? 16384 : 2000,
-          temperature: 0,
-        }),
-      });
-      const textResp = await resp.text();
-      if (!resp.ok) {
-        console.error(`[MODERATION] ${provider} API HTTP error:`, resp.status, textResp.slice(0, 200));
-        throw new Error(`API ${resp.status}: ${textResp.slice(0, 200)}`);
-      }
-      const json = JSON.parse(textResp);
-      console.log('[MODERATION] API response JSON:', JSON.stringify(json));
-      const message = json.choices?.[0]?.message;
-      const content = message?.content;
-      if (!content) {
-        console.error('[MODERATION] content is null or missing. Message:', JSON.stringify(message));
-        throw new Error(`Moderation content is empty or refused. message: ${JSON.stringify(message)}`);
-      }
-      const m = content.match(/\{[\s\S]*\}/);
-      const result = m ? JSON.parse(m[0]) : JSON.parse(content);
-      console.log('[MODERATION] score:', result.score, 'reason:', result.reason);
-      return result;
-    }
-
-    if (provider === 'anthropic') {
-      const key = Deno.env.get('ANTHROPIC_API_KEY');
-      if (!key) return { safe: true };
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({
-          model,
-          max_tokens: 200,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: text.slice(0, 2000) }],
-        }),
-      });
-      const json = await resp.json();
-      const result = JSON.parse(json.content[0].text);
-      return result;
-    }
-
-    // Unknown provider → skip moderation
-    return { safe: true, score: 1 };
-  } catch (err) {
-    console.error('[MODERATION] error:', err);
-    // Moderation API failure → pending_review (safe default), but NOT a user violation:
-    // outage=true prevents the caller from marking the user/IP as high-risk.
-    return { safe: false, score: 10, reason: '审核服务暂时不可用', outage: true };
+  // 供应商故障切换链：主供应商 → 备选 → OpenAI（若配置了 key）。
+  // 避免单个供应商欠费/故障导致所有新帖卡在 pending_review。
+  const primary = MODERATION_PROVIDER;
+  const primaryModel = primary === 'meta'
+    ? (MODERATION_MODEL || 'muse-spark-1.2')
+    : (MODERATION_MODEL || 'deepseek-v4-flash');
+  const chain: Array<{ provider: string; model: string }> = [
+    { provider: primary, model: primaryModel },
+    { provider: primary === 'meta' ? 'deepseek' : 'meta', model: primary === 'meta' ? 'deepseek-v4-flash' : 'muse-spark-1.2' },
+  ];
+  if (Deno.env.get('OPENAI_API_KEY')) {
+    chain.push({ provider: 'openai', model: MODERATION_MODEL || 'gpt-4o-mini' });
   }
+
+  let lastErr = '';
+  for (const { provider, model } of chain) {
+    try {
+      const result = await callModerationProvider(provider, model, systemPrompt, text);
+      console.log('[MODERATION] provider:', provider, 'score:', result.score, 'reason:', result.reason);
+      return result;
+    } catch (err) {
+      lastErr = String(err).slice(0, 200);
+      console.warn('[MODERATION] provider', provider, 'failed:', lastErr);
+    }
+  }
+
+  // 所有供应商均失败 → pending_review (safe default)，但不视为用户违规：
+  // outage=true 阻止调用方把用户/IP 标记为高风险。
+  console.error('[MODERATION] all providers failed:', lastErr);
+  return { safe: false, score: 10, reason: '审核服务暂时不可用', outage: true, errorDetail: lastErr };
 }
 
 // ─── Main ───
@@ -333,6 +332,7 @@ Deno.serve(async (req: Request) => {
 
     // Step 3: AI content moderation
     let status = 'published';
+    let moderationError: string | undefined;
     const threshold = isGuest ? 8 : 9;
     const textToCheck = [payload.title, payload.content].filter(Boolean).join(' ');
     if (!highRisk) {
@@ -345,6 +345,7 @@ Deno.serve(async (req: Request) => {
         if (result.outage) {
           // 审核服务故障：仅转人工复核，不得封禁用户/IP（上游故障≠用户违规）
           console.log('[POST-HANDLER] moderation outage, pending_review without risk marking');
+          moderationError = result.errorDetail;
         } else if (isGuest) {
           await markIpHighRisk(clientIp, riskReason);
         }
@@ -397,7 +398,7 @@ Deno.serve(async (req: Request) => {
         console.log('[POST-HANDLER] skipping thread AI dispatcher. highRisk:', highRisk, 'status:', status);
       }
 
-      return ok({ ok: true, thread: data, status });
+      return ok({ ok: true, thread: data, status, moderation_error: moderationError || null });
     }
 
     if (payload.action === 'create_post') {
@@ -451,7 +452,7 @@ Deno.serve(async (req: Request) => {
         console.log('[POST-HANDLER] skipping post AI dispatcher. highRisk:', highRisk, 'status:', status);
       }
 
-      return ok({ ok: true, post: data, status });
+      return ok({ ok: true, post: data, status, moderation_error: moderationError || null });
     }
 
     return err('未知操作', 400);

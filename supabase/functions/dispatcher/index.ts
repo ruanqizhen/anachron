@@ -44,42 +44,57 @@ function isModernFigure(name: string, era?: string, birthYear?: number, deathYea
 async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
   const adjSystem = systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。';
 
-  let baseUrl: string;
-  let apiKey: string;
-  if (DISPATCHER_PROVIDER === 'meta') {
-    baseUrl = 'https://api.meta.ai/v1/chat/completions';
-    apiKey = META_API_KEY;
-  } else if (DISPATCHER_PROVIDER === 'deepseek') {
-    baseUrl = 'https://api.deepseek.com/v1/chat/completions';
-    apiKey = DEEPSEEK_KEY;
-  } else {
-    baseUrl = 'https://api.openai.com/v1/chat/completions';
-    apiKey = OPENAI_KEY;
+  // 供应商故障切换链：主供应商 → 备选 → OpenAI（若配置了 key）。
+  // 避免单个供应商欠费/故障导致调度队列堆积。
+  const primary = DISPATCHER_PROVIDER;
+  const primaryModel = primary === 'meta'
+    ? (DISPATCHER_MODEL || 'muse-spark-1.2')
+    : (DISPATCHER_MODEL || 'deepseek-v4-flash');
+  const chain: Array<{ provider: string; model: string; key: string; baseUrl: string; maxTokens: number }> = [
+    primary === 'meta'
+      ? { provider: 'meta', model: primaryModel, key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 }
+      : { provider: 'deepseek', model: primaryModel, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 4000 },
+    primary === 'meta'
+      ? { provider: 'deepseek', model: 'deepseek-v4-flash', key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 4000 }
+      : { provider: 'meta', model: 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 },
+  ];
+  if (OPENAI_KEY) {
+    chain.push({ provider: 'openai', model: DISPATCHER_MODEL || 'gpt-4o-mini', key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: 4000 });
   }
 
-  const resp = await fetch(baseUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: DISPATCHER_MODEL,
-      messages: [
-        { role: 'system', content: adjSystem },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: DISPATCHER_PROVIDER === 'meta' ? 16384 : 4000,
-      temperature: 0,
-    }),
-  });
-  const text = await resp.text();
-  if (!resp.ok) throw new Error(`API ${resp.status}: ${text.slice(0, 100)}`);
-  const json = JSON.parse(text);
-  const message = json.choices?.[0]?.message;
-  const content = message?.content;
-  if (!content) {
-    console.error('[DISPATCHER] content is null or missing. Message:', JSON.stringify(message));
-    throw new Error(`Dispatcher content is empty or refused. message: ${JSON.stringify(message)}`);
+  let lastErr = '';
+  for (const { provider, model, key, baseUrl, maxTokens } of chain) {
+    if (!key) { lastErr = `${provider} API key missing`; continue; }
+    try {
+      const resp = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: adjSystem },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: maxTokens,
+          temperature: 0,
+        }),
+      });
+      const text = await resp.text();
+      if (!resp.ok) throw new Error(`${provider} API ${resp.status}: ${text.slice(0, 100)}`);
+      const json = JSON.parse(text);
+      const message = json.choices?.[0]?.message;
+      const content = message?.content;
+      if (!content) {
+        throw new Error(`${provider} content is empty or refused. message: ${JSON.stringify(message).slice(0, 100)}`);
+      }
+      if (provider !== primary) console.log('[DISPATCHER] used fallback provider:', provider);
+      return content;
+    } catch (e) {
+      lastErr = String(e).slice(0, 160);
+      console.warn('[DISPATCHER] provider', provider, 'failed:', lastErr);
+    }
   }
-  return content;
+  throw new Error('all providers failed: ' + lastErr);
 }
 
 const CORS_HEADERS = {
