@@ -672,18 +672,12 @@ export async function adminGetAllCharacters(): Promise<AICharacter[]> {
 }
 
 export async function adminUpdateCharacter(id: string, params: {
-  personality_prompt: string;
-  comedy_notes: string;
-  writing_style: string;
   is_active: boolean;
   bio: string;
 }): Promise<void> {
   const db = requireSupabase();
   const { error } = await db.rpc('admin_update_character', {
     p_id: id,
-    p_personality_prompt: params.personality_prompt,
-    p_comedy_notes: params.comedy_notes,
-    p_writing_style: params.writing_style,
     p_is_active: params.is_active,
     p_bio: params.bio,
   });
@@ -750,14 +744,13 @@ export async function adminUpdatePost(postId: string, content: string, createdAt
 // ─── Admin: Character CRUD ───
 export async function adminCreateCharacter(params: {
   username: string; era: string; birth_year: number | null; death_year: number | null;
-  tags: string[]; personality: string; comedy: string; style: string;
+  tags: string[];
 }): Promise<string> {
   const db = requireSupabase();
   const { data, error } = await db.rpc('admin_create_character', {
     p_username: params.username, p_era: params.era,
     p_birth_year: params.birth_year, p_death_year: params.death_year,
-    p_tags: params.tags, p_personality: params.personality,
-    p_comedy: params.comedy, p_style: params.style,
+    p_tags: params.tags,
   });
   if (error) throw error;
   return data as string;

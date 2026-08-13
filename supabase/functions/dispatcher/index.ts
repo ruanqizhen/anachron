@@ -298,10 +298,7 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
   "era": "所属时代",
   "tags": ["标签1", "标签2", "标签3"],
   "birth_year": 生年数字,
-  "death_year": 卒年数字,
-  "personality_prompt": "人格与性格描述（中文，200字内）",
-  "comedy_notes": "喜剧方向描述（中文，200字内）",
-  "writing_style": "语言风格描述（中文，100字内）"
+  "death_year": 卒年数字
 }`;
         const charResp = await callLLM(charSystem, '请提供资料');
         let charInfo: Record<string, string | number | string[]>;
@@ -322,7 +319,7 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
           .from('profiles')
           .insert({
             username: decision.name,
-            bio: String(charInfo.personality_prompt || '').slice(0, 300),
+            bio: '',
             is_ai_character: true,
             is_admin: false,
           })
@@ -342,9 +339,6 @@ ${chainText}★ 最新回复 ★（请主要根据这条内容选择人物）：
           tags: charInfo.tags || [],
           birth_year: charInfo.birth_year || null,
           death_year: charInfo.death_year || null,
-          personality_prompt: charInfo.personality_prompt || '',
-          comedy_notes: charInfo.comedy_notes || '',
-          writing_style: charInfo.writing_style || '',
           is_active: true,
         });
 

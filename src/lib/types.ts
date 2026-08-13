@@ -26,9 +26,6 @@ export interface AICharacter {
   tags: string[];
   birth_year: number | null;
   death_year: number | null;
-  personality_prompt: string;
-  comedy_notes: string;
-  writing_style: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

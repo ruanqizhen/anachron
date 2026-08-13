@@ -14,7 +14,7 @@ export default function AdminCharacters() {
   const [characters, setCharacters] = useState<AdminCharacterRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [newChar, setNewChar] = useState({ username: '', era: '', birth_year: '', death_year: '', tags: '', personality: '', comedy: '', style: '' });
+  const [newChar, setNewChar] = useState({ username: '', era: '', birth_year: '', death_year: '', tags: '' });
   const [msg, setMsg] = useState('');
   const [filter, setFilter] = useState('');
 
@@ -78,8 +78,6 @@ export default function AdminCharacters() {
             <input placeholder="生年" value={newChar.birth_year} onChange={e => setNewChar({...newChar, birth_year: e.target.value})} style={FIELD_STYLE} />
             <input placeholder="卒年" value={newChar.death_year} onChange={e => setNewChar({...newChar, death_year: e.target.value})} style={FIELD_STYLE} />
           </div>
-          <textarea placeholder="人格提示词" value={newChar.personality} onChange={e => setNewChar({...newChar, personality: e.target.value})} rows={2} style={FIELD_STYLE} />
-          <textarea placeholder="喜剧方向" value={newChar.comedy} onChange={e => setNewChar({...newChar, comedy: e.target.value})} rows={2} style={FIELD_STYLE} />
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm border-none cursor-pointer hover:bg-[var(--color-page-bg)]" style={{ color: 'var(--color-text-muted)' }}>取消</button>
             <button onClick={async () => {
@@ -90,10 +88,9 @@ export default function AdminCharacters() {
                   birth_year: parseInt(newChar.birth_year) || null,
                   death_year: parseInt(newChar.death_year) || null,
                   tags: newChar.tags.split(',').map(s => s.trim()).filter(Boolean),
-                  personality: newChar.personality, comedy: newChar.comedy, style: newChar.style || '文言白话',
                 });
                 setShowCreate(false);
-                setNewChar({ username: '', era: '', birth_year: '', death_year: '', tags: '', personality: '', comedy: '', style: '' });
+                setNewChar({ username: '', era: '', birth_year: '', death_year: '', tags: '' });
                 load();
               } catch (err: unknown) { setMsg('添加失败: ' + (err instanceof Error ? err.message : String(err))); }
             }} className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-[var(--color-primary)] border-none cursor-pointer">创建角色</button>
@@ -138,4 +135,3 @@ export default function AdminCharacters() {
     </AdminListLayout>
   );
 }
-

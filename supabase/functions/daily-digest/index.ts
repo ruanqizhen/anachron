@@ -46,19 +46,16 @@ interface CharacterInfo {
   tags?: string[];
   birth_year?: number;
   death_year?: number;
-  personality_prompt?: string;
-  comedy_notes?: string;
-  writing_style?: string;
 }
 
 const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'deepseek';
 const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.2' : '');
 
 const MODERN_BLOCKLIST = new Set([
-  '孙中山','蒋介石','汪精卫','毛泽东','周恩来','刘少奇','朱德','邓小平','陈独秀','李大钊',
-  '胡适','鲁迅','郭沫若','巴金','老舍','钱学森','钱钟书','袁隆平','雷锋','焦裕禄',
-  '蒋经国','宋庆龄','宋美龄','张学良','张作霖','袁世凯','溥仪','康有为','梁启超','蔡元培',
-  '闻一多','徐志摩','丁玲','冰心','茅盾','丰子恺','李宗仁','冯玉祥','阎锡山','陈毅','彭德怀',
+  '孙中山', '蒋介石', '汪精卫', '毛泽东', '周恩来', '刘少奇', '朱德', '邓小平', '陈独秀', '李大钊',
+  '胡适', '鲁迅', '郭沫若', '巴金', '老舍', '钱学森', '钱钟书', '袁隆平', '雷锋', '焦裕禄',
+  '蒋经国', '宋庆龄', '宋美龄', '张学良', '张作霖', '袁世凯', '溥仪', '康有为', '梁启超', '蔡元培',
+  '闻一多', '徐志摩', '丁玲', '冰心', '茅盾', '丰子恺', '李宗仁', '冯玉祥', '阎锡山', '陈毅', '彭德怀',
 ]);
 
 function isModernFigure(name: string, era?: string, birthYear?: number): boolean {
@@ -74,7 +71,7 @@ const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 
 async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepseek-v4-flash', temp = 0, jsonMode = false): Promise<string> {
   const adjSystem = jsonMode ? systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。' : systemPrompt;
-  
+
   let baseUrl: string;
   let apiKey: string;
   let resolvedModel: string;
@@ -315,7 +312,7 @@ ${chainText}★ 需要回应的内容 ★：
       console.log('[DAILY] creating new character:', decision.name);
       const charSystem = `请提供关于中国历史名人「${decision.name}」的详细资料，用于创建 AI 角色。
 返回 JSON 格式：
-{"era":"所属时代","tags":["标签1","标签2","标签3"],"birth_year":生年数字,"death_year":卒年数字,"personality_prompt":"人格与性格描述（中文，200字内）","comedy_notes":"喜剧方向描述（中文，200字内）","writing_style":"语言风格描述（中文，100字内）"}`;
+{"era":"所属时代","tags":["标签1","标签2","标签3"],"birth_year":生年数字,"death_year":卒年数字}`;
       const charResp = await callLLM(charSystem, '请提供资料', 'deepseek-v4-flash', 0, true);
       let charInfo: CharacterInfo = {};
       try { const m = charResp.match(/\{[\s\S]*\}/); charInfo = m ? JSON.parse(m[0]) : {}; } catch { charInfo = {}; }
@@ -329,7 +326,7 @@ ${chainText}★ 需要回应的内容 ★：
 
       const { data: newChar, error: createErr } = await supabase.from('profiles').insert({
         username: decision.name,
-        bio: String(charInfo.personality_prompt || '').slice(0, 300),
+        bio: '',
         is_ai_character: true, is_admin: false,
       }).select('*').single();
       if (createErr || !newChar) throw new Error('failed to create profile: ' + (createErr?.message || ''));
@@ -337,8 +334,7 @@ ${chainText}★ 需要回应的内容 ★：
       await supabase.from('ai_characters').insert({
         id: newChar.id, era: charInfo.era || '未知', tags: charInfo.tags || [],
         birth_year: charInfo.birth_year || null, death_year: charInfo.death_year || null,
-        personality_prompt: charInfo.personality_prompt || '', comedy_notes: charInfo.comedy_notes || '',
-        writing_style: charInfo.writing_style || '', is_active: true,
+        is_active: true,
       });
       characterId = newChar.id;
       characterProfile = newChar as unknown as Profile;
@@ -352,17 +348,9 @@ ${chainText}★ 需要回应的内容 ★：
     const systemPrompt = `# 角色设定
 你正在扮演 ${characterProfile.username}（${fullChar.birth_year || '?'} — ${fullChar.death_year || '?'}），${fullChar.era || '未知'}。
 
-# 人格与性格
-${fullChar.personality_prompt || '暂无详细设定'}
-
-# 喜剧方向
-${fullChar.comedy_notes || '用古代视角误解现代事物产生幽默'}
-
-# 语言风格
-${fullChar.writing_style || '用白话文直率表达'}
-
 # 行为准则
-- 始终以第一人称、以你的真实历史性格发言
+- 始终以第一人称、以你的真实历史性格发言，不要试图理解现代观点
+- 观点和语言都要符合你的时代和身份背景
 - 遇到不理解的现代概念时，用你所处时代的已知事物做类比
 - 要使用历史上的真实案例来论证自己的观点，不要只表达态度和情绪
 - 直接输出你要说的文字，不要加入旁白、表情、动作描写

@@ -130,30 +130,20 @@ Deno.serve(async (req: Request) => {
     const sysEra = character.era || '未知时代';
     const sysBirth = character.birth_year != null ? character.birth_year : '?';
     const sysDeath = character.death_year != null ? character.death_year : '?';
-    const sysPersonality = character.personality_prompt || '暂无详细设定';
-    const sysComedy = character.comedy_notes || '用古代视角误解现代事物产生幽默';
-    const sysStyle = character.writing_style || '用白话文直率表达';
 
     const systemPrompt = `# 角色设定
 你正在扮演 ${profile?.username || '未知'}（${sysBirth} — ${sysDeath}），${sysEra}。
 
-# 人格与性格
-${sysPersonality}
-
-# 喜剧方向
-${sysComedy}
-
-# 语言风格
-${sysStyle}
-
 # 行为准则
 
 - 始终以第一人称、以你的真实历史性格发言，不要试图理解现代观点
+- 观点和语言都要符合你的时代和身份背景
 - 要使用历史上的真实案例来论证自己的观点，不要只表达态度和情绪
-- 直接输出你要说的文字，不要加入旁白、表情、动作描写（如"捻须""拂袖"等），只写回复内容本身
+- 直接输出你要说的文字，不要加入旁白、表情、动作描写（如"捻须""悲伤"等），只写回复内容本身
 - 不要输出括号
 - 使用白话文回答，可以参杂少量的当时时期的语言习惯，让现代人可以轻松读懂
 - 回复长度：100 ～ 400 字之间
+- 禁止使用现代网络用语或表情符号
 - 回复末尾无需署名`;
 
     const contextText = (contextPosts || [])

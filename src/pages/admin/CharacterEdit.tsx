@@ -21,9 +21,6 @@ export default function CharacterEdit() {
 
   // Editable fields
   const [bio, setBio] = useState('');
-  const [personality, setPersonality] = useState('');
-  const [comedy, setComedy] = useState('');
-  const [style, setStyle] = useState('');
   const [active, setActive] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState('');
 
@@ -35,9 +32,6 @@ export default function CharacterEdit() {
       if (found) {
         setChar(found);
         setBio(found.bio || '');
-        setPersonality(found.personality_prompt || '');
-        setComedy(found.comedy_notes || '');
-        setStyle(found.writing_style || '');
         setActive(found.is_active);
         setAvatarUrl(found.avatar_url || '');
       }
@@ -52,9 +46,6 @@ export default function CharacterEdit() {
     setMsg('');
     try {
       await adminUpdateCharacter(char.id, {
-        personality_prompt: personality,
-        comedy_notes: comedy,
-        writing_style: style,
         is_active: active,
         bio,
       });
@@ -123,21 +114,6 @@ export default function CharacterEdit() {
               <div>
                 <label className="block text-sm font-medium mb-1">简介 (bio)</label>
                 <textarea rows={3} value={bio} onChange={e => setBio(e.target.value)} style={FIELD_STYLE} />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">人格提示词 (personality_prompt)</label>
-                <textarea rows={5} value={personality} onChange={e => setPersonality(e.target.value)} style={FIELD_STYLE} />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">喜剧方向 (comedy_notes)</label>
-                <textarea rows={4} value={comedy} onChange={e => setComedy(e.target.value)} style={FIELD_STYLE} />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">语言风格 (writing_style)</label>
-                <textarea rows={3} value={style} onChange={e => setStyle(e.target.value)} style={FIELD_STYLE} />
               </div>
 
             </div>
