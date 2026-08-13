@@ -133,7 +133,7 @@ export async function getBoardBySlug(slug: string): Promise<Board | null> {
 export async function getRecentThreads(limit: number = 20, offset: number = 0): Promise<Thread[]> {
   if (!supabase) return [];
 
-  // For offset 0, keep discovery scoring but deterministic (no minuteSeed) for stable pagination.
+  // For offset 0, strong random shuffle for discovery — each refresh shows different content.
   // For offset > 0, use stable last_post_at ordering with proper range to avoid duplicates.
 
   if (offset === 0) {
@@ -158,7 +158,6 @@ export async function getRecentThreads(limit: number = 20, offset: number = 0): 
 
     const threads = data as Thread[];
     const now = Date.now();
-    function hash(s: string): number { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; } return Math.abs(h); }
     function hoursAgo(d: string): number { return Math.max(0, (now - new Date(d).getTime()) / 3600000); }
 
     const pinned = threads.filter(t => t.pin_level > 0);
@@ -169,10 +168,10 @@ export async function getRecentThreads(limit: number = 20, offset: number = 0): 
       const recency = Math.max(0, 15 - Math.floor(ageH / 40));
       return {
         thread: t,
-        score: (t.is_featured ? 20 : 0)
-          + recency
-          + Math.min(t.reply_count, 10)
-          + hash(t.id) % 4, // deterministic jitter, no minuteSeed
+        score: (t.is_featured ? 8 : 0)
+          + recency * 0.4
+          + Math.min(t.reply_count, 10) * 0.3
+          + Math.random() * 28, // strong random jitter — dominates ranking, each refresh is different
       };
     });
     scored.sort((a, b) => b.score - a.score);

@@ -94,8 +94,8 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Thread feed */}
-          <ThreadFeed fetchThreads={fetchThreads} refreshKey={refreshKey} emptyMessage="暂无帖子" cacheKey="home" />
+          {/* Thread feed — no cacheKey so each visit/refresh reshuffles via Math.random() in getRecentThreads */}
+          <ThreadFeed fetchThreads={fetchThreads} refreshKey={refreshKey} emptyMessage="暂无帖子" />
         </main>
 
         {/* Right panel - desktop only */}
