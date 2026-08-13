@@ -90,16 +90,11 @@ async function isHighRiskUser(userId: string): Promise<boolean> {
   return (count || 0) >= 3;
 }
 
-async function markUserHighRisk(userId: string, reason: string) {
-  await supabase.from('blocked_ips').insert({
-    ip_address: `user:${userId}`,
-    risk_score: 10,
-    reason,
-  }).catch(() => {});
-}
+// 用户级风险由 isHighRiskUser()（24h 内 pending_review 计数）单独判定，
+// 不再写入 blocked_ips（该表 ip_address 为 INET 类型，无法存 user id）。
 
 // ─── Content Moderation ───
-async function moderateContent(text: string): Promise<{ safe: boolean; score?: number; reason?: string }> {
+async function moderateContent(text: string): Promise<{ safe: boolean; score?: number; reason?: string; outage?: boolean }> {
   const systemPrompt = `你是内容安全审核系统。评估用户内容的违规风险程度，给出 1-10 的评分。
 
 1-3 分：完全安全，正常的讨论内容
@@ -184,8 +179,9 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
     return { safe: true, score: 1 };
   } catch (err) {
     console.error('[MODERATION] error:', err);
-    // Moderation API failure → pending_review (safe default)
-    return { safe: false, score: 10, reason: '审核服务暂时不可用' };
+    // Moderation API failure → pending_review (safe default), but NOT a user violation:
+    // outage=true prevents the caller from marking the user/IP as high-risk.
+    return { safe: false, score: 10, reason: '审核服务暂时不可用', outage: true };
   }
 }
 
@@ -346,10 +342,11 @@ Deno.serve(async (req: Request) => {
       if (score >= threshold) {
         status = 'pending_review';
         const riskReason = result.reason || `风险评分 ${score}`;
-        if (isGuest) {
+        if (result.outage) {
+          // 审核服务故障：仅转人工复核，不得封禁用户/IP（上游故障≠用户违规）
+          console.log('[POST-HANDLER] moderation outage, pending_review without risk marking');
+        } else if (isGuest) {
           await markIpHighRisk(clientIp, riskReason);
-        } else if (userId) {
-          await markUserHighRisk(userId, riskReason);
         }
       }
     } else {
