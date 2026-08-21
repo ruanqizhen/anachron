@@ -48,8 +48,8 @@ interface CharacterInfo {
   death_year?: number;
 }
 
-const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'deepseek';
-const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.2' : '');
+const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'meta';
+const DAILY_MODEL = Deno.env.get('DAILY_MODEL_NAME') || (DAILY_PROVIDER === 'meta' ? 'muse-spark-1.2-contributor' : '');
 
 const MODERN_BLOCKLIST = new Set([
   '孙中山', '蒋介石', '汪精卫', '毛泽东', '周恩来', '刘少奇', '朱德', '邓小平', '陈独秀', '李大钊',
@@ -69,18 +69,18 @@ const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const META_API_KEY = Deno.env.get('META_API_KEY') || '';
 
-async function callLLM(systemPrompt: string, userPrompt: string, model = 'deepseek-v4-flash', temp = 0, jsonMode = false): Promise<string> {
+async function callLLM(systemPrompt: string, userPrompt: string, model = 'muse-spark-1.2-contributor', temp = 0, jsonMode = false): Promise<string> {
   const adjSystem = jsonMode ? systemPrompt + '\n\n直接输出纯 JSON，不要输出思考过程或任何额外文字。' : systemPrompt;
 
   // 供应商故障切换链：主供应商 → 备选 → OpenAI（若配置了 key）。
   const primary = DAILY_PROVIDER;
   const chain: Array<{ provider: string; model: string; key: string; baseUrl: string; maxTokens: number }> = [];
   if (primary === 'meta') {
-    chain.push({ provider: 'meta', model: DAILY_MODEL || 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 });
+    chain.push({ provider: 'meta', model: DAILY_MODEL || 'muse-spark-1.2-contributor', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 });
     chain.push({ provider: 'deepseek', model, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
   } else if (primary === 'deepseek') {
     chain.push({ provider: 'deepseek', model, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
-    chain.push({ provider: 'meta', model: 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 });
+    chain.push({ provider: 'meta', model: 'muse-spark-1.2-contributor', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 });
   } else {
     chain.push({ provider: 'openai', model, key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: model.includes('flash') ? 2000 : 8000 });
   }
@@ -270,7 +270,7 @@ ${chainText}★ 需要回应的内容 ★：
 
     let decision: { name: string; reason: string };
     try {
-      const resp = await callLLM(dispatchSystem, dispatchUser, 'deepseek-v4-flash', 0, true);
+      const resp = await callLLM(dispatchSystem, dispatchUser, 'muse-spark-1.2-contributor', 0, true);
       const m = resp.match(/\{[\s\S]*\}/);
       decision = m ? JSON.parse(m[0]) : { name: '', reason: 'parse error' };
     } catch (e) {
@@ -320,7 +320,7 @@ ${chainText}★ 需要回应的内容 ★：
       const charSystem = `请提供关于中国历史名人「${decision.name}」的详细资料，用于创建 AI 角色。
 返回 JSON 格式：
 {"era":"所属时代","tags":["标签1","标签2","标签3"],"birth_year":生年数字,"death_year":卒年数字}`;
-      const charResp = await callLLM(charSystem, '请提供资料', 'deepseek-v4-flash', 0, true);
+      const charResp = await callLLM(charSystem, '请提供资料', 'muse-spark-1.2-contributor', 0, true);
       let charInfo: CharacterInfo = {};
       try { const m = charResp.match(/\{[\s\S]*\}/); charInfo = m ? JSON.parse(m[0]) : {}; } catch { charInfo = {}; }
 
@@ -381,7 +381,7 @@ ${replyLabel}：
     console.log('[DAILY] generating reply as:', characterProfile.username);
     let reply: string;
     try {
-      reply = await callLLM(systemPrompt, userPrompt, 'deepseek-v4-pro', 0.9);
+      reply = await callLLM(systemPrompt, userPrompt, 'muse-spark-1.2-contributor', 0.9);
       reply = reply.trim();
       if (!reply) throw new Error('Empty response');
     } catch (llmErr) {

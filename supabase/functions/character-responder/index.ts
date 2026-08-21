@@ -13,8 +13,8 @@ const supabase = createClient(
 const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-const CHAT_PROVIDER = Deno.env.get('CHAT_MODEL_PROVIDER') || 'deepseek';
-const CHAT_MODEL = Deno.env.get('CHAT_MODEL_NAME') || (CHAT_PROVIDER === 'meta' ? 'muse-spark-1.2' : 'deepseek-v4-pro');
+const CHAT_PROVIDER = Deno.env.get('CHAT_MODEL_PROVIDER') || 'meta';
+const CHAT_MODEL = Deno.env.get('CHAT_MODEL_NAME') || (CHAT_PROVIDER === 'meta' ? 'muse-spark-1.2-contributor' : 'deepseek-v4-pro');
 
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
@@ -34,7 +34,7 @@ async function callLLM(
       : { provider: 'deepseek', model, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 8000 },
     primary === 'meta'
       ? { provider: 'deepseek', model: 'deepseek-v4-pro', key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 8000 }
-      : { provider: 'meta', model: 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 },
+      : { provider: 'meta', model: 'muse-spark-1.2-contributor', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 },
   ];
   if (OPENAI_KEY) {
     chain.push({ provider: 'openai', model: model || 'gpt-4o-mini', key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: 8000 });

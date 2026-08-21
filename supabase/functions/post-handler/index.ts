@@ -9,8 +9,8 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
-const MODERATION_PROVIDER = Deno.env.get('MODERATION_MODEL_PROVIDER') || 'deepseek';
-const MODERATION_MODEL = Deno.env.get('MODERATION_MODEL_NAME') || 'deepseek-v4-flash';
+const MODERATION_PROVIDER = Deno.env.get('MODERATION_MODEL_PROVIDER') || 'meta';
+const MODERATION_MODEL = Deno.env.get('MODERATION_MODEL_NAME') || 'muse-spark-1.2-contributor';
 const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
@@ -156,11 +156,11 @@ async function moderateContent(text: string): Promise<{ safe: boolean; score?: n
   // 避免单个供应商欠费/故障导致所有新帖卡在 pending_review。
   const primary = MODERATION_PROVIDER;
   const primaryModel = primary === 'meta'
-    ? (MODERATION_MODEL || 'muse-spark-1.2')
+    ? (MODERATION_MODEL || 'muse-spark-1.2-contributor')
     : (MODERATION_MODEL || 'deepseek-v4-flash');
   const chain: Array<{ provider: string; model: string }> = [
     { provider: primary, model: primaryModel },
-    { provider: primary === 'meta' ? 'deepseek' : 'meta', model: primary === 'meta' ? 'deepseek-v4-flash' : 'muse-spark-1.2' },
+    { provider: primary === 'meta' ? 'deepseek' : 'meta', model: primary === 'meta' ? 'deepseek-v4-flash' : 'muse-spark-1.2-contributor' },
   ];
   if (Deno.env.get('OPENAI_API_KEY')) {
     chain.push({ provider: 'openai', model: MODERATION_MODEL || 'gpt-4o-mini' });

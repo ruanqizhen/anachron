@@ -14,8 +14,8 @@ const supabase = createClient(
 const FUNCTIONS_BASE = `${Deno.env.get('SUPABASE_URL')}/functions/v1`;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-const DISPATCHER_PROVIDER = Deno.env.get('DISPATCHER_MODEL_PROVIDER') || 'deepseek';
-const DISPATCHER_MODEL = Deno.env.get('DISPATCHER_MODEL_NAME') || (DISPATCHER_PROVIDER === 'meta' ? 'muse-spark-1.2' : 'deepseek-v4-flash');
+const DISPATCHER_PROVIDER = Deno.env.get('DISPATCHER_MODEL_PROVIDER') || 'meta';
+const DISPATCHER_MODEL = Deno.env.get('DISPATCHER_MODEL_NAME') || (DISPATCHER_PROVIDER === 'meta' ? 'muse-spark-1.2-contributor' : 'deepseek-v4-flash');
 
 const DEEPSEEK_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || '';
@@ -48,7 +48,7 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
   // 避免单个供应商欠费/故障导致调度队列堆积。
   const primary = DISPATCHER_PROVIDER;
   const primaryModel = primary === 'meta'
-    ? (DISPATCHER_MODEL || 'muse-spark-1.2')
+    ? (DISPATCHER_MODEL || 'muse-spark-1.2-contributor')
     : (DISPATCHER_MODEL || 'deepseek-v4-flash');
   const chain: Array<{ provider: string; model: string; key: string; baseUrl: string; maxTokens: number }> = [
     primary === 'meta'
@@ -56,7 +56,7 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
       : { provider: 'deepseek', model: primaryModel, key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 4000 },
     primary === 'meta'
       ? { provider: 'deepseek', model: 'deepseek-v4-flash', key: DEEPSEEK_KEY, baseUrl: 'https://api.deepseek.com/v1/chat/completions', maxTokens: 4000 }
-      : { provider: 'meta', model: 'muse-spark-1.2', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 },
+      : { provider: 'meta', model: 'muse-spark-1.2-contributor', key: META_API_KEY, baseUrl: 'https://api.meta.ai/v1/chat/completions', maxTokens: 16384 },
   ];
   if (OPENAI_KEY) {
     chain.push({ provider: 'openai', model: DISPATCHER_MODEL || 'gpt-4o-mini', key: OPENAI_KEY, baseUrl: 'https://api.openai.com/v1/chat/completions', maxTokens: 4000 });
