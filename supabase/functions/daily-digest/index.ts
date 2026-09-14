@@ -1,6 +1,8 @@
 // Edge Function: daily-digest
 // Runs daily at noon. Picks a random thread, selects a historical figure
 // who hasn't replied yet, and generates an AI reply.
+// Then picks another thread (same picking logic) and posts a second reply
+// impersonating a randomly-generated modern netizen.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -46,6 +48,21 @@ interface CharacterInfo {
   tags?: string[];
   birth_year?: number;
   death_year?: number;
+}
+
+interface ModernPersona {
+  nickname: string;
+  personality: string;
+  speaking_style: string;
+  attitude: string;
+}
+
+interface ModernReplyResult {
+  ok: boolean;
+  nickname?: string;
+  thread?: string | null;
+  post_id?: string;
+  error?: string;
 }
 
 const DAILY_PROVIDER = Deno.env.get('DAILY_MODEL_PROVIDER') || 'meta';
@@ -123,18 +140,250 @@ async function callLLM(systemPrompt: string, userPrompt: string, model = 'muse-s
   throw new Error('all providers failed: ' + lastErr);
 }
 
+// ─── Shared thread/trigger picking (used by both ancient & modern replies) ───
+
+async function pickRandomThread(excludeId?: string | null): Promise<Thread | null> {
+  const baseCount = supabase
+    .from('threads')
+    .select('*', { count: 'exact', head: true })
+    .is('deleted_at', null)
+    .eq('status', 'published');
+  const { count, error } = await (excludeId ? baseCount.neq('id', excludeId) : baseCount);
+  if (error || !count) return null;
+
+  const offset = Math.floor(Math.random() * count);
+  const baseData = supabase
+    .from('threads')
+    .select('id, title, content, board_id, author_id, profiles!threads_author_id_fkey(username)')
+    .is('deleted_at', null)
+    .eq('status', 'published');
+  const { data } = await (excludeId ? baseData.neq('id', excludeId) : baseData)
+    .order('id', { ascending: true })
+    .range(offset, offset)
+    .limit(1);
+  if (!data || data.length === 0) return null;
+  return data[0] as unknown as Thread;
+}
+
+async function getThreadPosts(threadId: string): Promise<Post[]> {
+  const { data } = await supabase
+    .from('posts')
+    .select('*, profiles(username), guest_sessions(username)')
+    .eq('thread_id', threadId)
+    .is('deleted_at', null)
+    .eq('status', 'published')
+    .order('created_at', { ascending: true });
+  return (data as unknown as Post[] | null) || [];
+}
+
+function pickTrigger(thread: Thread, typedPosts: Post[]) {
+  // 30% chance to reply to thread itself if there are replies
+  const useThread = typedPosts.length === 0 || Math.random() < 0.3;
+  const triggerPost = useThread ? null : typedPosts[Math.floor(Math.random() * typedPosts.length)];
+  const triggerContent = triggerPost ? triggerPost.content : thread.content;
+  const triggerAuthor = triggerPost
+    ? (triggerPost.profiles?.username || triggerPost.guest_sessions?.username || '游客')
+    : (thread.profiles?.username || '游客');
+  return { triggerPost, triggerContent: triggerContent || '', triggerAuthor };
+}
+
+async function buildChainText(triggerPost: Post | null): Promise<string> {
+  if (!triggerPost) return '';
+  const chain: string[] = [];
+  let pid: string | null = triggerPost.parent_post_id;
+  while (pid && chain.length < 5) {
+    const { data: parent } = await supabase
+      .from('posts').select('*, profiles(username), guest_sessions(username)')
+      .eq('id', pid).single();
+    if (!parent) break;
+    const p = parent as unknown as Post;
+    const name = p.profiles?.username || p.guest_sessions?.username || '游客';
+    chain.unshift(`[${name}]：${p.content}`);
+    pid = p.parent_post_id;
+  }
+  return chain.length > 0 ? '回复链（从早到晚）：\n' + chain.join('\n\n') + '\n\n' : '';
+}
+
+function buildContextText(typedPosts: Post[], limit = 8): string {
+  return typedPosts.slice(-limit)
+    .map((p) => {
+      const name = p.profiles?.username || p.guest_sessions?.username || '游客';
+      return `[${name}]：${p.content || ''}`;
+    })
+    .join('\n\n');
+}
+
+// ─── Modern netizen reply ───
+
+// 注意：人设生成不传入任何帖子内容，保证网名与回帖内容无关。
+async function generateModernPersona(excludeNames: string[]): Promise<ModernPersona> {
+  const excludeHint = excludeNames.length > 0
+    ? `\n网名不得与以下用户名重复或近似：${excludeNames.join('、')}。`
+    : '';
+  const personaSystem = `你是中文论坛的用户身份生成器。现在创造一个普通的现代中国网友身份，注意：这个身份与任何具体讨论话题无关，不要引用任何历史、时事话题。
+要求：
+- 网名 2-12 个字符，看上去像真实网友（可混合中文、字母、数字、下划线，例如"夜跑的猫"、"CtrlSavior"、"卖红薯的UI"、"困困"）
+- 网名不得使用历史人物姓名、年号，不得化用历史典故
+- 性格特点、说话方式、思想态度要随机多样：年龄层、职业、地域、语气、打字习惯每次都要不一样${excludeHint}
+
+回复 JSON 格式：
+{"nickname": "网名", "personality": "性格特点（20字内）", "speaking_style": "说话方式（20字内）", "attitude": "思想态度（20字内）"}`;
+  const resp = await callLLM(personaSystem, '请随机生成一个普通网友身份。', 'deepseek-v4-flash', 1, true);
+  const m = resp.match(/\{[\s\S]*\}/);
+  const info = m ? JSON.parse(m[0]) : {};
+  const nickname = String(info.nickname || '').trim();
+  if (!nickname || nickname.length > 20) throw new Error('invalid nickname generated');
+  return {
+    nickname,
+    personality: String(info.personality || '随和').slice(0, 60),
+    speaking_style: String(info.speaking_style || '口语化短句').slice(0, 60),
+    attitude: String(info.attitude || '温和中立').slice(0, 60),
+  };
+}
+
+async function ensureUniqueNickname(nickname: string): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const candidate = attempt === 0 ? nickname : `${nickname}_${Math.floor(100 + Math.random() * 900)}`;
+    // 注册用户和游客共用一片用户名前台展示区，两边都要避开
+    const [{ data: profile }, { data: guest }] = await Promise.all([
+      supabase.from('profiles').select('id').eq('username', candidate).maybeSingle(),
+      supabase.from('guest_sessions').select('id').eq('username', candidate).maybeSingle(),
+    ]);
+    if (!profile && !guest) return candidate;
+  }
+  return `${nickname}_${Date.now().toString(36)}`;
+}
+
+// 第二条回复：用同样的随机选帖逻辑，但必须另选一个不同的帖子，
+// 再以随机生成的现代网友身份回帖。返回结果对象，永不抛错。
+async function runModernReply(excludeThreadId?: string | null): Promise<ModernReplyResult> {
+  try {
+    const thread = await pickRandomThread(excludeThreadId ?? null);
+    if (!thread) return { ok: false, error: excludeThreadId ? 'no other threads' : 'no threads' };
+    console.log('[DAILY-MODERN] selected thread:', thread.title?.slice(0, 50));
+
+    const typedPosts = await getThreadPosts(thread.id);
+    const { triggerPost, triggerContent, triggerAuthor } = pickTrigger(thread, typedPosts);
+    console.log('[DAILY-MODERN] trigger:', triggerPost ? 'reply' : 'thread', 'by:', triggerAuthor);
+
+    // 本帖已出现的用户名：网名需避开，避免混淆或冒充
+    const nameSet = new Set<string>();
+    if (thread.profiles?.username) nameSet.add(thread.profiles.username);
+    for (const p of typedPosts) {
+      const n = p.profiles?.username || p.guest_sessions?.username;
+      if (n) nameSet.add(n);
+    }
+
+    let persona: ModernPersona;
+    try {
+      persona = await generateModernPersona([...nameSet].slice(0, 20));
+    } catch (e) {
+      console.warn('[DAILY-MODERN] persona generation failed, retry once:', e);
+      persona = await generateModernPersona([...nameSet].slice(0, 20));
+    }
+    const nickname = await ensureUniqueNickname(persona.nickname);
+    console.log('[DAILY-MODERN] persona:', nickname, persona.personality);
+
+    // 创建为匿名游客身份：不注册账号，前台显示为普通游客，无任何徽标
+    const { data: guest, error: guestErr } = await supabase.from('guest_sessions').insert({
+      username: nickname,
+      session_token: `daily-modern-${crypto.randomUUID()}`,
+      ip_address: '0.0.0.0',
+    }).select('*').single();
+    if (guestErr || !guest) throw new Error('failed to create guest session: ' + (guestErr?.message || ''));
+
+    const contextText = buildContextText(typedPosts);
+    const chainText = await buildChainText(triggerPost);
+    const replyLabel = triggerPost ? '最新一条需要你回应的帖子' : '主贴（请对整篇帖子发表看法）';
+    const systemPrompt = `# 身份
+你是一位普通的现代中国网友「${nickname}」。${persona.personality}。说话方式：${persona.speaking_style}。思想态度：${persona.attitude}。
+
+# 行为准则
+- 以第一人称、用自然的现代口语回帖，就像深夜刷论坛随手留的评论
+- 针对帖子内容发表真实看法：可以赞同、抬杠、开玩笑、分享亲身经历，但不要复述别人的原话
+- 篇幅 50～300 字，不要写小作文，不要分点论述
+- 可以有个别语气词，最多用一个表情符号，也可以一个都不用
+- 绝对不要透露你是 AI，不要提到"人设""指令""系统"这些词
+- 直接输出回帖正文，不要署名，不要加括号旁白`;
+    const userPrompt = `以下是论坛中关于「${thread.title || '讨论'}」的讨论。
+
+对话记录：
+${contextText}
+
+${chainText}${replyLabel}：
+[${triggerAuthor}]：${triggerContent.slice(0, 800)}
+
+请按你的人设回帖。`;
+
+    const reply = (await callLLM(systemPrompt, userPrompt, 'muse-spark-1.2-contributor', 0.9)).trim();
+    if (!reply) throw new Error('Empty response');
+
+    const { data: replyData, error: replyErr } = await supabase
+      .from('posts')
+      .insert({
+        thread_id: thread.id,
+        author_id: null,
+        guest_id: guest.id,
+        content: reply,
+        is_ai_post: true,
+        status: 'published',
+        parent_post_id: triggerPost?.id || null,
+      })
+      .select()
+      .single();
+
+    if (replyErr) throw new Error(replyErr.message);
+    console.log('[DAILY-MODERN] reply posted:', replyData.id, 'by:', nickname);
+    return { ok: true, nickname, thread: thread.title, post_id: replyData.id };
+  } catch (e) {
+    console.error('[DAILY-MODERN] error:', e);
+    return { ok: false, error: String(e).slice(0, 200) };
+  }
+}
+
+// 古人主流程提前结束的良性分支也补一条现代网友回复，保持"每次调用两条"的语义。
+// 此时古人帖子已经选定，现代网友必须另选一个不同的帖子。
+async function withModern(reason: string, excludeThreadId?: string | null) {
+  const modern = await runModernReply(excludeThreadId ?? null).catch((e): ModernReplyResult => ({ ok: false, error: String(e).slice(0, 200) }));
+  return new Response(JSON.stringify({ ok: true, reason, modern_netizen: modern }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 Deno.serve(async () => {
   console.log('[DAILY] started');
   try {
     // 1. Pick a random published thread
-    const { count: threadCount, error: countErr } = await supabase
-      .from('threads')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .eq('status', 'published');
+    // 带重试：PostgREST 偶发超时/空错误绝不能误判为"论坛没有帖子"。
+    let threadCount: number | null = null;
+    let countErr: { message?: string } | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { count, error } = await supabase
+        .from('threads')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .eq('status', 'published');
+      threadCount = count;
+      countErr = error;
+      if (!error && count) break;
+      console.warn('[DAILY] thread count attempt', attempt + 1, 'failed:',
+        error ? JSON.stringify(error).slice(0, 300) : `count=${count}`);
+      if (attempt < 2) await sleep(2000 * (attempt + 1));
+    }
 
     if (countErr || !threadCount) {
-      console.log('[DAILY] no threads found, countErr:', countErr?.message);
+      const detail = countErr ? JSON.stringify(countErr).slice(0, 300) : `count=${threadCount}`;
+      console.error('[DAILY] thread count failed after retries:', detail);
+      // 数据库持续报错 → 500，不要伪装成"没有帖子"让定时任务静默成功
+      if (countErr) {
+        return new Response(JSON.stringify({ ok: false, error: 'thread count failed', detail }), {
+          status: 500, headers: { 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ ok: true, reason: 'no threads' }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
@@ -282,15 +531,11 @@ ${chainText}★ 需要回应的内容 ★：
 
     if (!decision.name || repliedNames.has(decision.name)) {
       console.log('[DAILY] no suitable character or already replied:', decision.name);
-      return new Response(JSON.stringify({ ok: true, reason: 'no suitable character' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
+      return withModern('no suitable character', thread.id);
     }
     if (isModernFigure(decision.name)) {
       console.log('[DAILY] rejected modern figure:', decision.name);
-      return new Response(JSON.stringify({ ok: true, reason: `modern figure rejected: ${decision.name}` }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
+      return withModern(`modern figure rejected: ${decision.name}`, thread.id);
     }
     console.log('[DAILY] chosen character:', decision.name, decision.reason);
 
@@ -310,9 +555,7 @@ ${chainText}★ 需要回应的内容 ★：
         console.log('[DAILY] character exists:', decision.name);
       } else {
         console.log('[DAILY] character name collision with human user:', decision.name);
-        return new Response(JSON.stringify({ ok: true, reason: `Name collision with human user: ${decision.name}` }), {
-          status: 200, headers: { 'Content-Type': 'application/json' },
-        });
+        return withModern(`Name collision with human user: ${decision.name}`, thread.id);
       }
     } else {
       // Auto-create the character
@@ -326,9 +569,7 @@ ${chainText}★ 需要回应的内容 ★：
 
       if (isModernFigure(decision.name, charInfo.era, charInfo.birth_year)) {
         console.log('[DAILY] rejected modern era/birth for:', decision.name, charInfo.era, charInfo.birth_year);
-        return new Response(JSON.stringify({ ok: true, reason: `modern era rejected: ${decision.name} ${charInfo.era}` }), {
-          status: 200, headers: { 'Content-Type': 'application/json' },
-        });
+        return withModern(`modern era rejected: ${decision.name} ${charInfo.era}`, thread.id);
       }
 
       const { data: newChar, error: createErr } = await supabase.from('profiles').insert({
@@ -406,9 +647,19 @@ ${replyLabel}：
     if (replyErr) throw new Error(replyErr.message);
     console.log('[DAILY] reply posted:', replyData.id, 'by:', characterProfile.username);
 
+    // 第二条回复：现代网友（与古人回复相互独立，失败不影响主流程）
+    let modern: ModernReplyResult = { ok: false, error: 'skipped' };
+    try {
+      modern = await runModernReply(thread.id);
+    } catch (e) {
+      console.error('[DAILY-MODERN] unexpected error:', e);
+      modern = { ok: false, error: String(e).slice(0, 200) };
+    }
+
     return new Response(JSON.stringify({
       ok: true, character: decision.name, reason: decision.reason,
       thread: thread.title, post_id: replyData.id,
+      modern_netizen: modern,
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
   } catch (e) {
