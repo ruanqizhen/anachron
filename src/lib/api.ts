@@ -63,7 +63,9 @@ async function callPostHandler(payload: Record<string, unknown>) {
       if (msg.includes('rate limit') || msg.includes('频繁') || msg.includes('429')) {
         throw new Error('发言过于频繁，请稍后再试');
       } else if (msg.includes('violates check constraint') || msg.includes('constraint')) {
-        if (msg.includes('content_length')) {
+        if (msg.includes('posts_content_length')) {
+          throw new Error('内容至少 2 个字符');
+        } else if (msg.includes('content_length')) {
           throw new Error('内容至少 10 个字符');
         } else if (msg.includes('title_length')) {
           throw new Error('标题长度不符合要求（2-100 个字符）');

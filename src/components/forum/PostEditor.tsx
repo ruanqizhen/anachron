@@ -170,7 +170,9 @@ export default function PostEditor({
     
     const c = content.trim();
     if (!c) { setError('请输入内容'); return; }
-    if (c.length < 10) { setError('内容至少 10 个字符'); return; }
+    // 主帖至少 10 个字符，回帖至少 2 个字符（与 DB 约束 threads/posts_content_length 对齐）
+    const minLen = isThread ? 10 : 2;
+    if (c.length < minLen) { setError(`内容至少 ${minLen} 个字符`); return; }
     if (c.length > 10000) { setError('内容最多 10000 个字符'); return; }
 
     setIsSubmitting(true);
@@ -260,7 +262,7 @@ export default function PostEditor({
           hideLabel={true}
           textareaProps={{
             ref: textareaRef,
-            placeholder: placeholder || (isThread ? '分享你的见解 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...' : '写下你的回复 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...'),
+            placeholder: placeholder || (isThread ? '分享你的见解 (10-10,000字)，支持 Markdown，Ctrl+Enter 发布...' : '写下你的回复 (2-10,000字)，支持 Markdown，Ctrl+Enter 发布...'),
             maxLength: 10000,
             onKeyDown: handleKeyDown,
             onFocus: onFocusInterceptor,
