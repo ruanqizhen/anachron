@@ -31,6 +31,12 @@ function stripMarkdown(md) {
     .trim();
 }
 
+/** Rebuild an unconsumed HTML response with 404 status, for unknown thread /
+ *  board / user slugs that would otherwise return a soft-404 (HTTP 200). */
+function withNotFoundStatus(body, headers) {
+  return new Response(body, { status: 404, statusText: 'Not Found', headers });
+}
+
 /** Validate that a string looks like a safe identifier (UUID, slug, etc.)
  *  Allows alphanumeric, hyphens, underscores, and CJK characters. */
 function isSafeParam(str) {
@@ -361,6 +367,9 @@ export async function onRequest(context) {
           .on('div#root', new RootContentInjector(contentHtml))
           .transform(newResponse);
       }
+
+      // Thread slug matched but no such thread — return real 404 instead of soft-404
+      return withNotFoundStatus(newResponse.body, headers);
     }
 
     // ── 3b. Board page: /b/:boardSlug ──
@@ -399,6 +408,9 @@ export async function onRequest(context) {
           .on('div#root', new RootContentInjector(contentHtml))
           .transform(newResponse);
       }
+
+      // Board slug matched but no such board — return real 404 instead of soft-404
+      return withNotFoundStatus(newResponse.body, headers);
     }
 
     // ── 3c. Home page: / ──
@@ -446,6 +458,9 @@ export async function onRequest(context) {
           }))
           .transform(newResponse);
       }
+
+      // Username matched but no such user — return real 404 instead of soft-404
+      return withNotFoundStatus(newResponse.body, headers);
     }
 
   } catch (err) {
