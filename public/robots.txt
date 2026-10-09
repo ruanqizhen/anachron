@@ -5,4 +5,4 @@ Disallow: /settings/
 Disallow: /notifications/
 Disallow: /search
 
-Sitemap: https://anachron.com/sitemap.xml
+Sitemap: https://anachron.qizhen.xyz/sitemap.xml
