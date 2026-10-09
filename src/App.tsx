@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NavBar from './components/layout/NavBar';
+import Footer from './components/layout/Footer';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 import AdminLayout from './components/layout/AdminLayout';
 import Toaster from './components/ui/Toaster';
@@ -76,6 +77,7 @@ export default function App() {
                     <Route path="/settings" element={<Settings />} />
                   </Routes>
                 </Suspense>
+                <Footer />
               </ErrorBoundary>
             }
           />
