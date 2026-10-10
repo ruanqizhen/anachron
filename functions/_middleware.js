@@ -76,7 +76,6 @@ async function handleSitemap(supabaseUrl, supabaseKey, origin) {
   // Static pages
   const staticPages = [
     { loc: '/', changefreq: 'daily', priority: '1.0' },
-    { loc: '/characters', changefreq: 'weekly', priority: '0.8' },
     { loc: '/login', changefreq: 'monthly', priority: '0.3' },
   ];
 
