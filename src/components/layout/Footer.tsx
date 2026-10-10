@@ -13,7 +13,6 @@ export default function Footer() {
       }}
     >
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-        <span style={{ color: 'var(--color-text-muted)' }}>© 2026 阮奇桢 · 回音堂</span>
         <div className="flex items-center gap-5">
           <a
             href="https://github.com/ruanqizhen"
