@@ -157,6 +157,16 @@ class MetaTagRemover {
   }
 }
 
+/** Removes the static <link rel="canonical"> so the dynamically injected one
+ *  (built from the request origin) is authoritative and not duplicated. */
+class CanonicalLinkRemover {
+  element(element) {
+    if ((element.getAttribute('rel') || '') === 'canonical') {
+      element.remove();
+    }
+  }
+}
+
 class MetaInjector {
   constructor(meta) {
     this.meta = meta;
@@ -172,6 +182,12 @@ class MetaInjector {
     }
     if (this.meta.image) {
       element.append(`<meta property="og:image" content="${escapeHtml(this.meta.image)}">`, { html: true });
+      element.append(`<meta property="twitter:image" content="${escapeHtml(this.meta.image)}">`, { html: true });
+    }
+    if (this.meta.url) {
+      const pageUrl = escapeHtml(this.meta.url);
+      element.append(`<meta property="og:url" content="${pageUrl}">`, { html: true });
+      element.append(`<link rel="canonical" href="${pageUrl}">`, { html: true });
     }
     element.append(`<meta property="og:type" content="article">`, { html: true });
     element.append(`<meta name="twitter:card" content="summary">`, { html: true });
@@ -344,7 +360,8 @@ export async function onRequest(context) {
           return new HTMLRewriter()
             .on('title', new TitleReplacer('已删除的帖子'))
             .on('meta', new MetaTagRemover())
-            .on('head', new MetaInjector({ title: '已删除的帖子', description: '此内容已被删除' }))
+            .on('link', new CanonicalLinkRemover())
+            .on('head', new MetaInjector({ title: '已删除的帖子', description: '此内容已被删除', url: url.origin + url.pathname }))
             .transform(newResponse);
         }
 
@@ -358,10 +375,12 @@ export async function onRequest(context) {
         return new HTMLRewriter()
           .on('title', new TitleReplacer(thread.title))
           .on('meta', new MetaTagRemover())
+          .on('link', new CanonicalLinkRemover())
           .on('head', new MetaInjector({
             title: thread.title,
             description: thread.content,
             image: thread.profiles?.avatar_url || '',
+            url: url.origin + url.pathname,
           }))
           .on('div#root', new RootContentInjector(contentHtml))
           .transform(newResponse);
@@ -400,9 +419,11 @@ export async function onRequest(context) {
         return new HTMLRewriter()
           .on('title', new TitleReplacer(board.name))
           .on('meta', new MetaTagRemover())
+          .on('link', new CanonicalLinkRemover())
           .on('head', new MetaInjector({
             title: board.name,
             description: description,
+            url: url.origin + url.pathname,
           }))
           .on('div#root', new RootContentInjector(contentHtml))
           .transform(newResponse);
@@ -450,10 +471,12 @@ export async function onRequest(context) {
         return new HTMLRewriter()
           .on('title', new TitleReplacer(profile.username))
           .on('meta', new MetaTagRemover())
+          .on('link', new CanonicalLinkRemover())
           .on('head', new MetaInjector({
             title: profile.username,
             description: profile.bio || `查看 ${profile.username} 的个人主页`,
             image: profile.avatar_url || '',
+            url: url.origin + url.pathname,
           }))
           .transform(newResponse);
       }
