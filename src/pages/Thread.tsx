@@ -73,11 +73,17 @@ export default function ThreadPage() {
     ? thread.content.replace(/[#*`_[\]()]/g, '').substring(0, 150)
     : '';
 
+  const cleanContentText = thread.content
+    ? thread.content.replace(/[#*`_[\]()]/g, '')
+    : '';
+
   const threadSchema = {
     '@context': 'https://schema.org',
     '@type': 'DiscussionForumPosting',
     'headline': thread.title,
     'description': cleanContentPreview,
+    'text': cleanContentText,
+    'url': `${window.location.origin}/b/${boardSlug}/t/${threadId}`,
     'datePublished': thread.created_at,
     'dateModified': thread.edited_at || thread.created_at,
     'author': {
